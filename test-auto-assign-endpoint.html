@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Auto-Assign Endpoint</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Auto-Assign Supervisors Endpoint</h1>
+    
+    <div class="step">
+        <h3>Step 1: Upload Supervisors</h3>
+        <button onclick="uploadSupervisors()">Upload Test Supervisors</button>
+        <div id="upload-result"></div>
+    </div>
+    
+    <div class="step">
+        <h3>Step 2: Auto-Assign Supervisors</h3>
+        <button onclick="autoAssign()">Auto-Assign Supervisors</button>
+        <div id="assign-result"></div>
+    </div>
+    
+    <div class="step">
+        <h3>Step 3: Check Results</h3>
+        <button onclick="checkResults()">Check Assignments</button>
+        <div id="check-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // Get token from localStorage (if you're logged in)
+        const token = localStorage.getItem('supervise360_token');
+        
+        if (!token) {
+            document.body.innerHTML = '<h2 class="error">❌ No authentication token found!</h2><p>Please log in to the application first, then come back to this page.</p>';
+        }
+        
+        async function uploadSupervisors() {
+            const result = document.getElementById('upload-result');
+            result.innerHTML = '<p>Uploading supervisors...</p>';
+            
+            const supervisors = [
+                { name: 'Test Supervisor 1', department: 'Software Engineering', maxGroups: 10 },
+                { name: 'Test Supervisor 2', department: 'Software Engineering', maxGroups: 10 },
+                { name: 'Test Supervisor 3', department: 'Software Engineering', maxGroups: 10 },
+            ];
+            
+            try {
+                const response = await fetch(`${API_BASE}/supervisors/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ supervisors })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.innerHTML = `<p class="success">✅ ${data.message}</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = `<p class="error">❌ ${data.message || 'Upload failed'}</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function autoAssign() {
+            const result = document.getElementById('assign-result');
+            result.innerHTML = '<p>Auto-assigning supervisors...</p>';
+            
+            try {
+                console.log('Sending auto-assign request...');
+                const response = await fetch(`${API_BASE}/supervisors/auto-assign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    result.innerHTML = `
+                        <p class="success">✅ ${data.message}</p>
+                        <p>Assigned: ${data.assignedCount || 0} groups</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    result.innerHTML = `<p class="error">❌ ${data.message || 'Assignment failed'}</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+                console.error('Auto-assign error:', error);
+            }
+        }
+        
+        async function checkResults() {
+            const result = document.getElementById('check-result');
+            result.innerHTML = '<p>Checking assignments...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/groups`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const groups = data.data;
+                    const withSupervisor = groups.filter(g => g.supervisor).length;
+                    const withoutSupervisor = groups.filter(g => !g.supervisor).length;
+                    
+                    let html = `
+                        <p class="success">✅ Found ${groups.length} groups</p>
+                        <p>With supervisor: ${withSupervisor}</p>
+                        <p>Without supervisor: ${withoutSupervisor}</p>
+                        <h4>Sample Groups:</h4>
+                    `;
+                    
+                    groups.slice(0, 5).forEach(g => {
+                        html += `<p>${g.name}: ${g.supervisor || 'NO SUPERVISOR'}</p>`;
+                    });
+                    
+                    result.innerHTML = html;
+                } else {
+                    result.innerHTML = `<p class="error">❌ Failed to fetch groups</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

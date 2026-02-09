@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSV Format Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 2px solid #1a237e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #1a237e;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background: #1a237e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0d47a1;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #1a237e;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 CSV Format Tester for Group Formation</h1>
+    
+    <div class="container">
+        <h2>Upload Your CSV File</h2>
+        <input type="file" id="csvFile" accept=".csv" />
+        <button onclick="testCSV()">Test CSV Format</button>
+        <button onclick="downloadSample()">Download Sample CSV</button>
+    </div>
+
+    <div class="container" id="results" style="display: none;">
+        <h2>Test Results</h2>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        function testCSV() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a CSV file first');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvText = e.target.result;
+                analyzeCSV(csvText);
+            };
+            reader.readAsText(file);
+        }
+
+        function analyzeCSV(csvText) {
+            const resultsDiv = document.getElementById('results');
+            const outputDiv = document.getElementById('output');
+            resultsDiv.style.display = 'block';
+            
+            let html = '<h3>📄 Raw CSV Content (first 500 characters):</h3>';
+            html += '<pre>' + csvText.substring(0, 500) + (csvText.length > 500 ? '...' : '') + '</pre>';
+
+            // Parse CSV
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+            html += '<h3>📊 Parsed Data:</h3>';
+            html += '<p><strong>Total lines:</strong> ' + lines.length + '</p>';
+
+            if (lines.length === 0) {
+                html += '<p class="error">❌ CSV file is empty!</p>';
+                outputDiv.innerHTML = html;
+                return;
+            }
+
+            // Parse headers
+            const headerLine = lines[0];
+            const headers = parseCSVLine(headerLine);
+            
+            html += '<p><strong>Headers found:</strong> ' + headers.join(', ') + '</p>';
+
+            // Check for required fields
+            const hasName = headers.some(h => h.toLowerCase().includes('name'));
+            const hasGPA = headers.some(h => h.toLowerCase().includes('gpa'));
+            
+            html += '<h3>✅ Validation:</h3>';
+            html += '<p>' + (hasName ? '✅' : '❌') + ' Name column found</p>';
+            html += '<p>' + (hasGPA ? '✅' : '❌') + ' GPA column found</p>';
+
+            if (!hasName || !hasGPA) {
+                html += '<p class="error">⚠️ Your CSV must have "Name" and "GPA" columns!</p>';
+            }
+
+            // Parse first 10 rows
+            html += '<h3>📋 Sample Data (first 10 rows):</h3>';
+            html += '<table><thead><tr>';
+            headers.forEach(h => html += '<th>' + h + '</th>');
+            html += '</tr></thead><tbody>';
+
+            for (let i = 1; i < Math.min(11, lines.length); i++) {
+                const values = parseCSVLine(lines[i]);
+                html += '<tr>';
+                values.forEach(v => html += '<td>' + v + '</td>');
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+
+            // Process students
+            html += '<h3>🎓 Processed Students with Tiers:</h3>';
+            html += '<table><thead><tr><th>Name</th><th>GPA</th><th>Tier</th></tr></thead><tbody>';
+
+            const students = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] ? values[index].trim() : '';
+                });
+
+                // Extract name and GPA
+                const name = row.name || row.Name || row.NAME || '';
+                const gpaStr = row.gpa || row.GPA || row.Gpa || '';
+                const gpa = parseFloat(gpaStr);
+
+                if (name && !isNaN(gpa)) {
+                    const tier = classifyGpaTier(gpa);
+                    students.push({ name, gpa, tier });
+                    html += '<tr>';
+                    html += '<td>' + name + '</td>';
+                    html += '<td>' + gpa.toFixed(2) + '</td>';
+                    html += '<td>' + tier + '</td>';
+                    html += '</tr>';
+                }
+            }
+            html += '</tbody></table>';
+
+            // Tier distribution
+            const tierCounts = students.reduce((acc, s) => {
+                acc[s.tier] = (acc[s.tier] || 0) + 1;
+                return acc;
+            }, {});
+
+            html += '<h3>📈 Tier Distribution:</h3>';
+            html += '<p>HIGH (GPA ≥ 3.80): ' + (tierCounts.HIGH || 0) + ' students</p>';
+            html += '<p>MEDIUM (GPA 3.30-3.79): ' + (tierCounts.MEDIUM || 0) + ' students</p>';
+            html += '<p>LOW (GPA < 3.30): ' + (tierCounts.LOW || 0) + ' students</p>';
+
+            const idealGroups = Math.min(tierCounts.HIGH || 0, tierCounts.MEDIUM || 0, tierCounts.LOW || 0);
+            html += '<p class="success">✅ Can form ' + idealGroups + ' ideal groups (1:1:1 ratio)</p>';
+
+            if (students.length % 3 !== 0) {
+                html += '<p class="error">⚠️ Total students (' + students.length + ') is not divisible by 3. ' + (students.length % 3) + ' student(s) will be left out.</p>';
+            }
+
+            outputDiv.innerHTML = html;
+        }
+
+        function parseCSVLine(line, delimiter = ',') {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delimiter && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current.trim());
+            return result.map(val => val.replace(/^"|"$/g, '').trim());
+        }
+
+        function classifyGpaTier(gpa) {
+            if (gpa >= 3.80 && gpa <= 5.0) return 'HIGH';
+            if (gpa >= 3.30 && gpa < 3.80) return 'MEDIUM';
+            return 'LOW';
+        }
+
+        function downloadSample() {
+            const csvContent = `name,gpa
+Alice Johnson,4.0
+Bob Smith,3.5
+Charlie Brown,3.0
+Diana Prince,3.9
+Eve Wilson,3.4
+Frank Miller,2.8
+Grace Lee,4.2
+Henry Davis,3.6
+Ivy Chen,3.1
+Jack Wilson,3.85
+Kate Brown,3.45
+Leo Martinez,2.9`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'sample_students.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

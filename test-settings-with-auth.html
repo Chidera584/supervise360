@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Settings API with Auth</title>
+</head>
+<body>
+    <h1>Settings API Test</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            
+            // Get token from localStorage (same as frontend)
+            const token = localStorage.getItem('token');
+            
+            resultDiv.innerHTML = '<p>Testing GET /api/settings/gpa-thresholds/global...</p>';
+            resultDiv.innerHTML += `<p>Token: ${token ? 'Found' : 'NOT FOUND'}</p>`;
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/settings/gpa-thresholds/global', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                resultDiv.innerHTML += `<p>Status: ${response.status}</p>`;
+                
+                const data = await response.json();
+                resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                if (response.ok) {
+                    resultDiv.innerHTML += '<p style="color: green;">✅ API is working!</p>';
+                    
+                    // Now test PUT
+                    resultDiv.innerHTML += '<p>Testing PUT (update thresholds)...</p>';
+                    const putResponse = await fetch('http://localhost:5000/api/settings/gpa-thresholds/global', {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            high: 3.80,
+                            medium: 3.30,
+                            low: 0.00
+                        })
+                    });
+                    
+                    resultDiv.innerHTML += `<p>PUT Status: ${putResponse.status}</p>`;
+                    const putData = await putResponse.json();
+                    resultDiv.innerHTML += `<pre>${JSON.stringify(putData, null, 2)}</pre>`;
+                    
+                } else {
+                    resultDiv.innerHTML += '<p style="color: red;">❌ API returned error</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Run test on load
+        testAPI();
+    </script>
+</body>
+</html>

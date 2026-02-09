@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Dummy Supervisors</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .supervisor-item { 
+            border: 1px solid #ddd; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            background: #f9f9f9;
+        }
+        .test-data { border-color: #ff6b6b; background: #ffe0e0; }
+        .real-data { border-color: #51cf66; background: #e0ffe0; }
+        .button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        .button:hover { background: #0056b3; }
+        .button.danger { background: #dc3545; }
+        .button.danger:hover { background: #c82333; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clean Dummy Supervisors</h1>
+        
+        <div class="info status">
+            <strong>Issue:</strong> Admin dashboard shows 11 supervisors but you only uploaded 7. 
+            This is likely due to dummy/test data in the database.
+        </div>
+        
+        <button class="button" onclick="fetchSupervisors()">🔍 Check Current Supervisors</button>
+        <button class="button danger" onclick="cleanTestData()">🧹 Clean Test Data</button>
+        <button class="button" onclick="refreshDashboard()">🔄 Refresh Dashboard</button>
+        
+        <div id="results"></div>
+        
+        <h3>📋 Instructions:</h3>
+        <ol>
+            <li>Click "Check Current Supervisors" to see all supervisors in the database</li>
+            <li>Review the list - test data will be highlighted in red</li>
+            <li>Click "Clean Test Data" to remove dummy entries</li>
+            <li>Refresh your admin dashboard to see the correct count</li>
+        </ol>
+        
+        <div class="info status">
+            <strong>Note:</strong> This tool will only remove supervisors with obvious test patterns like:
+            <br>• Names containing "test", "dummy", "sample", "example", "demo"
+            <br>• Emails ending with "@test.com", "@example.com", "@dummy.com"
+            <br>• Your real supervisor data will be preserved
+        </div>
+    </div>
+
+    <script>
+        async function fetchSupervisors() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status">🔄 Fetching supervisors...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/users/supervisors');
+                
+                if (response.ok) {
+                    const supervisors = await response.json();
+                    
+                    let html = `<div class="status success">✅ Found ${supervisors.length} supervisors in database</div>`;
+                    html += '<h3>📊 Supervisor Analysis:</h3>';
+                    
+                    // Categorize supervisors
+                    const testPatterns = ['test', 'dummy', 'sample', 'example', 'demo', 'fake'];
+                    const testData = [];
+                    const realData = [];
+                    
+                    supervisors.forEach(supervisor => {
+                        const fullText = `${supervisor.first_name || ''} ${supervisor.last_name || ''} ${supervisor.email || ''}`.toLowerCase();
+                        const isTestData = testPatterns.some(pattern => fullText.includes(pattern)) ||
+                                         (supervisor.email && (supervisor.email.includes('@test.') || supervisor.email.includes('@example.') || supervisor.email.includes('@dummy.')));
+                        
+                        if (isTestData) {
+                            testData.push(supervisor);
+                        } else {
+                            realData.push(supervisor);
+                        }
+                    });
+                    
+                    html += `<p><strong>Real supervisors:</strong> ${realData.length} | <strong>Test data:</strong> ${testData.length}</p>`;
+                    
+                    // Show real supervisors
+                    if (realData.length > 0) {
+                        html += '<h4>✅ Real Supervisors (Keep these):</h4>';
+                        realData.forEach(supervisor => {
+                            html += `<div class="supervisor-item real-data">
+                                <strong>${supervisor.first_name || 'N/A'} ${supervisor.last_name || 'N/A'}</strong><br>
+                                Email: ${supervisor.email || 'N/A'}<br>
+                                Department: ${supervisor.department || 'N/A'}<br>
+                                Groups: ${supervisor.group_count || 0}
+                            </div>`;
+                        });
+                    }
+                    
+                    // Show test data
+                    if (testData.length > 0) {
+                        html += '<h4>🧪 Test/Dummy Data (Will be removed):</h4>';
+                        testData.forEach(supervisor => {
+                            html += `<div class="supervisor-item test-data">
+                                <strong>${supervisor.first_name || 'N/A'} ${supervisor.last_name || 'N/A'}</strong><br>
+                                Email: ${supervisor.email || 'N/A'}<br>
+                                Department: ${supervisor.department || 'N/A'}<br>
+                                Groups: ${supervisor.group_count || 0}
+                                <br><small>⚠️ Identified as test data</small>
+                            </div>`;
+                        });
+                        
+                        html += `<div class="status error">
+                            <strong>Found ${testData.length} test entries!</strong> 
+                            This explains why your dashboard shows ${supervisors.length} instead of ${realData.length}.
+                        </div>`;
+                    } else {
+                        html += '<div class="status success">✅ No test data found. All supervisors appear to be real.</div>';
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    const errorText = await response.text();
+                    resultsDiv.innerHTML = `<div class="status error">❌ API Error: ${response.status}<br>${errorText}</div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function cleanTestData() {
+            if (!confirm('Are you sure you want to remove test/dummy supervisor data? This cannot be undone.')) {
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status">🧹 Cleaning test data...</div>';
+            
+            // Note: This would require a backend endpoint to clean test data
+            // For now, we'll just show instructions
+            resultsDiv.innerHTML = `
+                <div class="status error">
+                    <strong>Manual Cleanup Required</strong><br>
+                    To clean the test data, you need to run SQL commands directly on your database:
+                    <br><br>
+                    <code>
+                    -- Remove supervisors with test patterns<br>
+                    DELETE FROM supervisors WHERE <br>
+                    &nbsp;&nbsp;LOWER(CONCAT(first_name, ' ', last_name, ' ', email)) LIKE '%test%' OR<br>
+                    &nbsp;&nbsp;LOWER(CONCAT(first_name, ' ', last_name, ' ', email)) LIKE '%dummy%' OR<br>
+                    &nbsp;&nbsp;LOWER(CONCAT(first_name, ' ', last_name, ' ', email)) LIKE '%sample%' OR<br>
+                    &nbsp;&nbsp;email LIKE '%@test.%' OR<br>
+                    &nbsp;&nbsp;email LIKE '%@example.%' OR<br>
+                    &nbsp;&nbsp;email LIKE '%@dummy.%';
+                    </code>
+                    <br><br>
+                    Or contact your database administrator to clean up the test data.
+                </div>
+            `;
+        }
+        
+        function refreshDashboard() {
+            alert('Please refresh your admin dashboard page to see the updated supervisor count.');
+        }
+    </script>
+</body>
+</html>

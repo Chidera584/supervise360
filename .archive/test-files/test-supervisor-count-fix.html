@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supervisor Count Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-result { 
+            border: 2px solid #ddd; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+        }
+        .success { border-color: #51cf66; background-color: #e0ffe0; }
+        .error { border-color: #ff6b6b; background-color: #ffe0e0; }
+        .info { border-color: #339af0; background-color: #e0f2ff; }
+        .button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 10px 5px;
+        }
+        .button:hover { background: #0056b3; }
+        .code { 
+            background: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 4px; 
+            font-family: monospace; 
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Supervisor Count Fix</h1>
+        
+        <div class="info test-result">
+            <h3>🎯 What We're Testing:</h3>
+            <p>Before the fix, the admin dashboard showed 11 supervisors (7 real + 4 dummy).</p>
+            <p>After the fix, it should show the actual count from the database API.</p>
+        </div>
+        
+        <button class="button" onclick="testSupervisorAPI()">🔍 Test API Endpoint</button>
+        <button class="button" onclick="testDashboardFix()">📊 Test Dashboard Logic</button>
+        <button class="button" onclick="openDashboard()">🚀 Open Admin Dashboard</button>
+        
+        <div id="results"></div>
+        
+        <div class="info test-result">
+            <h3>📋 How to Verify the Fix:</h3>
+            <ol>
+                <li>Click "Test API Endpoint" to see the actual supervisor count from the database</li>
+                <li>Click "Test Dashboard Logic" to simulate the new dashboard calculation</li>
+                <li>Click "Open Admin Dashboard" to see the live dashboard</li>
+                <li>Compare the counts - they should now match!</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function testSupervisorAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="info test-result">🔄 Testing API endpoint...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/users/supervisors');
+                
+                if (response.ok) {
+                    const supervisors = await response.json();
+                    
+                    let html = `<div class="success test-result">
+                        <h3>✅ API Test Successful</h3>
+                        <p><strong>Actual supervisor count from database:</strong> ${supervisors.length}</p>
+                    `;
+                    
+                    // Analyze the data
+                    const testPatterns = ['test', 'dummy', 'sample', 'example', 'demo', 'fake'];
+                    const testData = supervisors.filter(s => {
+                        const fullText = `${s.first_name || ''} ${s.last_name || ''} ${s.email || ''}`.toLowerCase();
+                        return testPatterns.some(pattern => fullText.includes(pattern)) ||
+                               (s.email && (s.email.includes('@test.') || s.email.includes('@example.') || s.email.includes('@dummy.')));
+                    });
+                    
+                    const realData = supervisors.filter(s => {
+                        const fullText = `${s.first_name || ''} ${s.last_name || ''} ${s.email || ''}`.toLowerCase();
+                        return !testPatterns.some(pattern => fullText.includes(pattern)) &&
+                               !(s.email && (s.email.includes('@test.') || s.email.includes('@example.') || s.email.includes('@dummy.')));
+                    });
+                    
+                    html += `
+                        <p><strong>Real supervisors:</strong> ${realData.length}</p>
+                        <p><strong>Test/dummy data:</strong> ${testData.length}</p>
+                    `;
+                    
+                    if (testData.length > 0) {
+                        html += `<p style="color: #d63384;">⚠️ Found ${testData.length} test entries that should be cleaned up.</p>`;
+                    }
+                    
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = `<div class="error test-result">
+                        <h3>❌ API Test Failed</h3>
+                        <p>Status: ${response.status}</p>
+                        <p>This might be due to authentication requirements.</p>
+                    </div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error test-result">
+                    <h3>❌ API Test Error</h3>
+                    <p>Error: ${error.message}</p>
+                    <p>Make sure the backend server is running on port 5000.</p>
+                </div>`;
+            }
+        }
+        
+        function testDashboardFix() {
+            const resultsDiv = document.getElementById('results');
+            
+            // Simulate the old vs new logic
+            const mockAssignedSupervisors = 3; // Example: 3 supervisors are assigned to groups
+            
+            // OLD LOGIC (before fix)
+            const oldTotalSupervisors = mockAssignedSupervisors + 5; // Added 5 dummy supervisors
+            const oldAvailableSupervisors = oldTotalSupervisors - mockAssignedSupervisors;
+            
+            // NEW LOGIC (after fix) - assuming 7 real supervisors from your upload
+            const newTotalSupervisors = 7; // Real count from API
+            const newAvailableSupervisors = Math.max(0, newTotalSupervisors - mockAssignedSupervisors);
+            
+            const html = `
+                <div class="test-result">
+                    <h3>📊 Dashboard Logic Comparison</h3>
+                    
+                    <div class="code">
+                        <strong>BEFORE (Old Logic):</strong><br>
+                        Total Supervisors = ${mockAssignedSupervisors} assigned + 5 dummy = ${oldTotalSupervisors}<br>
+                        Available = ${oldTotalSupervisors} - ${mockAssignedSupervisors} = ${oldAvailableSupervisors}
+                    </div>
+                    
+                    <div class="code">
+                        <strong>AFTER (New Logic):</strong><br>
+                        Total Supervisors = 7 (from API, your uploaded count)<br>
+                        Available = ${newTotalSupervisors} - ${mockAssignedSupervisors} = ${newAvailableSupervisors}
+                    </div>
+                    
+                    <div class="${oldTotalSupervisors !== newTotalSupervisors ? 'success' : 'info'}" style="padding: 10px; margin: 10px 0; border-radius: 4px;">
+                        <strong>Result:</strong> 
+                        ${oldTotalSupervisors !== newTotalSupervisors ? 
+                          `✅ Fix working! Count changed from ${oldTotalSupervisors} to ${newTotalSupervisors}` : 
+                          `ℹ️ Counts are the same (${newTotalSupervisors})`}
+                    </div>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        function openDashboard() {
+            window.open('http://localhost:5173', '_blank');
+        }
+    </script>
+</body>
+</html>

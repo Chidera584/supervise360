@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Settings API</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+    .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px; }
+    button:hover { background: #45a049; }
+    .result { margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; white-space: pre-wrap; }
+    .error { background: #ffebee; color: #c62828; }
+    .success { background: #e8f5e9; color: #2e7d32; }
+    input { padding: 8px; margin: 5px; width: 100px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Settings API Test</h1>
+  
+  <div class="section">
+    <h2>1. Get Global Thresholds</h2>
+    <button onclick="getGlobalThresholds()">Get Thresholds</button>
+    <div id="getResult" class="result"></div>
+  </div>
+
+  <div class="section">
+    <h2>2. Preview Distribution</h2>
+    <div>
+      <label>High: <input type="number" id="high" value="3.80" step="0.01"></label>
+      <label>Medium: <input type="number" id="medium" value="3.30" step="0.01"></label>
+      <label>Low: <input type="number" id="low" value="0.00" step="0.01"></label>
+    </div>
+    <button onclick="previewDistribution()">Preview</button>
+    <div id="previewResult" class="result"></div>
+  </div>
+
+  <div class="section">
+    <h2>3. Update Global Thresholds</h2>
+    <div>
+      <label>High: <input type="number" id="updateHigh" value="3.80" step="0.01"></label>
+      <label>Medium: <input type="number" id="updateMedium" value="3.30" step="0.01"></label>
+      <label>Low: <input type="number" id="updateLow" value="0.00" step="0.01"></label>
+    </div>
+    <button onclick="updateGlobalThresholds()">Update</button>
+    <div id="updateResult" class="result"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:5000/api/settings';
+
+    async function getGlobalThresholds() {
+      const resultDiv = document.getElementById('getResult');
+      try {
+        resultDiv.textContent = 'Loading...';
+        const response = await fetch(`${API_BASE}/gpa-thresholds/global`);
+        const data = await response.json();
+        
+        resultDiv.className = 'result ' + (response.ok ? 'success' : 'error');
+        resultDiv.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = 'Error: ' + error.message;
+      }
+    }
+
+    async function previewDistribution() {
+      const resultDiv = document.getElementById('previewResult');
+      try {
+        resultDiv.textContent = 'Loading...';
+        
+        const high = parseFloat(document.getElementById('high').value);
+        const medium = parseFloat(document.getElementById('medium').value);
+        const low = parseFloat(document.getElementById('low').value);
+
+        const response = await fetch(`${API_BASE}/gpa-thresholds/preview`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ high, medium, low, department: null })
+        });
+        
+        const data = await response.json();
+        
+        resultDiv.className = 'result ' + (response.ok ? 'success' : 'error');
+        resultDiv.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = 'Error: ' + error.message;
+      }
+    }
+
+    async function updateGlobalThresholds() {
+      const resultDiv = document.getElementById('updateResult');
+      try {
+        resultDiv.textContent = 'Updating...';
+        
+        const high = parseFloat(document.getElementById('updateHigh').value);
+        const medium = parseFloat(document.getElementById('updateMedium').value);
+        const low = parseFloat(document.getElementById('updateLow').value);
+
+        const response = await fetch(`${API_BASE}/gpa-thresholds/global`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ high, medium, low })
+        });
+        
+        const data = await response.json();
+        
+        resultDiv.className = 'result ' + (response.ok ? 'success' : 'error');
+        resultDiv.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = 'Error: ' + error.message;
+      }
+    }
+
+    // Auto-test on load
+    window.onload = () => {
+      console.log('🧪 Test page loaded. Click buttons to test API endpoints.');
+    };
+  </script>
+</body>
+</html>

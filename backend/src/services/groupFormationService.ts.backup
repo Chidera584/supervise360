@@ -1,0 +1,508 @@
+import { Pool } from 'mysql2/promise';
+
+export interface StudentData {
+  name: string;
+  gpa: number;
+  tier: 'HIGH' | 'MEDIUM' | 'LOW';
+  department?: string;
+  student_id?: string;
+}
+
+export interface GroupData {
+  id?: number;
+  name: string;
+  members: StudentData[];
+  avg_gpa: number;
+  status: 'formed' | 'active';
+  supervisor_id?: number;
+  supervisor?: string | null;
+  department?: string;
+  project_id?: number;
+}
+
+export class GroupFormationService {
+  constructor(private db: Pool) {}
+
+  // Get GPA tier thresholds for a department (or global defaults)
+  async getGpaTierThresholds(department?: string): Promise<{ high: number; medium: number; low: number }> {
+    try {
+      // Try to get department-specific settings first
+      if (department) {
+        const [deptRows] = await this.db.execute(
+          `SELECT use_custom_thresholds, gpa_tier_high_min, gpa_tier_medium_min, gpa_tier_low_min 
+           FROM department_settings 
+           WHERE department = ?`,
+          [department]
+        );
+
+        if ((deptRows as any[]).length > 0 && (deptRows as any[])[0].use_custom_thresholds) {
+          const settings = (deptRows as any[])[0];
+          return {
+            high: settings.gpa_tier_high_min,
+            medium: settings.gpa_tier_medium_min,
+            low: settings.gpa_tier_low_min
+          };
+        }
+      }
+
+      // Fall back to global settings
+      const [globalRows] = await this.db.execute(
+        `SELECT setting_key, setting_value 
+         FROM system_settings 
+         WHERE setting_key IN ('gpa_tier_high_min', 'gpa_tier_medium_min', 'gpa_tier_low_min')`
+      );
+
+      const thresholds = (globalRows as any[]).reduce((acc, row) => {
+        const key = row.setting_key.replace('gpa_tier_', '').replace('_min', '');
+        acc[key] = parseFloat(row.setting_value);
+        return acc;
+      }, { high: 3.80, medium: 3.30, low: 0.00 }); // Defaults as fallback
+
+      return thresholds;
+    } catch (error) {
+      console.error('Error fetching GPA thresholds, using defaults:', error);
+      return { high: 3.80, medium: 3.30, low: 0.00 };
+    }
+  }
+
+  // Classify GPA into tiers based on dynamic thresholds
+  classifyGpaTier(gpa: number, thresholds: { high: number; medium: number; low: number }): 'HIGH' | 'MEDIUM' | 'LOW' {
+    if (gpa >= thresholds.high && gpa <= 5.0) return 'HIGH';
+    if (gpa >= thresholds.medium && gpa < thresholds.high) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  // Process uploaded student data
+  processStudentData(rawData: any[]): StudentData[] {
+    console.log('🔍 Processing student data. Sample student object:', rawData[0]);
+    console.log('🔍 Available keys in first student:', Object.keys(rawData[0] || {}));
+    
+    return rawData.map((student, index) => {
+      // Handle both raw CSV data and pre-processed frontend data
+      let name, gpa, studentId, department;
+      
+      // Extract name - try multiple variations
+      name = student.name || student.Name || student.NAME || 
+             student.student_name || student.StudentName || student['Student Name'];
+      
+      // Extract GPA - try multiple variations and log what we find
+      const gpaValue = student.gpa || student.GPA || student.Gpa || 
+                       student.cgpa || student.CGPA || student.Cgpa ||
+                       student.grade || student.Grade || student.GRADE ||
+                       student['GPA'] || student['CGPA'] || student['Grade'];
+      
+      if (index === 0) {
+        console.log('🔍 First student GPA extraction:');
+        console.log('   - student.gpa:', student.gpa);
+        console.log('   - student.GPA:', student.GPA);
+        console.log('   - student.cgpa:', student.cgpa);
+        console.log('   - student.CGPA:', student.CGPA);
+        console.log('   - Extracted gpaValue:', gpaValue);
+      }
+      
+      // Parse GPA
+      gpa = parseFloat(gpaValue);
+      
+      // If GPA is still NaN, try to find any numeric value in the object
+      if (isNaN(gpa)) {
+        console.warn(`⚠️  Could not parse GPA for ${name}. Student object:`, student);
+        // Try to find any numeric field
+        for (const key of Object.keys(student)) {
+          const value = parseFloat(student[key]);
+          if (!isNaN(value) && value >= 0 && value <= 5.0) {
+            console.log(`   Found potential GPA in field "${key}": ${value}`);
+            gpa = value;
+            break;
+          }
+        }
+      }
+      
+      // If still NaN, default to 0
+      if (isNaN(gpa)) {
+        console.error(`❌ No valid GPA found for ${name}, defaulting to 0`);
+        gpa = 0;
+      }
+      
+      // Extract student ID
+      studentId = student.matricNumber || student.matric_number || student.MatricNumber ||
+                  student.student_id || student.StudentId || student.ID || student.id;
+      
+      // Extract department
+      department = student.department || student.Department || student.DEPARTMENT || 'Computer Science';
+      
+      // Always re-classify tier on backend to ensure consistency
+      const tier = this.classifyGpaTier(gpa);
+      
+      console.log(`Backend processing: ${name} (GPA: ${gpa}) → ${tier}`);
+      
+      return {
+        name,
+        gpa,
+        tier,
+        department,
+        student_id: studentId
+      };
+    });
+  }
+
+  // ASP-based group formation algorithm with flexible fallback strategies
+  formGroupsUsingASP(students: StudentData[]): GroupData[] {
+    console.log('🔍 ASP Group Formation - Input students:', students.length);
+    
+    if (students.length < 3) {
+      throw new Error('Cannot form groups: Need at least 3 students to form groups.');
+    }
+    
+    // Separate students by tier
+    const highTier = students.filter(s => s.tier === 'HIGH');
+    const mediumTier = students.filter(s => s.tier === 'MEDIUM');
+    const lowTier = students.filter(s => s.tier === 'LOW');
+
+    console.log('📊 Tier distribution:');
+    console.log(`   HIGH (3.80-5.0): ${highTier.length} students`);
+    console.log(`   MEDIUM (3.30-3.79): ${mediumTier.length} students`);
+    console.log(`   LOW (< 3.30): ${lowTier.length} students`);
+    
+    // Log students in each tier
+    console.log('👥 HIGH tier students:', highTier.map(s => `${s.name} (${s.gpa})`));
+    console.log('👥 MEDIUM tier students:', mediumTier.map(s => `${s.name} (${s.gpa})`));
+    console.log('👥 LOW tier students:', lowTier.map(s => `${s.name} (${s.gpa})`));
+
+    const groups: GroupData[] = [];
+    let groupCounter = 1; // Changed from 0 to 1 for numbering
+
+    // Sort students by GPA within each tier for optimal distribution
+    highTier.sort((a, b) => b.gpa - a.gpa);
+    mediumTier.sort((a, b) => b.gpa - a.gpa);
+    lowTier.sort((a, b) => b.gpa - a.gpa);
+
+    // Create a pool of all students for flexible assignment
+    const usedStudents = new Set<string>();
+
+    // STRATEGY 1: Form ideal groups (1 HIGH + 1 MEDIUM + 1 LOW) when possible
+    const idealGroups = Math.min(highTier.length, mediumTier.length, lowTier.length);
+    
+    console.log(`🎯 Strategy 1: Can form ${idealGroups} ideal groups (1 HIGH + 1 MEDIUM + 1 LOW each)`);
+    
+    for (let i = 0; i < idealGroups; i++) {
+      const groupMembers = [highTier[i], mediumTier[i], lowTier[i]];
+      
+      // Mark students as used
+      groupMembers.forEach(student => usedStudents.add(student.name));
+      
+      console.log(`🏗️  Forming Group ${groupCounter}:`);
+      console.log(`   👑 LEADER (HIGH): ${groupMembers[0].name} (${groupMembers[0].gpa})`);
+      console.log(`   👥 MEMBER (MEDIUM): ${groupMembers[1].name} (${groupMembers[1].gpa})`);
+      console.log(`   👥 MEMBER (LOW): ${groupMembers[2].name} (${groupMembers[2].gpa})`);
+
+      const avgGpa = parseFloat(
+        (groupMembers.reduce((sum, member) => sum + member.gpa, 0) / 3).toFixed(2)
+      );
+
+      groups.push({
+        name: `Group ${groupCounter}`, // Changed from letter to number
+        members: groupMembers, // Keep tier order: HIGH, MEDIUM, LOW
+        avg_gpa: avgGpa,
+        status: 'formed'
+      });
+      
+      groupCounter++;
+    }
+
+    // STRATEGY 2: Handle remaining students with BALANCED tier distribution
+    const remainingHigh = highTier.filter(s => !usedStudents.has(s.name));
+    const remainingMedium = mediumTier.filter(s => !usedStudents.has(s.name));
+    const remainingLow = lowTier.filter(s => !usedStudents.has(s.name));
+    
+    console.log(`🔄 Strategy 2: Remaining students - HIGH: ${remainingHigh.length}, MEDIUM: ${remainingMedium.length}, LOW: ${remainingLow.length}`);
+
+    // Try to form balanced groups from remaining students
+    while (remainingHigh.length + remainingMedium.length + remainingLow.length >= 3) {
+      const groupMembers: StudentData[] = [];
+      
+      // Priority 1: Try to get one from each tier (H,M,L)
+      if (remainingHigh.length > 0 && remainingMedium.length > 0 && remainingLow.length > 0) {
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingMedium.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        console.log(`   📋 Balanced group (H,M,L)`);
+      }
+      // Priority 2: Two from one tier, one from another (prefer H,M,M or H,H,M over same tier)
+      else if (remainingHigh.length >= 1 && remainingMedium.length >= 2) {
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingMedium.shift()!);
+        groupMembers.push(remainingMedium.shift()!);
+        console.log(`   📋 Mixed group (H,M,M)`);
+      }
+      else if (remainingHigh.length >= 2 && remainingMedium.length >= 1) {
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingMedium.shift()!);
+        console.log(`   📋 Mixed group (H,H,M)`);
+      }
+      else if (remainingMedium.length >= 1 && remainingLow.length >= 2) {
+        groupMembers.push(remainingMedium.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        console.log(`   📋 Mixed group (M,L,L)`);
+      }
+      else if (remainingMedium.length >= 2 && remainingLow.length >= 1) {
+        groupMembers.push(remainingMedium.shift()!);
+        groupMembers.push(remainingMedium.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        console.log(`   📋 Mixed group (M,M,L)`);
+      }
+      else if (remainingHigh.length >= 1 && remainingLow.length >= 2) {
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        console.log(`   📋 Mixed group (H,L,L)`);
+      }
+      else if (remainingHigh.length >= 2 && remainingLow.length >= 1) {
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        console.log(`   📋 Mixed group (H,H,L)`);
+      }
+      // Last resort: Same tier groups (only if no other option)
+      else if (remainingHigh.length >= 3) {
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingHigh.shift()!);
+        groupMembers.push(remainingHigh.shift()!);
+        console.log(`   ⚠️  Same tier group (H,H,H) - not ideal`);
+      }
+      else if (remainingMedium.length >= 3) {
+        groupMembers.push(remainingMedium.shift()!);
+        groupMembers.push(remainingMedium.shift()!);
+        groupMembers.push(remainingMedium.shift()!);
+        console.log(`   ⚠️  Same tier group (M,M,M) - not ideal`);
+      }
+      else if (remainingLow.length >= 3) {
+        groupMembers.push(remainingLow.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        groupMembers.push(remainingLow.shift()!);
+        console.log(`   ⚠️  Same tier group (L,L,L) - not ideal`);
+      }
+      else {
+        // Can't form a complete group
+        break;
+      }
+      
+      if (groupMembers.length === 3) {
+        // Sort by GPA (highest first) for consistent leader assignment
+        groupMembers.sort((a, b) => b.gpa - a.gpa);
+        
+        console.log(`🏗️  Forming Group ${groupCounter}:`);
+        console.log(`   👑 LEADER: ${groupMembers[0].name} (${groupMembers[0].gpa}) - ${groupMembers[0].tier}`);
+        console.log(`   👥 MEMBER: ${groupMembers[1].name} (${groupMembers[1].gpa}) - ${groupMembers[1].tier}`);
+        console.log(`   👥 MEMBER: ${groupMembers[2].name} (${groupMembers[2].gpa}) - ${groupMembers[2].tier}`);
+
+        const avgGpa = parseFloat(
+          (groupMembers.reduce((sum, member) => sum + member.gpa, 0) / 3).toFixed(2)
+        );
+
+        groups.push({
+          name: `Group ${groupCounter}`, // Changed from letter to number
+          members: groupMembers,
+          avg_gpa: avgGpa,
+          status: 'formed'
+        });
+        
+        groupCounter++;
+      }
+    }
+
+    console.log(`✅ Group formation completed:`);
+    console.log(`   📊 Total groups formed: ${groups.length}`);
+    console.log(`   👥 Students placed: ${groups.reduce((sum, g) => sum + g.members.length, 0)} / ${students.length}`);
+    console.log(`   🎯 Ideal groups (1:1:1 ratio): ${idealGroups}`);
+    console.log(`   🔄 Flexible groups: ${groups.length - idealGroups}`);
+
+    if (groups.length === 0) {
+      throw new Error('Cannot form any groups: Need at least 3 students total.');
+    }
+
+    return groups;
+  }
+
+  // Save groups to database
+  async saveGroupsToDatabase(groups: GroupData[]): Promise<number[]> {
+    const connection = await this.db.getConnection();
+    const groupIds: number[] = [];
+
+    try {
+      await connection.beginTransaction();
+
+      for (const group of groups) {
+        // Get department from first member or default
+        const department = group.members[0]?.department || 'Software Engineering';
+        
+        // Insert group into project_groups table (not 'groups' which is reserved)
+        const [groupResult] = await connection.execute(
+          `INSERT INTO project_groups (name, avg_gpa, status, department, formation_method, formation_date, created_at) 
+           VALUES (?, ?, ?, ?, 'asp', NOW(), NOW())`,
+          [group.name, group.avg_gpa, group.status, department]
+        );
+
+        const groupId = (groupResult as any).insertId;
+        groupIds.push(groupId);
+
+        // Insert group members in TIER ORDER (HIGH, MEDIUM, LOW) - NOT by GPA
+        // This ensures the HIGH tier student is always first (leader)
+        for (let i = 0; i < group.members.length; i++) {
+          const member = group.members[i]; // Already in tier order
+          await connection.execute(
+            `INSERT INTO group_members (group_id, student_name, student_gpa, gpa_tier, member_order) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [groupId, member.name, member.gpa, member.tier, i + 1]
+          );
+        }
+      }
+
+      await connection.commit();
+      console.log(`✅ Saved ${groups.length} groups to database with departments`);
+      return groupIds;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  // Get all groups with members
+  async getAllGroups(): Promise<GroupData[]> {
+    const connection = await this.db.getConnection();
+
+    try {
+      console.log('🔍 Getting database connection for getAllGroups');
+      
+      const [groupRows] = await connection.execute(`
+        SELECT g.*, 
+               COUNT(gm.id) as member_count
+        FROM project_groups g
+        LEFT JOIN group_members gm ON g.id = gm.group_id
+        GROUP BY g.id
+        ORDER BY g.created_at DESC
+      `);
+
+      console.log('✅ Groups query executed, found:', (groupRows as any[]).length, 'groups');
+
+      const groups: GroupData[] = [];
+
+      for (const group of groupRows as any[]) {
+        console.log('🔍 Processing group:', group.id, group.name);
+        
+        // Get group members ordered by TIER ORDER (member_order) - HIGH, MEDIUM, LOW
+        const [memberRows] = await connection.execute(
+          `SELECT * FROM group_members WHERE group_id = ? ORDER BY member_order ASC`,
+          [group.id]
+        );
+
+        console.log('✅ Found', (memberRows as any[]).length, 'members for group', group.id);
+
+        const members = (memberRows as any[]).map(member => ({
+          name: member.student_name,
+          gpa: member.student_gpa,
+          tier: member.gpa_tier as 'HIGH' | 'MEDIUM' | 'LOW'
+        }));
+
+        groups.push({
+          id: group.id,
+          name: group.name,
+          members,
+          avg_gpa: group.avg_gpa,
+          status: group.status,
+          supervisor_id: group.supervisor_id,
+          supervisor: group.supervisor_name || null, // supervisor_name from project_groups table
+          department: group.department
+        });
+        
+        // Log first group to verify supervisor is included
+        if (groups.length === 1) {
+          console.log('📋 First group data:', {
+            id: group.id,
+            name: group.name,
+            supervisor_name: group.supervisor_name,
+            supervisor_id: group.supervisor_id,
+            department: group.department
+          });
+        }
+      }
+
+      console.log('✅ getAllGroups completed, returning', groups.length, 'groups');
+      return groups;
+    } catch (error) {
+      console.error('❌ Error in getAllGroups:', error);
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  // Validate group formation constraints
+  validateGroupFormation(groups: GroupData[]): {
+    isValid: boolean;
+    violations: string[];
+  } {
+    const violations: string[] = [];
+
+    groups.forEach((group) => {
+      // Check if group has exactly 3 members
+      if (group.members.length !== 3) {
+        violations.push(`Group ${group.name}: Must have exactly 3 members`);
+      }
+
+      // RELAXED VALIDATION: Allow flexible tier distribution
+      // Only check that all members have valid tier classifications
+      const tiers = group.members.map(m => m.tier);
+      const hasInvalidTiers = tiers.some(tier => !['HIGH', 'MEDIUM', 'LOW'].includes(tier));
+      
+      if (hasInvalidTiers) {
+        violations.push(`Group ${group.name}: All members must have valid tier classification (HIGH, MEDIUM, or LOW)`);
+      }
+
+      // REMOVED: Strict requirement for one student from each tier
+      // REMOVED: Strict tier ordering requirement
+      // This allows the algorithm to form balanced groups even when
+      // the student distribution across tiers is uneven
+    });
+
+    return {
+      isValid: violations.length === 0,
+      violations
+    };
+  }
+
+  // Calculate statistics for formed groups
+  calculateGroupStatistics(groups: GroupData[]): {
+    totalGroups: number;
+    averageGroupGpa: number;
+    gpaVariance: number;
+    tierDistribution: Record<string, number>;
+  } {
+    const totalGroups = groups.length;
+    const totalGpa = groups.reduce((sum, group) => sum + group.avg_gpa, 0);
+    const averageGroupGpa = totalGroups > 0 ? parseFloat((totalGpa / totalGroups).toFixed(2)) : 0;
+
+    // Calculate variance
+    const variance = totalGroups > 0 
+      ? groups.reduce((sum, group) => sum + Math.pow(group.avg_gpa - averageGroupGpa, 2), 0) / totalGroups
+      : 0;
+
+    // Count students by tier across all groups
+    const tierDistribution = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+    groups.forEach(group => {
+      group.members.forEach(member => {
+        tierDistribution[member.tier]++;
+      });
+    });
+
+    return {
+      totalGroups,
+      averageGroupGpa,
+      gpaVariance: parseFloat(variance.toFixed(4)),
+      tierDistribution
+    };
+  }
+}

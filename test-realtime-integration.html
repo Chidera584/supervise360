@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Settings Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .threshold-display { font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 3px; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 3px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Real-time Settings & Groups Integration Test</h1>
+        
+        <div class="section info">
+            <h3>📋 Test Instructions</h3>
+            <ol>
+                <li>Open this page in one browser tab</li>
+                <li>Open the Settings page in another tab</li>
+                <li>Change GPA thresholds in Settings</li>
+                <li>Watch this page update automatically</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h3>🔧 Current GPA Thresholds</h3>
+            <div id="thresholds" class="threshold-display">Loading...</div>
+            <button onclick="fetchThresholds()">🔄 Refresh Thresholds</button>
+        </div>
+
+        <div class="section">
+            <h3>📊 Test Preview Distribution</h3>
+            <button onclick="testPreview()">🔍 Test Preview API</button>
+            <div id="preview-result"></div>
+        </div>
+
+        <div class="section">
+            <h3>💾 Test Save Thresholds</h3>
+            <input type="number" id="high-input" placeholder="High (e.g., 3.9)" step="0.1" min="0" max="5">
+            <input type="number" id="medium-input" placeholder="Medium (e.g., 3.3)" step="0.1" min="0" max="5">
+            <input type="number" id="low-input" placeholder="Low (e.g., 2.0)" step="0.1" min="0" max="5">
+            <button onclick="saveThresholds()">💾 Save Test Thresholds</button>
+            <div id="save-result"></div>
+        </div>
+
+        <div class="section">
+            <h3>📝 Event Log</h3>
+            <div id="log" class="log"></div>
+            <button onclick="clearLog()">🧹 Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function fetchThresholds() {
+            try {
+                log('🔄 Fetching current thresholds...');
+                const response = await fetch(`${API_BASE}/settings/gpa-thresholds/global`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const thresholds = data.data;
+                    
+                    document.getElementById('thresholds').innerHTML = `
+                        HIGH: ≥ ${thresholds.high}<br>
+                        MEDIUM: ≥ ${thresholds.medium}<br>
+                        LOW: ≥ ${thresholds.low}
+                    `;
+                    
+                    log(`✅ Thresholds loaded: H≥${thresholds.high}, M≥${thresholds.medium}, L≥${thresholds.low}`);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Error fetching thresholds: ${error.message}`);
+                document.getElementById('thresholds').innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        async function testPreview() {
+            try {
+                log('🔍 Testing preview API...');
+                const response = await fetch(`${API_BASE}/settings/gpa-thresholds/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ high: 3.9, medium: 3.3, low: 2.0 })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const dist = data.data.distribution;
+                    
+                    document.getElementById('preview-result').innerHTML = `
+                        <div class="success">
+                            <strong>Preview Result:</strong><br>
+                            HIGH: ${dist.HIGH} students<br>
+                            MEDIUM: ${dist.MEDIUM} students<br>
+                            LOW: ${dist.LOW} students<br>
+                            Total: ${dist.total} students
+                        </div>
+                    `;
+                    
+                    log(`✅ Preview successful: ${dist.total} students total`);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Error testing preview: ${error.message}`);
+                document.getElementById('preview-result').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function saveThresholds() {
+            const high = parseFloat(document.getElementById('high-input').value);
+            const medium = parseFloat(document.getElementById('medium-input').value);
+            const low = parseFloat(document.getElementById('low-input').value);
+            
+            if (isNaN(high) || isNaN(medium) || isNaN(low)) {
+                log('❌ Please enter valid numbers for all thresholds');
+                return;
+            }
+            
+            if (high < medium || medium < low || low < 0 || high > 5) {
+                log('❌ Invalid thresholds: Must satisfy 0 ≤ LOW ≤ MEDIUM ≤ HIGH ≤ 5');
+                return;
+            }
+            
+            try {
+                log(`💾 Saving thresholds: H=${high}, M=${medium}, L=${low}`);
+                const response = await fetch(`${API_BASE}/settings/gpa-thresholds/global`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ high, medium, low })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('save-result').innerHTML = `<div class="success">${data.message}</div>`;
+                    log(`✅ Thresholds saved successfully`);
+                    
+                    // Trigger event for real-time updates
+                    window.dispatchEvent(new CustomEvent('gpaThresholdsChanged', { 
+                        detail: { thresholds: { high, medium, low } } 
+                    }));
+                    
+                    // Refresh display
+                    setTimeout(fetchThresholds, 500);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Error saving thresholds: ${error.message}`);
+                document.getElementById('save-result').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Listen for threshold changes
+        window.addEventListener('gpaThresholdsChanged', (event) => {
+            log(`🔔 Threshold change event received: ${JSON.stringify(event.detail)}`);
+            fetchThresholds();
+        });
+
+        // Listen for storage changes (from other tabs)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'gpa_thresholds_changed') {
+                log('🔔 Threshold change detected from another tab');
+                fetchThresholds();
+            }
+        });
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Real-time integration test started');
+            fetchThresholds();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Display Order Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .before, .after { 
+            border: 2px solid #ddd; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+        }
+        .before { border-color: #ff6b6b; background-color: #ffe0e0; }
+        .after { border-color: #51cf66; background-color: #e0ffe0; }
+        .group-list { list-style: none; padding: 0; }
+        .group-item { 
+            padding: 8px 12px; 
+            margin: 5px 0; 
+            background: white; 
+            border-radius: 4px; 
+            border-left: 4px solid #007bff;
+        }
+        .test-button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 10px 5px;
+        }
+        .test-button:hover { background: #0056b3; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Group Display Order Fix</h1>
+        
+        <div class="before">
+            <h3>❌ BEFORE: Groups ordered by creation time (newest first)</h3>
+            <p><strong>Problem:</strong> When you create Group 1, Group 2, Group 3, they appear as:</p>
+            <ul class="group-list">
+                <li class="group-item">Group 3 (created last, appears first)</li>
+                <li class="group-item">Group 2 (created second, appears second)</li>
+                <li class="group-item">Group 1 (created first, appears last)</li>
+            </ul>
+            <p><em>This is confusing because the logical order is reversed!</em></p>
+        </div>
+
+        <div class="after">
+            <h3>✅ AFTER: Groups ordered numerically by name</h3>
+            <p><strong>Solution:</strong> Groups now appear in logical formation order:</p>
+            <ul class="group-list">
+                <li class="group-item">Group 1 (first group formed)</li>
+                <li class="group-item">Group 2 (second group formed)</li>
+                <li class="group-item">Group 3 (third group formed)</li>
+            </ul>
+            <p><em>Much more intuitive for users!</em></p>
+        </div>
+
+        <h3>🧪 Test the Fix</h3>
+        <p>Click the button below to fetch groups from the backend and see the new ordering:</p>
+        
+        <button class="test-button" onclick="testGroupOrdering()">Test Group Ordering</button>
+        <button class="test-button" onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+
+        <h3>🔧 Technical Details</h3>
+        <p><strong>SQL Query Change:</strong></p>
+        <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">
+-- BEFORE (ordered by creation time)
+ORDER BY g.created_at DESC
+
+-- AFTER (ordered numerically by group name)
+ORDER BY 
+  CASE 
+    WHEN g.name REGEXP '^Group [0-9]+$' THEN 
+      CAST(SUBSTRING(g.name, 7) AS UNSIGNED)
+    ELSE 999999 
+  END ASC,
+  g.name ASC
+        </pre>
+        
+        <p><strong>Benefits:</strong></p>
+        <ul>
+            <li>✅ Groups appear in logical formation order (1, 2, 3...)</li>
+            <li>✅ Handles numeric sorting correctly (Group 10 comes after Group 9, not Group 1)</li>
+            <li>✅ Falls back to alphabetical sorting for non-standard group names</li>
+            <li>✅ More intuitive user experience</li>
+        </ul>
+    </div>
+
+    <script>
+        async function testGroupOrdering() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status">🔄 Fetching groups from backend...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/groups');
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    let html = '<div class="status success">✅ Groups fetched successfully! Order verification:</div>';
+                    html += '<ul class="group-list">';
+                    
+                    data.data.forEach((group, index) => {
+                        html += `<li class="group-item">
+                            ${index + 1}. ${group.name} 
+                            <small>(ID: ${group.id}, Members: ${group.member_count || 0}, Avg GPA: ${group.avg_gpa || 'N/A'})</small>
+                        </li>`;
+                    });
+                    
+                    html += '</ul>';
+                    
+                    // Check if ordering is correct
+                    let correctOrder = true;
+                    for (let i = 0; i < data.data.length - 1; i++) {
+                        const current = data.data[i];
+                        const next = data.data[i + 1];
+                        
+                        if (current.name.startsWith('Group ') && next.name.startsWith('Group ')) {
+                            const currentNum = parseInt(current.name.replace('Group ', ''));
+                            const nextNum = parseInt(next.name.replace('Group ', ''));
+                            
+                            if (currentNum > nextNum) {
+                                correctOrder = false;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (correctOrder) {
+                        html += '<div class="status success">🎉 Perfect! Groups are correctly ordered numerically.</div>';
+                    } else {
+                        html += '<div class="status error">⚠️ Groups may not be in correct numerical order.</div>';
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<div class="status error">❌ Failed to fetch groups: ' + (data.message || 'Unknown error') + '</div>';
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="status error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

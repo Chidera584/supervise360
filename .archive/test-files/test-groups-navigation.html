@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Groups Navigation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            margin: 15px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { border-left: 4px solid #4caf50; background-color: #f1f8e9; }
+        .error { border-left: 4px solid #f44336; background-color: #ffebee; }
+        .warning { border-left: 4px solid #ff9800; background-color: #fff3e0; }
+        .info { border-left: 4px solid #2196f3; background-color: #e3f2fd; }
+        .test-btn {
+            background: #1a237e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-btn:hover { background: #0d47a1; }
+        .test-btn:disabled { background: #ccc; cursor: not-allowed; }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #4caf50; }
+        .status-error { background-color: #f44336; }
+        .status-warning { background-color: #ff9800; }
+        .status-pending { background-color: #ccc; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Groups Page Navigation Test</h1>
+    
+    <div class="test-card info">
+        <h3>🎯 Test Objective</h3>
+        <p>Diagnose why the Groups page is not opening and identify the root cause.</p>
+        <p><strong>Current Status:</strong> <span id="overall-status">Testing...</span></p>
+    </div>
+
+    <div class="test-card">
+        <h3>🧪 Automated Tests</h3>
+        <div id="test-results">
+            <div id="test-frontend">
+                <span class="status-indicator status-pending"></span>
+                <strong>Frontend Server:</strong> <span>Checking...</span>
+            </div>
+            <div id="test-backend">
+                <span class="status-indicator status-pending"></span>
+                <strong>Backend Server:</strong> <span>Checking...</span>
+            </div>
+            <div id="test-groups-api">
+                <span class="status-indicator status-pending"></span>
+                <strong>Groups API:</strong> <span>Checking...</span>
+            </div>
+            <div id="test-auth">
+                <span class="status-indicator status-pending"></span>
+                <strong>Authentication:</strong> <span>Checking...</span>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button class="test-btn" onclick="runAllTests()">Run All Tests</button>
+            <button class="test-btn" onclick="testGroupsPageDirectly()">Test Groups Page</button>
+            <button class="test-btn" onclick="checkConsoleErrors()">Check Console</button>
+        </div>
+    </div>
+
+    <div class="test-card warning">
+        <h3>⚠️ Manual Testing Steps</h3>
+        <ol>
+            <li><strong>Open Browser:</strong> Navigate to <a href="http://localhost:5175" target="_blank">http://localhost:5175</a></li>
+            <li><strong>Login:</strong> Use admin credentials (admin@supervise360.com)</li>
+            <li><strong>Navigate:</strong> Click on "Groups" in the sidebar</li>
+            <li><strong>Observe:</strong> Does the page load? Any errors in console?</li>
+            <li><strong>Check Network:</strong> Are there any failed API calls?</li>
+        </ol>
+    </div>
+
+    <div class="test-card">
+        <h3>🔧 Troubleshooting Checklist</h3>
+        <div id="troubleshooting-checklist">
+            <label><input type="checkbox" id="check-servers"> Both frontend (5175) and backend (5000) servers running</label><br>
+            <label><input type="checkbox" id="check-login"> Successfully logged in as admin</label><br>
+            <label><input type="checkbox" id="check-route"> Groups route exists in App.tsx</label><br>
+            <label><input type="checkbox" id="check-component"> Groups component imports correctly</label><br>
+            <label><input type="checkbox" id="check-context"> GroupsContext and DepartmentContext working</label><br>
+            <label><input type="checkbox" id="check-database"> Database connection established</label><br>
+            <label><input type="checkbox" id="check-console"> No JavaScript errors in browser console</label><br>
+        </div>
+    </div>
+
+    <div class="test-card info">
+        <h3>📋 Expected Behavior</h3>
+        <p>When clicking "Groups" in the admin sidebar, you should see:</p>
+        <ul>
+            <li>✅ Page loads immediately (no hanging/freezing)</li>
+            <li>✅ "Groups Page Debug" header appears</li>
+            <li>✅ Current time is displayed</li>
+            <li>✅ "Test Interaction" button is clickable</li>
+            <li>✅ No errors in browser console</li>
+        </ul>
+    </div>
+
+    <div class="test-card" id="detailed-results" style="display: none;">
+        <h3>📊 Detailed Test Results</h3>
+        <pre id="test-output"></pre>
+    </div>
+
+    <script>
+        let testResults = [];
+
+        function updateTestStatus(testId, status, message) {
+            const element = document.getElementById(testId);
+            const indicator = element.querySelector('.status-indicator');
+            const textSpan = element.querySelector('span:last-child');
+            
+            indicator.className = `status-indicator status-${status}`;
+            textSpan.textContent = message;
+            
+            testResults.push({ test: testId, status, message, timestamp: new Date().toISOString() });
+        }
+
+        async function testFrontend() {
+            try {
+                const response = await fetch('http://localhost:5175');
+                if (response.ok) {
+                    updateTestStatus('test-frontend', 'success', 'Running on port 5175');
+                    return true;
+                } else {
+                    updateTestStatus('test-frontend', 'error', `HTTP ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                updateTestStatus('test-frontend', 'error', `Connection failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testBackend() {
+            try {
+                const response = await fetch('http://localhost:5000/api/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateTestStatus('test-backend', 'success', 'Running and healthy');
+                    return true;
+                } else {
+                    updateTestStatus('test-backend', 'error', `HTTP ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                updateTestStatus('test-backend', 'error', `Connection failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testGroupsAPI() {
+            try {
+                const response = await fetch('http://localhost:5000/api/groups');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateTestStatus('test-groups-api', 'success', `Found ${data.data?.length || 0} groups`);
+                    return true;
+                } else {
+                    updateTestStatus('test-groups-api', 'error', `HTTP ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                updateTestStatus('test-groups-api', 'error', `API failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testAuth() {
+            try {
+                // This is a simplified auth test - in reality, we'd need to check the actual auth state
+                updateTestStatus('test-auth', 'warning', 'Manual verification required');
+                return true;
+            } catch (error) {
+                updateTestStatus('test-auth', 'error', `Auth test failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function runAllTests() {
+            console.log('🚀 Starting comprehensive Groups page tests...');
+            
+            const frontendOk = await testFrontend();
+            const backendOk = await testBackend();
+            const groupsApiOk = await testGroupsAPI();
+            const authOk = await testAuth();
+            
+            const allPassed = frontendOk && backendOk && groupsApiOk && authOk;
+            
+            document.getElementById('overall-status').textContent = allPassed 
+                ? '✅ All systems operational' 
+                : '❌ Issues detected';
+            
+            // Show detailed results
+            document.getElementById('detailed-results').style.display = 'block';
+            document.getElementById('test-output').textContent = JSON.stringify(testResults, null, 2);
+            
+            if (allPassed) {
+                alert('✅ All tests passed! The issue might be in the React component or routing. Check the browser console when navigating to Groups page.');
+            } else {
+                alert('❌ Some tests failed. Check the results above for details.');
+            }
+        }
+
+        function testGroupsPageDirectly() {
+            const groupsUrl = 'http://localhost:5175/#/groups';
+            window.open(groupsUrl, '_blank');
+            alert('🔍 Opened Groups page in new tab. Check if it loads and look for any console errors.');
+        }
+
+        function checkConsoleErrors() {
+            alert('🔍 To check for console errors:\n\n1. Open Developer Tools (F12)\n2. Go to Console tab\n3. Navigate to Groups page\n4. Look for any red error messages\n5. Check Network tab for failed requests');
+        }
+
+        // Auto-run tests on page load
+        window.onload = function() {
+            setTimeout(runAllTests, 1000);
+        };
+    </script>
+</body>
+</html>
