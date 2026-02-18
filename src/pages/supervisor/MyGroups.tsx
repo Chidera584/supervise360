@@ -1,50 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { useAuth } from '../../contexts/AuthContext';
-import { useGroups } from '../../contexts/GroupsContext';
+import { apiClient } from '../../lib/api';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Users, Calendar, MessageCircle, FileText, 
   Eye, Star, Clock, CheckCircle, AlertCircle 
 } from 'lucide-react';
 
+interface SupervisorGroup {
+  id: number;
+  name: string;
+  department?: string;
+  status: string;
+  avg_gpa?: number;
+  supervisor?: string;
+  members: { id: number; name: string; gpa?: number; matricNumber?: string }[];
+  project: { id: number; title: string; status?: string; progress_percentage?: number; submitted_at?: string } | null;
+  reportsTotal: number;
+  reportsReviewed: number;
+  reportsPending: number;
+}
+
 export function MyGroups() {
   const { user, supervisor } = useAuth();
-  const { groups } = useGroups();
-  const [loading, setLoading] = useState(false);
-
-  // Find groups assigned to this supervisor
-  const supervisorGroups = groups.filter(group => 
-    group.supervisor && group.supervisor.toLowerCase().includes(user?.first_name?.toLowerCase() || '') &&
-    group.supervisor.toLowerCase().includes(user?.last_name?.toLowerCase() || '')
-  );
-
-  // Convert to the format expected by the existing UI
-  const formattedGroups = supervisorGroups.map(group => ({
-    id: group.id,
-    name: group.name,
-    project: group.project || 'Agree on a topic with your supervisor and get approval from the Project Coordinator',
-    status: group.status,
-    progress: Math.floor(Math.random() * 100), // Random progress for demo
-    members: Array.isArray(group.members) ? group.members.map(member => ({
-      name: member.name,
-      matric: member.matricNumber,
-      role: 'Member'
-    })) : [],
-    lastMeeting: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    nextMeeting: new Date(Date.now() + Math.floor(Math.random() * 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    reportsSubmitted: Math.floor(Math.random() * 8),
-    totalReports: 10,
-    avgGrade: ['A', 'A-', 'B+', 'B', 'B-'][Math.floor(Math.random() * 5)],
-    startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    deadline: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  }));
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [groups, setGroups] = useState<SupervisorGroup[]>([]);
+  const hasScrolledToGroup = useRef(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // No need to simulate loading since we're using real data
-    setLoading(false);
+    const fetch = async () => {
+      const res = await apiClient.getSupervisorMyGroups();
+      if (res.success && res.data) setGroups(res.data as SupervisorGroup[]);
+      setLoading(false);
+    };
+    fetch();
   }, []);
+
+  // Scroll to group when navigated from Dashboard with state.groupId
+  useEffect(() => {
+    const state = location.state as { groupId?: number } | null;
+    if (state?.groupId && !loading && !hasScrolledToGroup.current) {
+      const el = document.getElementById(`group-card-${state.groupId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        hasScrolledToGroup.current = true;
+      }
+    }
+  }, [loading, location.state]);
+
+  const totalReportsPending = groups.reduce((s, g) => s + g.reportsPending, 0);
+  const avgProgress = groups.length > 0
+    ? Math.round(groups.reduce((s, g) => s + (g.project?.progress_percentage ?? 0), 0) / groups.length)
+    : 0;
 
   if (loading) {
     return (
@@ -89,7 +101,7 @@ export function MyGroups() {
             <div className="text-right">
               <div className="text-sm text-gray-600">Current Load</div>
               <div className="text-2xl font-bold text-[#1a237e]">
-                {formattedGroups.length} / {supervisor?.max_capacity || 7}
+                {groups.length} / {supervisor?.max_capacity || 7}
               </div>
             </div>
           </div>
@@ -105,7 +117,7 @@ export function MyGroups() {
               <div>
                 <p className="text-sm text-gray-600">Active Groups</p>
                 <p className="text-2xl font-bold text-[#1a237e]">
-                  {formattedGroups.filter(g => g.status === 'active').length}
+                  {groups.filter(g => g.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -119,7 +131,7 @@ export function MyGroups() {
               <div>
                 <p className="text-sm text-gray-600">Reports Pending</p>
                 <p className="text-2xl font-bold text-[#1a237e]">
-                  {formattedGroups.reduce((sum, g) => sum + (g.totalReports - g.reportsSubmitted), 0)}
+                  {totalReportsPending}
                 </p>
               </div>
             </div>
@@ -131,14 +143,9 @@ export function MyGroups() {
                 <Calendar className="text-yellow-600" size={24} />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Meetings This Week</p>
+                <p className="text-sm text-gray-600">Reports Reviewed</p>
                 <p className="text-2xl font-bold text-[#1a237e]">
-                  {formattedGroups.filter(g => {
-                    const nextMeeting = new Date(g.nextMeeting);
-                    const now = new Date();
-                    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-                    return nextMeeting >= now && nextMeeting <= weekFromNow;
-                  }).length}
+                  {groups.reduce((s, g) => s + g.reportsReviewed, 0)}
                 </p>
               </div>
             </div>
@@ -152,7 +159,7 @@ export function MyGroups() {
               <div>
                 <p className="text-sm text-gray-600">Avg Progress</p>
                 <p className="text-2xl font-bold text-[#1a237e]">
-                  {formattedGroups.length > 0 ? Math.round(formattedGroups.reduce((sum, g) => sum + g.progress, 0) / formattedGroups.length) : 0}%
+                  {avgProgress}%
                 </p>
               </div>
             </div>
@@ -160,8 +167,9 @@ export function MyGroups() {
         </div>
         {/* Groups List */}
         <div className="space-y-6">
-          {formattedGroups.map((group) => (
-            <Card key={group.id}>
+          {groups.map((group) => (
+            <div key={group.id} id={`group-card-${group.id}`}>
+            <Card>
               <div className="space-y-4">
                 {/* Group Header */}
                 <div className="flex items-start justify-between">
@@ -173,21 +181,31 @@ export function MyGroups() {
                         {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
                       </div>
                     </div>
-                    <h4 className="font-medium text-gray-900 mb-2">{group.project}</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      {group.project?.title || 'No project yet'}
+                    </h4>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span>Started: {new Date(group.startDate).toLocaleDateString()}</span>
-                      <span>•</span>
-                      <span>Deadline: {new Date(group.deadline).toLocaleDateString()}</span>
-                      <span>•</span>
+                      {group.project?.submitted_at && (
+                        <>
+                          <span>Submitted: {new Date(group.project.submitted_at).toLocaleDateString()}</span>
+                          <span>•</span>
+                        </>
+                      )}
                       <span>{group.members.length} members</span>
+                      {group.department && (
+                        <>
+                          <span>•</span>
+                          <span>{group.department}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => document.getElementById(`group-card-${group.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
                       <Eye className="mr-2" size={14} />
                       View Details
                     </Button>
-                    <Button>
+                    <Button onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
                       <MessageCircle className="mr-2" size={14} />
                       Message Group
                     </Button>
@@ -198,12 +216,12 @@ export function MyGroups() {
                 <div>
                   <div className="flex justify-between text-sm text-gray-600 mb-2">
                     <span>Project Progress</span>
-                    <span>{group.progress}%</span>
+                    <span>{group.project?.progress_percentage ?? 0}%</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full">
                     <div
                       className="h-2 bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-300"
-                      style={{ width: `${group.progress}%` }}
+                      style={{ width: `${group.project?.progress_percentage ?? 0}%` }}
                     />
                   </div>
                 </div>
@@ -214,15 +232,18 @@ export function MyGroups() {
                     <h5 className="font-medium text-gray-900 mb-3">Group Members</h5>
                     <div className="space-y-2">
                       {Array.isArray(group.members) ? group.members.map((member, index) => (
-                        <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <div key={member.id ?? index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                          <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
                             <span className="text-white font-semibold text-xs">
-                              {member.name.split(' ').map(n => n[0]).join('')}
+                              {member.name.split(' ').map((n: string) => n[0]).join('')}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                            <p className="text-xs text-gray-600">{member.role}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <span>{member.matricNumber || 'N/A'}</span>
+                              {member.gpa != null && <span>• GPA: {member.gpa}</span>}
+                            </div>
                           </div>
                         </div>
                       )) : (
@@ -231,42 +252,32 @@ export function MyGroups() {
                     </div>
                   </div>
 
-                  {/* Meeting Schedule */}
+                  {/* Reports */}
                   <div>
-                    <h5 className="font-medium text-gray-900 mb-3">Meeting Schedule</h5>
+                    <h5 className="font-medium text-gray-900 mb-3">Reports</h5>
                     <div className="space-y-3">
-                      <div className="p-3 border border-gray-200 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Calendar size={14} className="text-gray-600" />
-                          <span className="text-sm font-medium text-gray-900">Last Meeting</span>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          {new Date(group.lastMeeting).toLocaleDateString()}
-                        </p>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Submitted</span>
+                        <span className="font-semibold">{group.reportsTotal}</span>
                       </div>
-                      <div className="p-3 border border-blue-200 bg-blue-50 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Calendar size={14} className="text-blue-600" />
-                          <span className="text-sm font-medium text-blue-900">Next Meeting</span>
-                        </div>
-                        <p className="text-sm text-blue-800">
-                          {new Date(group.nextMeeting).toLocaleDateString()}
-                        </p>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Reviewed</span>
+                        <span className="font-semibold text-green-600">{group.reportsReviewed}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                        <span className="text-sm text-gray-600">Pending Review</span>
+                        <span className="font-semibold text-amber-600">{group.reportsPending}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Performance Metrics */}
+                  {/* Group Stats */}
                   <div>
-                    <h5 className="font-medium text-gray-900 mb-3">Performance</h5>
+                    <h5 className="font-medium text-gray-900 mb-3">Group Info</h5>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Reports Submitted</span>
-                        <span className="font-semibold">{group.reportsSubmitted}/{group.totalReports}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Average Grade</span>
-                        <span className="font-semibold text-green-600">{group.avgGrade}</span>
+                        <span className="text-sm text-gray-600">Department</span>
+                        <span className="font-semibold">{group.department || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -274,26 +285,27 @@ export function MyGroups() {
 
                 {/* Quick Actions */}
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
                     <Calendar className="mr-2" size={14} />
                     Schedule Meeting
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => navigate('/report-reviews', { state: { groupId: group.id } })}>
                     <FileText className="mr-2" size={14} />
-                    Review Reports
+                    Review Reports {group.reportsPending > 0 && `(${group.reportsPending})`}
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => navigate('/evaluations', { state: { groupId: group.id } })}>
                     <Star className="mr-2" size={14} />
-                    Grade Submissions
+                    Grade Work
                   </Button>
                 </div>
               </div>
             </Card>
+            </div>
           ))}
         </div>
 
         {/* Empty State */}
-        {formattedGroups.length === 0 && (
+        {groups.length === 0 && (
           <Card>
             <div className="text-center py-12">
               <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />

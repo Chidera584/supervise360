@@ -19,13 +19,16 @@ export function Sidebar() {
     { icon: <FileText size={20} />, label: 'Project', path: '/project' },
     { icon: <FileText size={20} />, label: 'Reports', path: '/reports' },
     { icon: <MessageSquare size={20} />, label: 'Messages', path: '/messages' },
+    { icon: <FileText size={20} />, label: 'Defense & Evaluation', path: '/defense-evaluation' },
     { icon: <Settings size={20} />, label: 'Profile', path: '/profile' },
   ];
 
   const supervisorMenuItems: MenuItem[] = [
     { icon: <Home size={20} />, label: 'Dashboard', path: '/dashboard' },
     { icon: <Users size={20} />, label: 'My Groups', path: '/my-groups' },
+    { icon: <FileText size={20} />, label: 'Project Proposals', path: '/project-proposals' },
     { icon: <FileText size={20} />, label: 'Evaluations', path: '/evaluations' },
+    { icon: <FileText size={20} />, label: 'Report Reviews', path: '/report-reviews' },
     { icon: <MessageSquare size={20} />, label: 'Messages', path: '/messages' },
     { icon: <Settings size={20} />, label: 'Profile', path: '/profile' },
   ];
@@ -35,7 +38,8 @@ export function Sidebar() {
     { icon: <Users size={20} />, label: 'Users', path: '/users' },
     { icon: <Users size={20} />, label: 'Groups', path: '/groups' },
     { icon: <Users size={20} />, label: 'Supervisors', path: '/supervisor-assignment' },
-    { icon: <FileText size={20} />, label: 'Projects', path: '/projects' },
+    { icon: <FileText size={20} />, label: 'Defense Scheduling', path: '/defense-scheduling' },
+    { icon: <FileText size={20} />, label: 'Reports & Analytics', path: '/reports-analytics' },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
   ];
 

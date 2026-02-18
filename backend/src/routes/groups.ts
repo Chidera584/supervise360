@@ -53,13 +53,10 @@ export function createGroupsRouter(db: Pool) {
           name: group.name,
           members: group.members.map(m => ({
             name: m.name,
-            gpa: m.gpa,
-            tier: m.tier,
             matricNumber: (m as any).matricNumber
           })),
           supervisor: group.supervisor,
           department: group.department,
-          avg_gpa: group.avg_gpa,
           status: group.status
         }
       });

@@ -14,6 +14,17 @@ import userRoutes from './routes/users';
 import { createGroupsRouter } from './routes/groups';
 import { createSupervisorsRouter } from './routes/supervisors';
 import { createSettingsRouter } from './routes/settings';
+import { createAdminRouter } from './routes/admin';
+import { createProjectsRouter } from './routes/projects';
+import { createReportsRouter } from './routes/reports';
+import { createEvaluationsRouter } from './routes/evaluations';
+import { createMessagesRouter } from './routes/messages';
+import { createNotificationsRouter } from './routes/notifications';
+import { createDefensePanelsRouter } from './routes/defensePanels';
+import { authenticateToken, requireAdmin, requireSupervisor } from './middleware/auth';
+import type { AuthenticatedRequest } from './types';
+import { computeAllocation } from './services/defenseSchedulingService';
+import { DefenseAllocationService } from './services/defenseAllocationService';
 
 // Load environment variables
 dotenv.config();
@@ -76,13 +87,91 @@ async function startServer() {
     const groupsRouter = createGroupsRouter(db);
     const supervisorsRouter = createSupervisorsRouter(db);
     const settingsRouter = createSettingsRouter(db);
+    const adminRouter = createAdminRouter(db);
+    const projectsRouter = createProjectsRouter(db);
+    const reportsRouter = createReportsRouter(db);
+    const evaluationsRouter = createEvaluationsRouter(db);
+    const messagesRouter = createMessagesRouter(db);
+    const notificationsRouter = createNotificationsRouter(db);
+    const defensePanelsRouter = createDefensePanelsRouter(db);
     
-    // Register API routes
+    // Register API routes (standalone my-groups before supervisors router so it's guaranteed to work)
     app.use('/api/auth', authRoutes);
     app.use('/api/users', userRoutes);
     app.use('/api/groups', groupsRouter);
+    app.get('/api/supervisors/my-groups', authenticateToken, requireSupervisor, async (req, res) => {
+      try {
+        const userId = (req as AuthenticatedRequest).user?.id;
+        if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+        const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
+        const user = (userRows as any[])[0];
+        const fullName = user ? `${(user.first_name || '')} ${(user.last_name || '')}`.trim().replace(/\s+/g, ' ') : '';
+        if (!fullName) return res.json({ success: true, data: [] });
+        const [groupRows] = await db.execute(
+          `SELECT id, name, department, status, avg_gpa, supervisor_name, created_at FROM project_groups
+           WHERE TRIM(COALESCE(supervisor_name, '')) = ? ORDER BY name ASC`,
+          [fullName]
+        );
+        const groups = groupRows as any[];
+        const result = await Promise.all(groups.map(async (g: any) => {
+          const [memberRows] = await db.execute(
+            'SELECT id, student_name, student_gpa, gpa_tier, matric_number, member_order FROM group_members WHERE group_id = ? ORDER BY member_order ASC',
+            [g.id]
+          );
+          const members = (memberRows as any[]).map(m => ({ id: m.id, name: m.student_name, gpa: m.student_gpa, tier: m.gpa_tier, matricNumber: m.matric_number }));
+          const [projectRows] = await db.execute('SELECT id, title, status, progress_percentage, submitted_at FROM projects WHERE group_id = ? LIMIT 1', [g.id]);
+          const project = (projectRows as any[])[0] || null;
+          const [reportCounts] = await db.execute(
+            `SELECT COUNT(*) as total, SUM(CASE WHEN reviewed = TRUE THEN 1 ELSE 0 END) as reviewed
+             FROM reports r INNER JOIN projects p ON r.project_id = p.id WHERE p.group_id = ?`,
+            [g.id]
+          );
+          const counts = (reportCounts as any[])[0] || { total: 0, reviewed: 0 };
+          const totalReports = Number(counts.total) || 0, reportsReviewed = Number(counts.reviewed) || 0;
+          return { id: g.id, name: g.name, department: g.department, status: g.status || 'formed', avg_gpa: g.avg_gpa, supervisor: g.supervisor_name, members, project: project ? { id: project.id, title: project.title, status: project.status, progress_percentage: project.progress_percentage, submitted_at: project.submitted_at } : null, reportsTotal: totalReports, reportsReviewed, reportsPending: totalReports - reportsReviewed };
+        }));
+        res.json({ success: true, data: result });
+      } catch (err) {
+        console.error('[my-groups]', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch your groups' });
+      }
+    });
     app.use('/api/supervisors', supervisorsRouter);
     app.use('/api/settings', settingsRouter);
+    app.use('/api/admin', adminRouter);
+    app.use('/api/projects', projectsRouter);
+    app.use('/api/reports', reportsRouter);
+    app.use('/api/evaluations', evaluationsRouter);
+    app.use('/api/messages', messagesRouter);
+    app.use('/api/notifications', notificationsRouter);
+    app.use('/api/defense-panels', defensePanelsRouter);
+
+    // Defense scheduling allocation - standalone path (avoids router mounting issues)
+    app.post('/api/allocate-defense', authenticateToken, requireAdmin, async (req, res) => {
+      try {
+        const { staff, venues, groupRanges } = req.body;
+        if (!Array.isArray(staff) || !Array.isArray(venues)) {
+          return res.status(400).json({ success: false, message: 'staff and venues arrays are required' });
+        }
+        const ranges = Array.isArray(groupRanges) ? groupRanges : [];
+        const result = computeAllocation(staff, venues, ranges);
+
+        // Persist to database so students and supervisors can see their defense info
+        const allocService = new DefenseAllocationService(db);
+        const toSave = (result.allocations || []).map((a: any) => ({
+          venue: a.venue?.venue_name || '',
+          groupRange: a.groupRange ? { department: a.groupRange.department, start: a.groupRange.start, end: a.groupRange.end } : undefined,
+          assessors: (a.team?.members || []).map((m: any) => m.name || '')
+        }));
+        await allocService.saveAllocations(toSave);
+
+        res.json({ success: true, data: result });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Allocation failed';
+        console.error('Defense scheduling allocate error:', error);
+        res.status(400).json({ success: false, message: msg });
+      }
+    });
     
     // 404 handler
     app.use('*', (req, res) => {

@@ -110,12 +110,12 @@ export class SupervisorAssignmentService {
           [assignment.supervisorName, assignment.groupId]
         );
 
-        // Update supervisor_workload table
+        // Update supervisor_workload table (match by name and department)
         await connection.execute(
           `UPDATE supervisor_workload 
            SET current_groups = current_groups + 1, updated_at = NOW() 
-           WHERE supervisor_name = ?`,
-          [assignment.supervisorName]
+           WHERE supervisor_name = ? AND department = ?`,
+          [assignment.supervisorName, assignment.department]
         );
 
         console.log(`✅ Assigned ${assignment.supervisorName} to ${assignment.groupName}`);
@@ -228,14 +228,15 @@ export class SupervisorAssignmentService {
 
       console.log('🔄 Syncing supervisor workload...');
 
-      // Get actual group counts per supervisor
+      // Get actual group counts per supervisor (by name and department)
       const [actualCounts] = await connection.execute(`
         SELECT 
           supervisor_name,
+          department,
           COUNT(*) as actual_count
         FROM project_groups
         WHERE supervisor_name IS NOT NULL AND supervisor_name != ''
-        GROUP BY supervisor_name
+        GROUP BY supervisor_name, department
       `);
 
       // Reset all supervisor counts to 0
@@ -244,15 +245,20 @@ export class SupervisorAssignmentService {
         SET current_groups = 0
       `);
 
-      // Update with actual counts
+      // Update with actual counts (match by name and department)
       for (const row of actualCounts as any[]) {
-        await connection.execute(`
-          UPDATE supervisor_workload 
-          SET current_groups = ? 
-          WHERE supervisor_name = ?
-        `, [row.actual_count, row.supervisor_name]);
-        
-        console.log(`✅ Synced ${row.supervisor_name}: ${row.actual_count} groups`);
+        const [result] = await connection.execute(
+          `UPDATE supervisor_workload 
+           SET current_groups = ? 
+           WHERE supervisor_name = ? AND department = ?`,
+          [row.actual_count, row.supervisor_name, row.department || '']
+        );
+        const affected = (result as any).affectedRows;
+        if (affected > 0) {
+          console.log(`✅ Synced ${row.supervisor_name} (${row.department}): ${row.actual_count} groups`);
+        } else {
+          console.warn(`⚠️ No supervisor_workload row for ${row.supervisor_name} in ${row.department} - assignment exists in project_groups but not in workload table`);
+        }
       }
 
       await connection.commit();

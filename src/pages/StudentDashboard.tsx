@@ -4,13 +4,16 @@ import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroups } from '../contexts/GroupsContext';
+import { apiClient } from '../lib/api';
 import { Link } from 'react-router-dom';
-import { Users, FileText, MessageSquare, BookOpen, Award, UserCheck, Calendar } from 'lucide-react';
+import { Users, FileText, MessageSquare, BookOpen, UserCheck } from 'lucide-react';
 
 export function StudentDashboard() {
   const { user, student } = useAuth();
   const { groups, syncWithDatabase } = useGroups();
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [project, setProject] = useState<any>(null);
 
   // Find the student's group - use matric number as primary identifier (unique)
   const studentGroup = groups.find(group => 
@@ -25,6 +28,12 @@ export function StudentDashboard() {
       try {
         setLoading(true);
         await syncWithDatabase();
+        const [notifRes, projectRes] = await Promise.all([
+          apiClient.getRecentNotifications(5),
+          apiClient.getMyProject()
+        ]);
+        if (notifRes.success) setNotifications(notifRes.data || []);
+        if (projectRes.success) setProject(projectRes.data || null);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -89,7 +98,9 @@ export function StudentDashboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Project Status</p>
-                <p className="text-lg font-bold text-[#1a237e]">Not Started</p>
+                <p className="text-lg font-bold text-[#1a237e]">
+                  {project?.status || 'Not Started'}
+                </p>
               </div>
             </div>
           </Card>
@@ -131,6 +142,21 @@ export function StudentDashboard() {
               <p className="text-sm text-gray-600">Program</p>
               <p className="font-medium">Bachelor of Computer Science</p>
             </div>
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Recent Notifications</h2>
+          <div className="space-y-2">
+            {notifications.map((note) => (
+              <div key={note.id} className="text-sm text-gray-700 border-b border-gray-100 pb-2">
+                <div className="font-medium">{note.title}</div>
+                <div className="text-gray-500">{note.message}</div>
+              </div>
+            ))}
+            {notifications.length === 0 && (
+              <div className="text-gray-500 text-sm">No notifications yet.</div>
+            )}
           </div>
         </Card>
 
@@ -195,32 +221,6 @@ export function StudentDashboard() {
                 </div>
               )}
 
-              {/* Project Information */}
-              <div>
-                <h3 className="font-medium text-gray-900 mb-3">Project</h3>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-2">Project Title</p>
-                  <p className="font-medium text-gray-900">
-                    {studentGroup.project || "Agree on a topic with your supervisor and get approval from the Project Coordinator"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline">
-                  <Calendar className="mr-2" size={16} />
-                  Schedule Meeting
-                </Button>
-                <Button variant="outline">
-                  <FileText className="mr-2" size={16} />
-                  Submit Report
-                </Button>
-                <Button variant="outline">
-                  <MessageSquare className="mr-2" size={16} />
-                  Group Chat
-                </Button>
-              </div>
             </div>
           ) : (
             <div className="text-center py-8">
@@ -243,25 +243,6 @@ export function StudentDashboard() {
           )}
         </Card>
 
-        {/* Quick Actions */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="w-full">
-              <FileText className="mr-2" size={16} />
-              Submit Report
-            </Button>
-            <Button variant="outline" className="w-full">
-              <MessageSquare className="mr-2" size={16} />
-              Contact Supervisor
-            </Button>
-            <Button variant="outline" className="w-full">
-              <Award className="mr-2" size={16} />
-              View Progress
-            </Button>
-          </div>
-        </Card>
-
         {/* Recent Activity */}
         <Card>
           <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Recent Activity</h2>
@@ -271,22 +252,6 @@ export function StudentDashboard() {
           </div>
         </Card>
 
-        {/* Welcome Message */}
-        <Card>
-          <div className="text-center py-8">
-            <h2 className="text-xl font-semibold text-[#1a237e] mb-2">
-              Welcome to Supervise360, {user?.first_name}!
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Your student portal is ready. Here you can track your project progress, 
-              submit reports, communicate with your supervisor, and manage your academic journey.
-            </p>
-            <div className="flex justify-center gap-4">
-              <Button>Get Started</Button>
-              <Button variant="outline">View Guidelines</Button>
-            </div>
-          </div>
-        </Card>
       </div>
     </MainLayout>
   );

@@ -2,16 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
+import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
 import { 
-  Users, Upload, Download, UserCheck, AlertCircle, 
-  Eye, Edit, CheckCircle, Clock, FileText, Building 
+  Users, Upload, Download, UserCheck, 
+  Eye, Edit, CheckCircle, Clock, Building, X, Trash2, ChevronDown, FileSpreadsheet, FileText, File 
 } from 'lucide-react';
-import { parseCSV, generateCSV, readFileAsText } from '../../lib/csv-parser';
+import { parseCSV, readFileAsText } from '../../lib/csv-parser';
+import { downloadAssignmentsAsCSV, downloadAssignmentsAsPDF, downloadAssignmentsAsWord } from '../../lib/export-utils';
+import { useNavigate } from 'react-router-dom';
 import { useGroups } from '../../contexts/GroupsContext';
 import { useDepartment } from '../../contexts/DepartmentContext';
 import { apiClient } from '../../lib/api';
 
 export function SupervisorAssignment() {
+  const navigate = useNavigate();
   const { groups, updateGroup, syncWithDatabase } = useGroups();
   const { userDepartment, isSystemAdmin, filterByDepartment } = useDepartment();
   const [supervisors, setSupervisors] = useState([]);
@@ -30,15 +34,45 @@ export function SupervisorAssignment() {
   const [uploading, setUploading] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [uploadedSupervisors, setUploadedSupervisors] = useState([]);
+  const [viewGroupsSupervisor, setViewGroupsSupervisor] = useState<string | null>(null);
+  const [editSwapModal, setEditSwapModal] = useState(false);
+  const [swapMember1, setSwapMember1] = useState<{ groupId: number; memberId: number; name: string } | null>(null);
+  const [swapMember2, setSwapMember2] = useState<{ groupId: number; memberId: number; name: string } | null>(null);
+  const [swapping, setSwapping] = useState(false);
+  const [clearAllModal, setClearAllModal] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'workload' | 'groups' | 'upload'>('workload');
+  const [groupsSearch, setGroupsSearch] = useState('');
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load supervisor workload from database
+  // Close export dropdown when clicking outside
   useEffect(() => {
-    loadSupervisorWorkload();
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setExportDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sync groups and load supervisor workload - groups precede supervisors, keep in sync
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await syncWithDatabase();
+      await loadSupervisorWorkload();
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const loadSupervisorWorkload = async () => {
     try {
+      // Sync workload with actual group assignments first (keep them in sync)
+      await apiClient.syncSupervisorWorkload();
       const response = await apiClient.getSupervisorWorkload();
       if (response.success && response.data) {
         setSupervisors(response.data.supervisors || []);
@@ -175,7 +209,8 @@ export function SupervisorAssignment() {
         throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
       }
 
-      // Refresh data
+      // Sync workload counters from actual project_groups (fixes 0 groups display)
+      await apiClient.syncSupervisorWorkload();
       await loadSupervisorWorkload();
       await syncWithDatabase();
       
@@ -190,33 +225,86 @@ export function SupervisorAssignment() {
     }
   };
 
-  const downloadAssignmentsCSV = () => {
+  const getMemberMatric = (groupId: number, memberIndex: number) => {
+    const g = departmentGroups.find(gg => gg.id === groupId);
+    const member = Array.isArray(g?.members) ? g.members[memberIndex] : null;
+    return (member as any)?.matricNumber || 'N/A';
+  };
+
+  const handleClearAllSupervisors = async () => {
+    setClearing(true);
+    try {
+      const res = await apiClient.clearAllSupervisors();
+      if (res.success) {
+        await loadSupervisorWorkload();
+        await syncWithDatabase();
+        setClearAllModal(false);
+        setUploadedSupervisors([]);
+      } else {
+        alert(res.message || res.error || 'Failed to clear');
+      }
+    } catch (e) {
+      alert('Failed to clear supervisors');
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const downloadAssignments = (format: 'csv' | 'pdf' | 'word') => {
     if (convertedGroups.length === 0) {
       alert('No assignments to download');
       return;
     }
-
-    const csvData = convertedGroups.flatMap(group => 
-      (Array.isArray(group.members) ? group.members : []).map((memberName, index) => {
-        // Find the member's matric number from the original group data
-        const originalGroup = departmentGroups.find(g => g.id === group.id);
-        const member = Array.isArray(originalGroup?.members) ? originalGroup.members[index] : null;
-        
-        return {
-          'GROUP': group.name.replace('Group ', ''), // Just the number
-          'MATRIC NUM': member?.matricNumber || 'N/A',
-          'NAME': memberName,
-          'PROJECT TITLE': 'Agree on a topic with your supervisor and get approval from the Project Coordinator',
-          'SUPERVISOR': group.supervisor || 'Not Assigned'
-        };
-      })
-    );
-
-    generateCSV(csvData, `${userDepartment.toLowerCase().replace(/\s+/g, '_')}_supervisor_assignments.csv`);
+    const filename = `${userDepartment.toLowerCase().replace(/\s+/g, '_')}_supervisor_assignments`;
+    const groupsWithId = convertedGroups.map(g => ({
+      id: g.id,
+      name: g.name,
+      members: g.members,
+      supervisor: g.supervisor
+    }));
+    if (format === 'csv') {
+      downloadAssignmentsAsCSV(groupsWithId, getMemberMatric, `${filename}.csv`);
+    } else if (format === 'pdf') {
+      downloadAssignmentsAsPDF(groupsWithId, getMemberMatric);
+    } else {
+      downloadAssignmentsAsWord(groupsWithId, getMemberMatric);
+    }
   };
 
   const unassignedGroups = convertedGroups.filter(g => !g.supervisor);
   const assignedGroups = convertedGroups.filter(g => g.supervisor);
+  const groupsForSupervisor = (name: string) => {
+    if (name.startsWith('__group_')) {
+      const gid = parseInt(name.replace('__group_', ''), 10);
+      const g = departmentGroups.find(gg => gg.id === gid);
+      return g ? [g] : [];
+    }
+    return departmentGroups.filter(g => g.supervisor && g.supervisor === name);
+  };
+
+  const handleSwap = async () => {
+    if (!swapMember1 || !swapMember2) return;
+    setSwapping(true);
+    try {
+      const res = await apiClient.swapGroupMembers(
+        { groupId: swapMember1.groupId, memberId: swapMember1.memberId },
+        { groupId: swapMember2.groupId, memberId: swapMember2.memberId }
+      );
+      if (res.success) {
+        await syncWithDatabase();
+        await loadSupervisorWorkload();
+        setEditSwapModal(false);
+        setSwapMember1(null);
+        setSwapMember2(null);
+      } else {
+        alert(res.message || res.error || 'Swap failed');
+      }
+    } catch (e) {
+      alert('Failed to swap students');
+    } finally {
+      setSwapping(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -228,363 +316,486 @@ export function SupervisorAssignment() {
     );
   }
 
+  const filteredUnassigned = groupsSearch
+    ? unassignedGroups.filter(g => g.name.toLowerCase().includes(groupsSearch.toLowerCase()) || g.members.some((m: string) => m.toLowerCase().includes(groupsSearch.toLowerCase())))
+    : unassignedGroups;
+  const filteredAssigned = groupsSearch
+    ? assignedGroups.filter(g => g.name.toLowerCase().includes(groupsSearch.toLowerCase()) || g.supervisor?.toLowerCase().includes(groupsSearch.toLowerCase()) || g.members.some((m: string) => m.toLowerCase().includes(groupsSearch.toLowerCase())))
+    : assignedGroups;
+
+  const tabs = [
+    { id: 'workload' as const, label: 'Supervisor Workload', icon: UserCheck },
+    { id: 'groups' as const, label: 'Groups', icon: Users },
+    { id: 'upload' as const, label: 'Upload & Assign', icon: Upload }
+  ];
+
   return (
     <MainLayout title="Supervisor Assignment">
-      <div className="space-y-6">
-        <Card>
-          <div className="flex items-center justify-between">
+      <div className="space-y-4">
+        {/* Header */}
+        <Card className="border border-slate-200 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-[#1a237e]">Supervisor Assignment</h2>
-              <div className="flex items-center gap-2 mt-1">
-                <Building className="text-gray-500" size={16} />
-                <p className="text-gray-600">
-                  {isSystemAdmin ? 'System Admin - All Departments' : `${userDepartment} Department`}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="mr-2" size={16} />
-                Upload Supervisors
-              </Button>
-              {convertedGroups.length > 0 && (
-                <Button variant="outline" onClick={downloadAssignmentsCSV}>
-                  <Download className="mr-2" size={16} />
-                  Download Assignments
-                </Button>
-              )}
-            </div>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          
-          {/* Persistence Indicator */}
-          {convertedGroups.length > 0 && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <p className="text-sm text-blue-800 font-medium">
-                  Supervisor assignments are automatically saved and persist across sessions
-                </p>
-              </div>
-              <p className="text-xs text-blue-700 mt-1 ml-4">
-                Assignments remain active until groups are cleared by admin or reassigned
+              <h2 className="text-2xl font-bold text-slate-900">Supervisor Assignment</h2>
+              <p className="text-sm text-slate-600 flex items-center gap-1 mt-0.5">
+                <Building size={14} />
+                {isSystemAdmin ? 'All Departments' : userDepartment}
               </p>
             </div>
-          )}
-        </Card>
-
-        {/* Upload Status */}
-        {uploading && (
-          <Card>
-            <div className="flex items-center gap-3 text-blue-600">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              <span>Processing uploaded supervisor data...</span>
-            </div>
-          </Card>
-        )}
-
-        {/* Uploaded Supervisors Preview */}
-        {uploadedSupervisors.length > 0 && (
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-[#1a237e]">
-                Uploaded Supervisors ({uploadedSupervisors.length})
-              </h3>
-              <Button 
-                onClick={handleAutoAssignSupervisors}
-                disabled={assigning}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {assigning ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Assigning Supervisors...
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="mr-2" size={16} />
-                    Auto-Assign Supervisors
-                  </>
-                )}
+            <div className="flex flex-wrap gap-2">
+              {convertedGroups.length > 0 && (supervisors.length > 0 || totalStats.totalAssigned > 0) && (
+                <Button variant="outline" size="sm" onClick={() => setClearAllModal(true)} className="text-red-600 hover:text-red-700 hover:border-red-300">
+                  <Trash2 size={14} className="mr-1.5" />
+                  Clear All
+                </Button>
+              )}
+              {convertedGroups.length > 0 && (
+                <div className="relative" ref={exportDropdownRef}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExportDropdownOpen(o => !o)}
+                  >
+                    <Download size={14} className="mr-1.5" />
+                    Export
+                    <ChevronDown size={14} className={`ml-1.5 transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                  {exportDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1 py-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                      <button
+                        onClick={() => { downloadAssignments('csv'); setExportDropdownOpen(false); }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
+                      >
+                        <FileSpreadsheet size={14} className="flex-shrink-0" />
+                        CSV
+                      </button>
+                      <button
+                        onClick={() => { downloadAssignments('pdf'); setExportDropdownOpen(false); }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
+                      >
+                        <FileText size={14} className="flex-shrink-0" />
+                        PDF
+                      </button>
+                      <button
+                        onClick={() => { downloadAssignments('word'); setExportDropdownOpen(false); }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
+                      >
+                        <File size={14} className="flex-shrink-0" />
+                        Word
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setEditSwapModal(true)}>
+                <Edit size={14} className="mr-1.5" />
+                Swap Students
               </Button>
             </div>
-            
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="text-blue-600 mt-0.5" size={16} />
-                <div>
-                  <h4 className="font-medium text-blue-900">Assignment Rules</h4>
-                  <ul className="text-sm text-blue-800 mt-1 space-y-1">
-                    <li>• Supervisors are matched to groups from the same department</li>
-                    <li>• Each supervisor has a maximum group capacity</li>
-                    <li>• Groups are assigned based on availability and workload balance</li>
-                  </ul>
-                </div>
+          </div>
+          <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
+        </Card>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="border border-slate-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-slate-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-900">{convertedGroups.length}</p>
+                <p className="text-sm text-slate-500">Total Groups</p>
               </div>
             </div>
+          </Card>
+          <Card className="border border-slate-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-[#26a69a]" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-900">{assignedGroups.length}</p>
+                <p className="text-sm text-slate-500">Assigned</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="border border-slate-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-[#26a69a]" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-900">{unassignedGroups.length}</p>
+                <p className="text-sm text-slate-500">Awaiting</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="border border-slate-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-[#26a69a]" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-900">{totalStats.availableSlots}</p>
+                <p className="text-sm text-slate-500">Slots Free</p>
+              </div>
+            </div>
+          </Card>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {uploadedSupervisors.map((supervisor, idx) => (
-                <div key={idx} className="border border-gray-200 rounded-lg p-3">
-                  <h4 className="font-medium">{supervisor.name}</h4>
-                  <p className="text-sm text-gray-600">{supervisor.department}</p>
-                  <p className="text-xs text-gray-500">Max Groups: {supervisor.maxGroups}</p>
+        {/* Tabs */}
+        <div className="border-b border-slate-200">
+          <div className="flex gap-1">
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeTab === id ? 'bg-white border border-slate-200 border-b-0 text-slate-900 -mb-px' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon size={16} />
+                  {label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab: Supervisor Workload (Default) - only show when groups exist (groups precede supervisors) */}
+        {activeTab === 'workload' && (
+        <Card className="border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Supervisor Workload</h3>
+            {convertedGroups.length > 0 && totalStats.totalSupervisors > 0 && (
+              <span className="text-sm text-slate-500">{totalStats.totalSupervisors} supervisors</span>
+            )}
+          </div>
+          {convertedGroups.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <Building className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+              <p className="font-medium">No groups yet</p>
+              <p className="text-sm mt-1">Form groups in the Groups page first, then return here to assign supervisors</p>
+              <Button variant="outline" className="mt-4" onClick={() => navigate('/groups')}>Go to Groups</Button>
+            </div>
+          ) : supervisors.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <Users className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+              <p className="font-medium">No supervisors in the system</p>
+              <p className="text-sm mt-1">Upload supervisor CSV in the Upload & Assign tab to add supervisors</p>
+              <Button variant="outline" className="mt-4" onClick={() => setActiveTab('upload')}>Go to Upload</Button>
+            </div>
+          ) : (
+            <>
+            <div className="space-y-5">
+              {Object.values(supervisorsByDepartment).map((dept: any) => (
+                <div key={dept.department} className="border border-slate-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h5 className="font-semibold text-slate-900">{dept.department}</h5>
+                      <p className="text-xs text-slate-500">
+                        {dept.departmentStats.count} supervisors · {dept.departmentStats.totalAssigned}/{dept.departmentStats.totalCapacity} capacity · {dept.departmentStats.availableSlots} free
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#26a69a]/15 text-[#26a69a]">
+                        {dept.departmentStats.totalAssigned}/{dept.departmentStats.totalCapacity}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {dept.supervisors.map((supervisor: any) => {
+                      const supGroups = groupsForSupervisor(supervisor.name);
+                      return (
+                        <div key={supervisor.id} className="bg-slate-50 border border-slate-100 rounded-lg p-4 hover:border-slate-200 transition-colors">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <h6 className="text-base font-medium text-slate-900 truncate">{supervisor.name}</h6>
+                              <p className="text-sm text-slate-500">{supervisor.current_groups}/{supervisor.max_groups} groups</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#26a69a]/15 text-[#26a69a]">
+                                {supervisor.current_groups}/{supervisor.max_groups}
+                              </span>
+                              {supGroups.length > 0 && (
+                                <div className="flex gap-1">
+                                  <button onClick={() => setViewGroupsSupervisor(supervisor.name)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="View groups">
+                                    <Eye size={14} />
+                                  </button>
+                                  <button onClick={() => setEditSwapModal(true)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Edit / Swap">
+                                    <Edit size={14} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
-          </Card>
-        )}
-
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Groups</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{convertedGroups.length}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="text-green-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Assigned</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{assignedGroups.length}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="text-yellow-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Awaiting Assignment</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{unassignedGroups.length}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="text-purple-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Available Supervisors</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
-                  {totalStats.availableSlots}
-                </p>
-                <p className="text-xs text-gray-500">Available Slots</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Groups List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Unassigned Groups */}
-          <Card>
-            <h3 className="text-lg font-semibold text-[#1a237e] mb-4">
-              Groups Awaiting Assignment ({unassignedGroups.length})
-            </h3>
-            <div className="space-y-3">
-              {unassignedGroups.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p>No groups awaiting supervisor assignment</p>
-                  <p className="text-sm mt-1">Groups will appear here after formation</p>
-                </div>
-              ) : (
-                unassignedGroups.map((group) => (
-                  <div key={group.id} className="border border-yellow-200 bg-yellow-50 rounded-lg p-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{group.name}</h4>
-                        <p className="text-sm text-gray-600">Members: {group.members.join(', ')}</p>
-                        <p className="text-sm text-gray-600">Department: {group.department}</p>
-                        <p className="text-xs text-gray-500">{group.members.length} members</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline">
-                          <Eye className="mr-1" size={12} />
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-
-          {/* Assigned Groups */}
-          <Card>
-            <h3 className="text-lg font-semibold text-[#1a237e] mb-4">
-              Assigned Groups ({assignedGroups.length})
-            </h3>
-            <div className="space-y-3">
-              {assignedGroups.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <UserCheck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p>No groups have been assigned supervisors yet</p>
-                  <p className="text-sm mt-1">Assigned groups will appear here</p>
-                </div>
-              ) : (
-                assignedGroups.map((group) => (
-                  <div key={group.id} className="border border-green-200 bg-green-50 rounded-lg p-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{group.name}</h4>
-                        <p className="text-sm text-gray-600">Members: {group.members.join(', ')}</p>
-                        <p className="text-sm text-green-700 font-medium">Supervisor: {group.supervisor}</p>
-                        <p className="text-xs text-gray-500">{group.members.length} members</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline">
-                          <Eye className="mr-1" size={12} />
-                          View
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Edit className="mr-1" size={12} />
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {/* Supervisors Overview */}
-        <Card>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-[#1a237e]">Supervisor Workload - {totalStats.userDepartment || 'Software Engineering'}</h3>
-            {totalStats.totalSupervisors > 0 && (
-              <div className="text-sm text-gray-600">
-                {totalStats.totalSupervisors} supervisors in your department
-              </div>
-            )}
-          </div>
-          
-          {supervisors.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <p className="text-lg font-medium">No supervisors loaded</p>
-              <p className="text-sm mt-1">Upload supervisor data to see workload distribution</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Department Breakdown */}
-              {Object.keys(supervisorsByDepartment).length > 0 && (
-                <div>
-                  <div className="space-y-4">
-                    {Object.values(supervisorsByDepartment).map((dept: any) => (
-                      <div key={dept.department} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <h5 className="font-semibold text-gray-900">{dept.department}</h5>
-                            <p className="text-sm text-gray-600">
-                              {dept.departmentStats.count} supervisors • 
-                              {dept.departmentStats.totalAssigned}/{dept.departmentStats.totalCapacity} capacity • 
-                              {dept.departmentStats.availableSlots} slots available
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-lg font-bold text-[#1a237e]">
-                              {dept.departmentStats.averageWorkload}%
-                            </span>
-                            <p className="text-xs text-gray-500">Average Load</p>
-                          </div>
-                        </div>
-                        
-                        {/* Department Progress Bar */}
-                        <div className="mb-4">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${
-                                dept.departmentStats.averageWorkload >= 90 
-                                  ? 'bg-red-500' 
-                                  : dept.departmentStats.averageWorkload >= 70 
-                                  ? 'bg-yellow-500' 
-                                  : 'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min(dept.departmentStats.averageWorkload, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Individual Supervisors */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {dept.supervisors.map((supervisor: any) => (
-                            <div key={supervisor.id} className="bg-white border border-gray-100 rounded-lg p-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <h6 className="font-medium text-gray-900 text-sm">{supervisor.name}</h6>
-                                  <p className="text-xs text-gray-600">
-                                    {supervisor.current_groups}/{supervisor.max_groups} groups
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="text-right">
-                                    <span className={`text-sm font-medium ${
-                                      supervisor.workload_percentage >= 100 
-                                        ? 'text-red-600' 
-                                        : supervisor.workload_percentage >= 80 
-                                        ? 'text-yellow-600' 
-                                        : 'text-green-600'
-                                    }`}>
-                                      {supervisor.workload_percentage}%
-                                    </span>
-                                  </div>
-                                  <div className="w-16 h-2 bg-gray-200 rounded-full">
-                                    <div
-                                      className={`h-2 rounded-full transition-all duration-300 ${
-                                        supervisor.workload_percentage >= 100 
-                                          ? 'bg-red-500' 
-                                          : supervisor.workload_percentage >= 80 
-                                          ? 'bg-yellow-500' 
-                                          : 'bg-green-500'
-                                      }`}
-                                      style={{ 
-                                        width: `${Math.min(supervisor.workload_percentage, 100)}%` 
-                                      }}
-                                    />
-                                  </div>
-                                  {supervisor.is_available ? (
-                                    <div className="w-2 h-2 bg-green-500 rounded-full" title="Available" />
-                                  ) : (
-                                    <div className="w-2 h-2 bg-red-500 rounded-full" title="Unavailable" />
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            </>
           )}
         </Card>
+        )}
+
+        {/* Tab: Groups */}
+        {activeTab === 'groups' && (
+        <div className="space-y-4">
+          <Card className="border border-slate-200 p-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="Search groups or members..."
+                value={groupsSearch}
+                onChange={(e) => setGroupsSearch(e.target.value)}
+                className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </div>
+          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Awaiting Assignment ({filteredUnassigned.length})</h3>
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {filteredUnassigned.length === 0 ? (
+                  <div className="text-center py-6 text-slate-500 text-sm">
+                    {groupsSearch ? 'No matches' : 'No groups awaiting assignment'}
+                  </div>
+                ) : (
+                  filteredUnassigned.map((group) => {
+                    const fullGroup = departmentGroups.find(g => g.id === group.id);
+                    return (
+                      <div key={group.id} className="flex items-center justify-between border border-slate-200 rounded-lg p-4 hover:bg-slate-50">
+                        <div className="min-w-0">
+                          <p className="text-base font-medium text-slate-900 truncate">{group.name}</p>
+                          <p className="text-sm text-slate-500 truncate">{group.members.join(', ')}</p>
+                        </div>
+                        <button onClick={() => fullGroup && setViewGroupsSupervisor(`__group_${fullGroup.id}`)} className="p-2 rounded hover:bg-slate-200 text-slate-600">
+                          <Eye size={14} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </Card>
+            <Card className="border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Assigned ({filteredAssigned.length})</h3>
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {filteredAssigned.length === 0 ? (
+                  <div className="text-center py-6 text-slate-500 text-sm">
+                    {groupsSearch ? 'No matches' : 'No assigned groups yet'}
+                  </div>
+                ) : (
+                  filteredAssigned.map((group) => (
+                    <div key={group.id} className="flex items-center justify-between border border-slate-200 rounded-lg p-4 hover:bg-slate-50">
+                      <div className="min-w-0">
+                        <p className="text-base font-medium text-slate-900 truncate">{group.name}</p>
+                        <p className="text-sm text-[#26a69a] font-medium">{group.supervisor}</p>
+                        <p className="text-sm text-slate-500 truncate">{group.members.join(', ')}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => group.supervisor && setViewGroupsSupervisor(group.supervisor)} className="p-2 rounded hover:bg-slate-200 text-slate-600" title="View">
+                          <Eye size={14} />
+                        </button>
+                        <button onClick={() => setEditSwapModal(true)} className="p-2 rounded hover:bg-slate-200 text-slate-600" title="Edit">
+                          <Edit size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+        )}
+
+        {/* Tab: Upload & Assign */}
+        {activeTab === 'upload' && (
+        <div className="space-y-4">
+          {uploading && (
+            <Card className="border border-slate-200 p-4">
+              <div className="flex items-center gap-3 text-slate-600">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-300 border-t-slate-600" />
+                <span>Processing uploaded supervisor data...</span>
+              </div>
+            </Card>
+          )}
+          {uploadedSupervisors.length > 0 ? (
+            <Card className="border border-slate-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-900">Uploaded Supervisors ({uploadedSupervisors.length})</h3>
+                <Button onClick={handleAutoAssignSupervisors} disabled={assigning} className="bg-[#26a69a] hover:bg-[#2bbbad]">
+                  {assigning ? (
+                    <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
+                  ) : (
+                    <><UserCheck className="mr-2" size={16} />Auto-Assign</>
+                  )}
+                </Button>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-slate-700">Supervisors are matched to groups from the same department. Each has a max group capacity.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                {uploadedSupervisors.map((s, i) => (
+                  <div key={i} className="border border-slate-200 rounded-lg p-4">
+                    <p className="text-base font-medium truncate">{s.name}</p>
+                    <p className="text-sm text-slate-500">{s.department} · Max {s.maxGroups}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card className="py-12 text-center">
+              <Upload className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+              <p className="font-medium text-slate-700">Upload supervisor CSV to get started</p>
+              <p className="text-sm text-slate-500 mt-1">Required columns: Name, Department, Max Groups</p>
+              <Button className="mt-4" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="mr-2" size={16} />
+                Choose File
+              </Button>
+            </Card>
+          )}
+          {convertedGroups.length > 0 && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <p className="text-sm text-slate-700">Assignments persist until groups are cleared or reassigned.</p>
+            </div>
+          )}
+        </div>
+        )}
+
+        {/* View Groups Modal */}
+        {viewGroupsSupervisor && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewGroupsSupervisor(null)}>
+            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {viewGroupsSupervisor.startsWith('__group_') ? 'Group Details' : `Groups – ${viewGroupsSupervisor}`}
+                </h3>
+                <button onClick={() => setViewGroupsSupervisor(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[70vh] space-y-4">
+                {groupsForSupervisor(viewGroupsSupervisor).map((g) => (
+                  <div key={g.id} className="border border-gray-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">{g.name}</h4>
+                    <div className="space-y-2">
+                      {Array.isArray(g.members) ? g.members.map((m: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 text-sm">
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-gray-600">{m.matricNumber || 'N/A'}</span>
+                          <span className="text-gray-600">GPA: {m.gpa != null ? m.gpa : 'N/A'}</span>
+                        </div>
+                      )) : (
+                        <p className="text-gray-500">No members</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {groupsForSupervisor(viewGroupsSupervisor).length === 0 && (
+                  <p className="text-gray-500 text-center py-6">No groups to display</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear All Confirmation */}
+        <ConfirmationModal
+          isOpen={clearAllModal}
+          onClose={() => !clearing && setClearAllModal(false)}
+          onConfirm={handleClearAllSupervisors}
+          title="Clear All Supervisors"
+          message="This will remove all supervisors and unassign all groups. You will need to upload a new supervisor list and re-assign. This cannot be undone."
+          confirmText="Clear All"
+          cancelText="Cancel"
+          type="danger"
+        />
+
+        {/* Edit / Swap Members Modal */}
+        {editSwapModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !swapping && setEditSwapModal(false)}>
+            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">Swap Students Between Groups</h3>
+                <button onClick={() => !swapping && setEditSwapModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <p className="text-sm text-gray-600">Select two students from different groups to swap their assignments.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Student A</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={swapMember1 ? `${swapMember1.groupId}-${swapMember1.memberId}` : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) { setSwapMember1(null); return; }
+                        const [gid, mid] = v.split('-').map(Number);
+                        const g = departmentGroups.find(gg => gg.id === gid);
+                        const m = g?.members?.find((mm: any) => mm.id === mid);
+                        setSwapMember1(m ? { groupId: gid, memberId: mid, name: m.name } : null);
+                      }}
+                    >
+                      <option value="">Select student...</option>
+                      {departmentGroups.map(g => 
+                        Array.isArray(g.members) ? g.members.map((m: any) => (
+                          <option key={`${g.id}-${m.id}`} value={`${g.id}-${m.id}`}>
+                            {m.name} ({g.name})
+                          </option>
+                        )) : null
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Student B</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={swapMember2 ? `${swapMember2.groupId}-${swapMember2.memberId}` : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) { setSwapMember2(null); return; }
+                        const [gid, mid] = v.split('-').map(Number);
+                        const g = departmentGroups.find(gg => gg.id === gid);
+                        const m = g?.members?.find((mm: any) => mm.id === mid);
+                        setSwapMember2(m ? { groupId: gid, memberId: mid, name: m.name } : null);
+                      }}
+                    >
+                      <option value="">Select student...</option>
+                      {departmentGroups.map(g => 
+                        Array.isArray(g.members) ? g.members.map((m: any) => (
+                          <option key={`${g.id}-${m.id}`} value={`${g.id}-${m.id}`}>
+                            {m.name} ({g.name})
+                          </option>
+                        )) : null
+                      )}
+                    </select>
+                  </div>
+                </div>
+                {swapMember1 && swapMember2 && swapMember1.groupId === swapMember2.groupId && (
+                  <p className="text-sm text-[#26a69a]">Select students from different groups.</p>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditSwapModal(false)} disabled={swapping}>Cancel</Button>
+                  <Button
+                    onClick={handleSwap}
+                    disabled={swapping || !swapMember1 || !swapMember2 || swapMember1.groupId === swapMember2.groupId}
+                  >
+                    {swapping ? 'Swapping...' : 'Swap Students'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );

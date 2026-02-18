@@ -1,281 +1,152 @@
+import { useEffect, useState } from 'react';
 import { MainLayout } from '../components/Layout/MainLayout';
-import { Card } from '../components/UI/Card';
 import { useAuth } from '../contexts/AuthContext';
-import { useGroups } from '../contexts/GroupsContext';
-import { Users, UserCheck, Building } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { apiClient } from '../lib/api';
+import { Users, UserCheck, Building, FileText, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function AdminDashboard() {
   const { user } = useAuth();
-  const { groups, syncWithDatabase } = useGroups();
-  const [supervisorCount, setSupervisorCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [studentCount, setStudentCount] = useState<number | null>(null);
 
-  // Load groups data on mount
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        console.log('🚀 AdminDashboard: Loading dashboard data...');
-        // Sync groups data from database
-        await syncWithDatabase();
-        console.log('✅ AdminDashboard: Groups data loaded');
-      } catch (error) {
-        console.error('❌ AdminDashboard: Failed to load groups data:', error);
+    const fetchDashboard = async () => {
+      const [dashRes, groupsRes] = await Promise.all([
+        apiClient.getAdminDashboard(),
+        apiClient.getGroups()
+      ]);
+      if (dashRes.success) setDashboard(dashRes.data);
+      if (groupsRes.success && Array.isArray(groupsRes.data)) {
+        const total = (groupsRes.data as any[]).reduce(
+          (sum, g) => sum + (Array.isArray(g.members) ? g.members.length : 0),
+          0
+        );
+        setStudentCount(total);
+      } else {
+        setStudentCount(dashRes.data?.totals?.students ?? null);
       }
+      setLoading(false);
     };
+    fetchDashboard();
+  }, []);
 
-    loadDashboardData();
-  }, [syncWithDatabase]);
+  const totals = dashboard?.totals || {};
+  const displayStudents = studentCount ?? totals.students ?? 0;
+  const gpaDistribution = dashboard?.gpaDistribution || { HIGH: 0, MEDIUM: 0, LOW: 0 };
 
-  // Fetch real supervisor count from API (uploaded supervisors in supervisor_workload)
-  useEffect(() => {
-    const fetchSupervisorCount = async () => {
-      try {
-        const response = await apiClient.getSupervisorWorkload();
-        if (response.success && response.data?.totalStats?.totalSupervisors !== undefined) {
-          setSupervisorCount(response.data.totalStats.totalSupervisors);
-        } else if (response.success && Array.isArray(response.data?.supervisors)) {
-          setSupervisorCount(response.data.supervisors.length);
-        }
-      } catch (error) {
-        console.error('Failed to fetch supervisor count:', error);
-        // Fallback: calculate from groups data (assigned supervisors)
-        const assignedSupervisors = new Set(groups.filter(g => g.supervisor).map(g => g.supervisor)).size;
-        setSupervisorCount(assignedSupervisors);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSupervisorCount();
-  }, [groups]);
-
-  // Calculate statistics from groups data
-  const totalGroups = groups.length;
-  const totalStudents = groups.reduce((total, group) => total + group.members.length, 0);
-  const studentsWithGroups = totalStudents; // All students in groups have groups
-  
-  // Calculate supervisor statistics
-  const assignedSupervisors = new Set(groups.filter(g => g.supervisor).map(g => g.supervisor)).size;
-  const totalSupervisors = supervisorCount; // Use real count from API
-  const availableSupervisors = Math.max(0, totalSupervisors - assignedSupervisors);
+  const actions = [
+    { to: '/users', label: 'Users', sub: 'Manage students & staff', icon: Users },
+    { to: '/groups', label: 'Groups', sub: 'View and form groups', icon: Building },
+    { to: '/supervisor-assignment', label: 'Supervisors', sub: 'Assign & sync workload', icon: UserCheck },
+    { to: '/reports-analytics', label: 'Reports', sub: 'Analytics & exports', icon: FileText },
+  ];
 
   return (
     <MainLayout title="Admin Dashboard">
-      <div className="space-y-6">
-        {/* Welcome Card */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-[#1a237e]">
-                Welcome back, {user?.first_name}!
-              </h2>
-              <p className="text-gray-600 mt-1">
-                Here's an overview of your Supervise360 system
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">System Status</p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm font-medium text-green-600">Online</span>
-              </div>
-            </div>
-          </div>
-        </Card>
+      <div className="-m-6 p-6 bg-gradient-to-b from-slate-50 to-white">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold text-slate-800">
+            {user?.first_name}, welcome back
+          </h1>
+          <p className="text-slate-500 mt-1">Here’s what’s in your system</p>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="text-blue-600" size={24} />
+          {/* Featured stat + smaller stats */}
+          <div className="mt-8 flex flex-col lg:flex-row gap-4">
+            <div className="flex-1 bg-[#1a237e] rounded-2xl p-8 text-white shadow-lg shadow-indigo-900/20">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-indigo-200 text-sm font-medium">Total students</p>
+                  <p className="text-5xl font-bold mt-2 tabular-nums">
+                    {loading ? '—' : displayStudents}
+                  </p>
+                </div>
+                <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Users size={28} />
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Students</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{totalStudents}</p>
-              </div>
+              <Link
+                to="/users"
+                className="inline-flex items-center gap-1.5 mt-6 text-sm font-medium text-indigo-200 hover:text-white transition-colors"
+              >
+                View users
+                <ArrowRight size={14} />
+              </Link>
             </div>
-          </Card>
 
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="text-green-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Supervisors</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
-                  {loading ? '...' : totalSupervisors}
+            <div className="grid grid-cols-3 gap-4 flex-1">
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                <p className="text-2xl font-bold text-slate-800 tabular-nums">
+                  {loading ? '—' : totals.supervisors || 0}
                 </p>
+                <p className="text-sm text-slate-500 mt-1">Supervisors</p>
               </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Building className="text-purple-600" size={24} />
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                <p className="text-2xl font-bold text-slate-800 tabular-nums">
+                  {loading ? '—' : totals.groups || 0}
+                </p>
+                <p className="text-sm text-slate-500 mt-1">Groups</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Groups</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{totalGroups}</p>
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                <p className="text-2xl font-bold text-slate-800 tabular-nums">
+                  {loading ? '—' : totals.projects || 0}
+                </p>
+                <p className="text-sm text-slate-500 mt-1">Projects</p>
               </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="text-orange-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Assigned Supervisors</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{assignedSupervisors}</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Group and Assignment Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Group Overview</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Groups Formed</span>
-                <span className="font-semibold">{totalGroups}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Students in Groups</span>
-                <span className="font-semibold text-green-600">{studentsWithGroups}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Groups with Supervisors</span>
-                <span className="font-semibold text-blue-600">{groups.filter(g => g.supervisor).length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Groups Awaiting Assignment</span>
-                <span className="font-semibold text-orange-600">{groups.filter(g => !g.supervisor).length}</span>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Supervisor Overview</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Available Supervisors</span>
-                <span className="font-semibold text-green-600">{availableSupervisors}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Assigned Supervisors</span>
-                <span className="font-semibold">{assignedSupervisors}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Average Groups per Supervisor</span>
-                <span className="font-semibold text-blue-600">
-                  {assignedSupervisors > 0 ? Math.round((totalGroups / assignedSupervisors) * 10) / 10 : 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Supervision Capacity Used</span>
-                <span className="font-semibold text-purple-600">
-                  {totalSupervisors > 0 ? Math.round((assignedSupervisors / totalSupervisors) * 100) : 0}%
-                </span>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* System Information */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">System Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Database Status</h3>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-green-600">Connected</span>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Last Updated</h3>
-              <p className="text-sm text-gray-600">{new Date().toLocaleString()}</p>
             </div>
           </div>
-          
-          {/* Demo Data Section - Only show if no groups exist */}
-          {totalGroups === 0 && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="font-medium text-blue-900 mb-2">Quick Start</h3>
-              <p className="text-sm text-blue-800 mb-3">
-                No groups have been formed yet. To see the dashboard in action, you can:
-              </p>
-              <ul className="text-sm text-blue-800 space-y-1 mb-3">
-                <li>• Go to the Groups page to upload student CSV and form groups</li>
-                <li>• Go to Supervisor Assignment to assign supervisors to groups</li>
-                <li>• The dashboard will automatically update with real data</li>
-              </ul>
-            </div>
-          )}
-        </Card>
 
-        {/* Recent Activity */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Group Formation Status</h2>
-          {totalGroups > 0 ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{totalGroups}</div>
-                  <div className="text-sm text-blue-700">Groups Formed</div>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">{groups.filter(g => g.supervisor).length}</div>
-                  <div className="text-sm text-green-700">Supervisors Assigned</div>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg">
-                  <div className="text-2xl font-bold text-orange-600">{groups.filter(g => !g.supervisor).length}</div>
-                  <div className="text-sm text-orange-700">Awaiting Assignment</div>
-                </div>
+          {/* Action cards */}
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {actions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={action.to}
+                  to={action.to}
+                  className="group flex items-center gap-4 bg-white rounded-xl p-5 shadow-sm border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 group-hover:bg-indigo-50 flex items-center justify-center text-slate-600 group-hover:text-[#1a237e] transition-colors">
+                    <Icon size={22} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-800 group-hover:text-[#1a237e] transition-colors">
+                      {action.label}
+                    </p>
+                    <p className="text-sm text-slate-500">{action.sub}</p>
+                  </div>
+                  <ArrowRight size={18} className="text-slate-300 group-hover:text-[#1a237e] group-hover:translate-x-1 transition-all" />
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* GPA */}
+          <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+            <p className="font-semibold text-slate-800 mb-4">GPA distribution</p>
+            <div className="flex gap-6">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-emerald-600">
+                  {gpaDistribution.HIGH || 0}
+                </span>
+                <span className="text-slate-500 text-sm">High</span>
               </div>
-              
-              <div className="border-t pt-4">
-                <h3 className="font-medium text-gray-900 mb-3">Recent Groups</h3>
-                <div className="space-y-2">
-                  {groups.slice(0, 5).map((group) => (
-                    <div key={group.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{group.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {group.members.length} members • {group.department || 'No department'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
-                          {group.supervisor || 'No supervisor'}
-                        </p>
-                        <p className={`text-xs ${group.supervisor ? 'text-green-600' : 'text-orange-600'}`}>
-                          {group.supervisor ? 'Assigned' : 'Pending'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-amber-600">
+                  {gpaDistribution.MEDIUM || 0}
+                </span>
+                <span className="text-slate-500 text-sm">Medium</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-rose-600">
+                  {gpaDistribution.LOW || 0}
+                </span>
+                <span className="text-slate-500 text-sm">Low</span>
               </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <Building className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-gray-600">No groups have been formed yet.</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Go to the Groups page to upload students and form groups using ASP algorithm.
-              </p>
-            </div>
-          )}
-        </Card>
+          </div>
+        </div>
       </div>
     </MainLayout>
   );

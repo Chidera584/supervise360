@@ -489,6 +489,7 @@ export class GroupFormationService {
         console.log('✅ Found', (memberRows as any[]).length, 'members for group', group.id);
 
         const members = (memberRows as any[]).map(member => ({
+          id: member.id,
           name: member.student_name,
           gpa: member.student_gpa,
           tier: member.gpa_tier as 'HIGH' | 'MEDIUM' | 'LOW',

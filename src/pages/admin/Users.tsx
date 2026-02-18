@@ -2,68 +2,57 @@ import { useState, useEffect } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
-import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Users as UsersIcon, UserPlus, Search, Filter, 
-  Edit, Trash2, Mail, Phone, MoreVertical 
-} from 'lucide-react';
+import { apiClient } from '../../lib/api';
+import { Users as UsersIcon, UserPlus, Search, Edit, Trash2, Mail, Phone, MoreVertical } from 'lucide-react';
 
 export function Users() {
-  const { user } = useAuth();
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [studentDetails, setStudentDetails] = useState<Record<string, any>>({});
+  const [supervisorDetails, setSupervisorDetails] = useState<Record<string, any>>({});
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setTimeout(() => {
-      setUsers([
-        {
-          id: 1,
-          name: 'John Student',
-          email: 'john@student.edu',
-          role: 'student',
-          department: 'Computer Science',
-          status: 'active',
-          lastLogin: '2024-01-22',
-          matric: 'ST2024001',
-          gpa: 3.75
-        },
-        {
-          id: 2,
-          name: 'Dr. Jane Smith',
-          email: 'jane.smith@university.edu',
-          role: 'supervisor',
-          department: 'Computer Science',
-          status: 'active',
-          lastLogin: '2024-01-22',
-          groups: 3,
-          capacity: 7
-        },
-        {
-          id: 3,
-          name: 'Alice Johnson',
-          email: 'alice@student.edu',
-          role: 'student',
-          department: 'Software Engineering',
-          status: 'active',
-          lastLogin: '2024-01-21',
-          matric: 'ST2024002',
-          gpa: 3.82
-        }
+    const fetchUsers = async () => {
+      const [usersRes, studentsRes, supervisorsRes] = await Promise.all([
+        apiClient.getUsers(),
+        apiClient.getStudents(),
+        apiClient.getSupervisors()
       ]);
+
+      if (usersRes.success && usersRes.data) {
+        setUsers(usersRes.data);
+      }
+      if (studentsRes.success && studentsRes.data) {
+        const map: Record<string, any> = {};
+        (studentsRes.data as any[]).forEach(student => {
+          map[student.email] = student;
+        });
+        setStudentDetails(map);
+      }
+      if (supervisorsRes.success && supervisorsRes.data) {
+        const map: Record<string, any> = {};
+        (supervisorsRes.data as any[]).forEach(supervisor => {
+          map[supervisor.email] = supervisor;
+        });
+        setSupervisorDetails(map);
+      }
       setLoading(false);
-    }, 1000);
+    };
+
+    fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user) => {
+    const name = `${user.first_name} ${user.last_name}`.trim();
     const matchesFilter = filter === 'all' || user.role === filter;
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  const getRoleColor = (role) => {
+  const getRoleColor = (role: string) => {
     switch (role) {
       case 'student': return 'text-blue-600 bg-blue-100';
       case 'supervisor': return 'text-green-600 bg-green-100';
@@ -85,7 +74,6 @@ export function Users() {
   return (
     <MainLayout title="Users">
       <div className="space-y-6">
-        {/* Header */}
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -99,7 +87,6 @@ export function Users() {
           </div>
         </Card>
 
-        {/* Filters and Search */}
         <Card>
           <div className="flex items-center gap-4">
             <div className="flex-1 relative">
@@ -120,142 +107,79 @@ export function Users() {
               <option value="all">All Users</option>
               <option value="student">Students</option>
               <option value="supervisor">Supervisors</option>
-              <option value="admin">Administrators</option>
+              <option value="admin">Admins</option>
             </select>
-            <Button variant="outline">
-              <Filter className="mr-2" size={16} />
-              More Filters
-            </Button>
           </div>
         </Card>
 
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <UsersIcon className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{users.length}</p>
-              </div>
-            </div>
-          </Card>
+        <div className="space-y-4">
+          {filteredUsers.map((user) => {
+            const name = `${user.first_name} ${user.last_name}`.trim();
+            const student = studentDetails[user.email];
+            const supervisor = supervisorDetails[user.email];
+            return (
+              <Card key={user.id}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{name}</h3>
+                    <p className="text-sm text-gray-600">{user.email}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${getRoleColor(user.role)}`}>
+                        {user.role}
+                      </span>
+                      <span className="text-xs text-gray-500">{user.department || '—'}</span>
+                    </div>
+                  </div>
+                  <button className="text-gray-400 hover:text-gray-600">
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
 
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <UsersIcon className="text-green-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Students</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
-                  {users.filter(u => u.role === 'student').length}
-                </p>
-              </div>
-            </div>
-          </Card>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Mail size={14} />
+                    <span>{user.email}</span>
+                  </div>
+                  {student?.matric_number && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <UsersIcon size={14} />
+                      <span>Matric: {student.matric_number}</span>
+                    </div>
+                  )}
+                  {student?.gpa && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <UsersIcon size={14} />
+                      <span>GPA: {student.gpa}</span>
+                    </div>
+                  )}
+                  {supervisor?.current_load != null && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <UsersIcon size={14} />
+                      <span>Groups: {supervisor.current_load}/{supervisor.max_capacity}</span>
+                    </div>
+                  )}
+                  {supervisor?.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone size={14} />
+                      <span>{supervisor.phone}</span>
+                    </div>
+                  )}
+                </div>
 
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <UsersIcon className="text-purple-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Supervisors</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
-                  {users.filter(u => u.role === 'supervisor').length}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <UsersIcon className="text-yellow-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Active Today</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
-                  {users.filter(u => u.lastLogin === '2024-01-22').length}
-                </p>
-              </div>
-            </div>
-          </Card>
+                <div className="mt-4 flex items-center gap-2">
+                  <Button variant="outline" size="sm">
+                    <Edit size={14} className="mr-1" />
+                    Edit
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Trash2 size={14} className="mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
         </div>
-
-        {/* Users Table */}
-        <Card>
-          <h3 className="text-lg font-semibold text-[#1a237e] mb-4">
-            {filter === 'all' ? 'All Users' : 
-             filter.charAt(0).toUpperCase() + filter.slice(1) + 's'}
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">User</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Role</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Department</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Last Login</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-semibold text-sm">
-                            {user.name.split(' ').map(n => n[0]).join('')}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{user.name}</p>
-                          <p className="text-sm text-gray-600">{user.email}</p>
-                          {user.matric && (
-                            <p className="text-xs text-gray-500">Matric: {user.matric}</p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-900">{user.department}</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {new Date(user.lastLogin).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline">
-                          <Edit size={14} />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Mail size={14} />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <MoreVertical size={14} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
       </div>
     </MainLayout>
   );

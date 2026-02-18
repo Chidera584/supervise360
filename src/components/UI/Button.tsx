@@ -15,7 +15,7 @@ export function Button({
   disabled = false,
   className = '',
 }: ButtonProps) {
-  const baseStyles = 'px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
     primary: 'bg-[#26a69a] text-white hover:bg-[#2bbbad]',

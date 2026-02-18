@@ -3,7 +3,7 @@ import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
-import { Users, Upload, RefreshCw, AlertCircle, Trash2, Building, Settings } from 'lucide-react';
+import { Users, Upload, RefreshCw, AlertCircle, Trash2, Building, Settings, Search } from 'lucide-react';
 import { parseCSV, readFileAsText } from '../../lib/csv-parser';
 import { useGroups } from '../../contexts/GroupsContext';
 import { useDepartment } from '../../contexts/DepartmentContext';
@@ -17,6 +17,7 @@ export function Groups() {
   const [error, setError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showThresholdNotice, setShowThresholdNotice] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   console.log('🔍 Groups component rendering with full functionality...');
@@ -103,6 +104,23 @@ export function Groups() {
     }
   }, [groups]);
 
+  const filteredGroups = searchQuery.trim()
+    ? groups.filter((group) => {
+        const q = searchQuery.toLowerCase();
+        const nameMatch = (group.name || '').toLowerCase().includes(q);
+        const supervisorMatch = (group.supervisor || '').toLowerCase().includes(q);
+        const memberMatch = Array.isArray(group.members)
+          ? group.members.some((m: any) => (m.name || '').toLowerCase().includes(q) || (m.matricNumber || m.matric_number || '').toLowerCase().includes(q))
+          : false;
+        return nameMatch || supervisorMatch || memberMatch;
+      })
+    : groups;
+
+  const totalStudents = groups.reduce((sum, group) => {
+    const members = Array.isArray(group.members) ? group.members : [];
+    return sum + members.length;
+  }, 0);
+
   return (
     <MainLayout title="Groups">
       <div className="space-y-6">
@@ -134,31 +152,33 @@ export function Groups() {
         )}
 
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-[#1a237e]">Group Management</h1>
-            <p className="text-gray-600 mt-1">
-              Department: {userDepartment} • {groups.length} groups formed
-            </p>
+        <Card className="border border-slate-200 p-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Group Management</h1>
+              <p className="text-sm text-slate-600 mt-1">
+                Department: {userDepartment} • {groups.length} groups formed
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-[#1a237e] hover:bg-[#0d47a1]"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Students
+              </Button>
+              <Button
+                onClick={() => forceRefresh()}
+                variant="outline"
+                disabled={isLoading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-[#1a237e] hover:bg-[#0d47a1]"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Students
-            </Button>
-            <Button
-              onClick={() => forceRefresh()}
-              variant="outline"
-              disabled={isLoading}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
+        </Card>
 
         {/* Error Display */}
         {error && (
@@ -186,54 +206,55 @@ export function Groups() {
 
         {/* Groups Statistics */}
         {!isLoading && groups.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <div className="p-6">
-                <div className="flex items-center">
-                  <Users className="w-8 h-8 text-[#1a237e]" />
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">{groups.length}</p>
-                    <p className="text-gray-600">Total Groups</p>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="border border-slate-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-5 h-5 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-slate-900">{groups.length}</p>
+                  <p className="text-sm text-slate-500">Total Groups</p>
                 </div>
               </div>
             </Card>
             
-            <Card>
-              <div className="p-6">
-                <div className="flex items-center">
-                  <Building className="w-8 h-8 text-green-600" />
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">{groups.length * 3}</p>
-                    <p className="text-gray-600">Total Students</p>
-                  </div>
+            <Card className="border border-slate-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Building className="w-5 h-5 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-slate-900">{totalStudents}</p>
+                  <p className="text-sm text-slate-500">Total Students</p>
                 </div>
               </div>
             </Card>
 
-            <Card>
-              <div className="p-6">
-                <div className="flex items-center">
-                  <AlertCircle className="w-8 h-8 text-orange-600" />
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">{userDepartment}</p>
-                    <p className="text-gray-600">Department</p>
-                  </div>
+            <Card className="border border-slate-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-slate-900">{userDepartment}</p>
+                  <p className="text-sm text-slate-500">Department</p>
                 </div>
               </div>
             </Card>
 
-            <Card>
-              <div className="p-6">
-                <div className="flex items-center">
-                  <Settings className="w-8 h-8 text-blue-600" />
-                  <div className="ml-4">
-                    {thresholdsLoading ? (
-                      <p className="text-sm text-gray-500">Loading...</p>
-                    ) : (
-                      <>
-                        <p className="text-sm font-semibold text-gray-900">GPA Thresholds</p>
-                        <p className="text-xs text-gray-600">
+            <Card className="border border-slate-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-slate-600" />
+                </div>
+                <div>
+                  {thresholdsLoading ? (
+                    <p className="text-sm text-slate-500">Loading...</p>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-slate-900">GPA Thresholds</p>
+                      <p className="text-xs text-slate-500">
                           H≥{thresholds.high.toFixed(2)} M≥{thresholds.medium.toFixed(2)} L≥{thresholds.low.toFixed(2)}
                         </p>
                         {process.env.NODE_ENV === 'development' && (
@@ -243,7 +264,6 @@ export function Groups() {
                         )}
                       </>
                     )}
-                  </div>
                 </div>
               </div>
             </Card>
@@ -252,57 +272,79 @@ export function Groups() {
 
         {/* Groups List */}
         {!isLoading && groups.length > 0 && (
-          <Card>
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Formed Groups</h2>
+          <Card className="border border-slate-200 p-6">
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Formed Groups
+                  <span className="text-slate-500 font-normal ml-1">({filteredGroups.length})</span>
+                </h2>
                 <Button
                   onClick={() => setShowClearConfirm(true)}
                   variant="outline"
-                  className="text-red-600 border-red-300 hover:bg-red-50"
+                  className="text-slate-600 border-slate-300 hover:bg-slate-50"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Clear All Groups
                 </Button>
               </div>
+              <div className="mb-4">
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by group name, member, supervisor..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a237e] focus:border-transparent text-slate-900 placeholder-slate-400"
+                  />
+                </div>
+              </div>
 
               <div className="space-y-4">
-                {groups.map((group) => {
+                {filteredGroups.length === 0 ? (
+                  <p className="py-8 text-center text-slate-500">No groups match your search</p>
+                ) : (
+                filteredGroups.map((group) => {
                   // Ensure members is an array and has valid data
                   const members = Array.isArray(group.members) ? group.members : [];
                   
                   return (
-                    <div key={group.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                    <div key={group.id} className="border border-slate-200 rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-base text-slate-900">
                             {group.name}
                           </h3>
-                          {members.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {members.map((member, index) => {
-                                const isLeader = index === 0; // First member (HIGH tier) is leader
-                                return (
-                                  <div key={index} className="flex items-center space-x-2">
-                                    {isLeader && <span className="text-yellow-500">👑</span>}
-                                    <div>
-                                      <p className="font-medium text-gray-900">{member.name || 'Unknown'}</p>
-                                      <p className="text-sm text-gray-600">
-                                        GPA: {member.gpa || 'N/A'} • {member.tier || 'N/A'} Tier
-                                      </p>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-gray-500 italic">No members data available</p>
-                          )}
+                          <span className="text-xs text-slate-500">
+                            {members.length} members
+                          </span>
                         </div>
+                        {members.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {members.map((member, index) => (
+                              <div key={index} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                <div className="min-w-0">
+                                  <p className="font-medium text-sm text-slate-900 truncate">{member.name || 'Unknown'}</p>
+                                  <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-600">
+                                    <span>GPA: {member.gpa || 'N/A'}</span>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-700 bg-white">
+                                      {member.tier || 'N/A'} Tier
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-slate-500 text-sm italic">No members data available</p>
+                        )}
                       </div>
                     </div>
                   );
-                })}
+                })
+                )}
               </div>
             </div>
           </Card>

@@ -3,22 +3,30 @@ import { MainLayout } from '../components/Layout/MainLayout';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { useAuth } from '../contexts/AuthContext';
-import { useGroups } from '../contexts/GroupsContext';
 import { apiClient } from '../lib/api';
 import { Users, FileText, MessageSquare, CheckCircle, Calendar, Eye } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+
+interface SupervisorGroup {
+  id: number;
+  name: string;
+  department?: string;
+  status: string;
+  avg_gpa?: number;
+  supervisor?: string;
+  members: { id: number; name: string; gpa?: number; matricNumber?: string }[];
+  project: { id: number; title: string; status?: string; progress_percentage?: number } | null;
+  reportsTotal: number;
+  reportsReviewed: number;
+  reportsPending: number;
+}
 
 export function SupervisorDashboard() {
   const { user, supervisor } = useAuth();
-  const { groups } = useGroups();
-  const [students, setStudents] = useState([]);
-  const [supervisors, setSupervisors] = useState([]);
+  const navigate = useNavigate();
+  const [supervisorGroups, setSupervisorGroups] = useState<SupervisorGroup[]>([]);
+  const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  // Find groups assigned to this supervisor
-  const supervisorGroups = groups.filter(group => 
-    group.supervisor && group.supervisor.toLowerCase().includes(user?.first_name?.toLowerCase() || '') &&
-    group.supervisor.toLowerCase().includes(user?.last_name?.toLowerCase() || '')
-  );
 
   useEffect(() => {
     if (user) {
@@ -28,18 +36,16 @@ export function SupervisorDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch students and supervisors data
-      const [studentsResponse, supervisorsResponse] = await Promise.all([
-        apiClient.getStudents(),
-        apiClient.getSupervisors()
-      ]);
-
-      if (studentsResponse.success) {
-        setStudents(studentsResponse.data || []);
+      const myGroupsRes = await apiClient.getSupervisorMyGroups();
+      if (myGroupsRes.success && Array.isArray(myGroupsRes.data)) {
+        setSupervisorGroups(myGroupsRes.data as SupervisorGroup[]);
+      } else if (!myGroupsRes.success) {
+        console.error('getSupervisorMyGroups failed:', myGroupsRes.message);
       }
 
-      if (supervisorsResponse.success) {
-        setSupervisors(supervisorsResponse.data || []);
+      const pendingRes = await apiClient.getPendingReportReviews().catch(() => ({ success: false, data: [] }));
+      if (pendingRes.success && Array.isArray(pendingRes.data)) {
+        setPendingReviewsCount((pendingRes.data as any[]).length);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -125,7 +131,7 @@ export function SupervisorDashboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Pending Reviews</p>
-                <p className="text-2xl font-bold text-[#1a237e]">0</p>
+                <p className="text-2xl font-bold text-[#1a237e]">{pendingReviewsCount}</p>
               </div>
             </div>
           </Card>
@@ -187,15 +193,17 @@ export function SupervisorDashboard() {
                         {group.members.length} members • Department: {group.department || user?.department}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Project: {group.project || "Agree on a topic with your supervisor and get approval from the Project Coordinator"}
+                        Project: {group.project?.title || "No project yet"}
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline">
-                        <Eye className="mr-2" size={14} />
-                        View Details
-                      </Button>
-                      <Button>
+                      <Link to="/my-groups" state={{ groupId: group.id, groupName: group.name }}>
+                        <Button variant="outline">
+                          <Eye className="mr-2" size={14} />
+                          View Details
+                        </Button>
+                      </Link>
+                      <Button onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
                         <MessageSquare className="mr-2" size={14} />
                         Message Group
                       </Button>
@@ -208,7 +216,7 @@ export function SupervisorDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {Array.isArray(group.members) ? group.members.map((member, index) => (
                         <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
                             <span className="text-white font-semibold text-xs">
                               {member.name.split(' ').map(n => n[0]).join('')}
                             </span>
@@ -226,15 +234,15 @@ export function SupervisorDashboard() {
 
                   {/* Quick Actions */}
                   <div className="flex items-center gap-3 pt-3 mt-3 border-t border-gray-200">
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
                       <Calendar className="mr-2" size={14} />
                       Schedule Meeting
                     </Button>
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => navigate('/report-reviews', { state: { groupId: group.id } })}>
                       <FileText className="mr-2" size={14} />
-                      Review Reports
+                      Review Reports {group.reportsPending > 0 && `(${group.reportsPending})`}
                     </Button>
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => navigate('/evaluations', { state: { groupId: group.id } })}>
                       <CheckCircle className="mr-2" size={14} />
                       Grade Work
                     </Button>
@@ -261,57 +269,6 @@ export function SupervisorDashboard() {
               <Button variant="outline">Contact Administrator</Button>
             </div>
           )}
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="w-full" disabled={supervisorGroups.length === 0}>
-              <Users className="mr-2" size={16} />
-              View My Groups ({supervisorGroups.length})
-            </Button>
-            <Button variant="outline" className="w-full">
-              <FileText className="mr-2" size={16} />
-              Review Reports
-            </Button>
-            <Button variant="outline" className="w-full">
-              <MessageSquare className="mr-2" size={16} />
-              Send Message
-            </Button>
-          </div>
-        </Card>
-
-        {/* System Status */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">System Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Total Students</h3>
-              <p className="text-2xl font-bold text-blue-600">{students.length}</p>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Total Supervisors</h3>
-              <p className="text-2xl font-bold text-green-600">{supervisors.length}</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Welcome Message */}
-        <Card>
-          <div className="text-center py-8">
-            <h2 className="text-xl font-semibold text-[#1a237e] mb-2">
-              Welcome to Supervise360, {user?.first_name}!
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Your supervision management system is ready. You can manage your assigned groups, 
-              review student reports, and track project progress all in one place.
-            </p>
-            <div className="flex justify-center gap-4">
-              <Button>Get Started</Button>
-              <Button variant="outline">View Tutorial</Button>
-            </div>
-          </div>
         </Card>
       </div>
     </MainLayout>

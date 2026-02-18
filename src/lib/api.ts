@@ -19,9 +19,10 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
+    const isFormData = options.body instanceof FormData;
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(this.token && { Authorization: `Bearer ${this.token}` }),
         ...options.headers,
       },
@@ -194,6 +195,10 @@ class ApiClient {
   }
 
   // Supervisors endpoints
+  async getSupervisorMyGroups(): Promise<ApiResponse> {
+    return this.request('/supervisors/my-groups');
+  }
+
   async getSupervisorWorkload(): Promise<ApiResponse> {
     return this.request('/supervisors/workload');
   }
@@ -209,6 +214,232 @@ class ApiClient {
     return this.request('/supervisors/auto-assign', {
       method: 'POST',
     });
+  }
+
+  async syncSupervisorWorkload(): Promise<ApiResponse> {
+    return this.request('/supervisors/sync-workload', {
+      method: 'POST',
+    });
+  }
+
+  async clearAllSupervisors(): Promise<ApiResponse> {
+    return this.request('/supervisors/clear-all', {
+      method: 'POST',
+    });
+  }
+
+  // Admin endpoints
+  async getAdminDashboard(): Promise<ApiResponse> {
+    return this.request('/admin/dashboard');
+  }
+
+  async getAdminStats(): Promise<ApiResponse> {
+    return this.request('/admin/stats');
+  }
+
+  async approveProject(projectId: number): Promise<ApiResponse> {
+    return this.request(`/admin/projects/${projectId}/approve`, {
+      method: 'PUT',
+    });
+  }
+
+  async swapGroupMembers(member1: { groupId: number; memberId: number }, member2: { groupId: number; memberId: number }): Promise<ApiResponse> {
+    return this.request('/admin/groups/swap-members', {
+      method: 'POST',
+      body: JSON.stringify({ member1, member2 }),
+    });
+  }
+
+  async rejectProject(projectId: number, reason: string): Promise<ApiResponse> {
+    return this.request(`/admin/projects/${projectId}/reject`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async getAdminDefensePanels(): Promise<ApiResponse> {
+    return this.request('/admin/defense-panels');
+  }
+
+  async scheduleDefensePanels(payload: any): Promise<ApiResponse> {
+    return this.request('/admin/defense-panels/schedule-bulk', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateDefensePanel(panelId: number, payload: any): Promise<ApiResponse> {
+    return this.request(`/admin/defense-panels/${panelId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async allocateDefenseScheduling(payload: { staff: any[]; venues: any[]; groupRanges: any[] }): Promise<ApiResponse> {
+    return this.request('/allocate-defense', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Student: get defense schedule (venue + assessors) from allocation
+  async getMyDefenseSchedule(): Promise<ApiResponse> {
+    return this.request('/defense-panels/my-defense-schedule');
+  }
+
+  // Student: get defense schedule by group ID (use after getMyGroup)
+  async getDefenseScheduleForGroup(groupId: number): Promise<ApiResponse> {
+    return this.request(`/defense-panels/schedule-for-group/${groupId}`);
+  }
+
+  // Supervisor: get defense schedules for all assigned groups
+  async getMyGroupsDefenseSchedules(): Promise<ApiResponse> {
+    return this.request('/defense-panels/my-groups-defense-schedules');
+  }
+
+  // Admin: persist allocation to DB so students/supervisors can see it
+  async publishDefenseAllocations(payload: { allocations: { venue: string; assessors: string[] }[]; groupRanges: { venue_index: number; department: string; start: number; end: number }[] }): Promise<ApiResponse> {
+    return this.request('/defense-panels/publish-allocations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Projects endpoints
+  async getMyProject(): Promise<ApiResponse> {
+    return this.request('/projects/my-project');
+  }
+
+  async submitProject(payload: any): Promise<ApiResponse> {
+    return this.request('/projects/submit', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateProject(projectId: number, payload: any): Promise<ApiResponse> {
+    return this.request(`/projects/${projectId}/update`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Supervisor: get pending project proposals for their groups
+  async getPendingProjectProposals(): Promise<ApiResponse> {
+    return this.request('/projects/pending-for-supervisor');
+  }
+
+  async approveProjectProposal(projectId: number): Promise<ApiResponse> {
+    return this.request(`/projects/${projectId}/supervisor-approve`, {
+      method: 'PUT',
+    });
+  }
+
+  async rejectProjectProposal(projectId: number, reason: string): Promise<ApiResponse> {
+    return this.request(`/projects/${projectId}/supervisor-reject`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  // Reports endpoints
+  async uploadReport(formData: FormData): Promise<ApiResponse> {
+    return this.request('/reports/upload', {
+      method: 'POST',
+      body: formData,
+      headers: {}
+    });
+  }
+
+  async getMyReports(): Promise<ApiResponse> {
+    return this.request('/reports/my-reports');
+  }
+
+  async getPendingReportReviews(): Promise<ApiResponse> {
+    return this.request('/reports/pending-review');
+  }
+
+  async reviewReport(reportId: number, payload: any): Promise<ApiResponse> {
+    return this.request(`/reports/${reportId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async downloadReport(reportId: number): Promise<ApiResponse> {
+    return this.request(`/reports/${reportId}/download`);
+  }
+
+  async deleteReport(reportId: number): Promise<ApiResponse> {
+    return this.request(`/reports/${reportId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Evaluations endpoints
+  async getPendingEvaluations(): Promise<ApiResponse> {
+    return this.request('/evaluations/pending');
+  }
+
+  async getCompletedEvaluations(): Promise<ApiResponse> {
+    return this.request('/evaluations/completed');
+  }
+
+  async submitEvaluation(payload: any): Promise<ApiResponse> {
+    return this.request('/evaluations/submit', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getMyEvaluation(): Promise<ApiResponse> {
+    return this.request('/evaluations/my-evaluation');
+  }
+
+  // Messages endpoints
+  async getInbox(): Promise<ApiResponse> {
+    return this.request('/messages/inbox');
+  }
+
+  async getSent(): Promise<ApiResponse> {
+    return this.request('/messages/sent');
+  }
+
+  async sendMessage(payload: any): Promise<ApiResponse> {
+    return this.request('/messages/send', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Notifications endpoints
+  async getRecentNotifications(limit: number = 5): Promise<ApiResponse> {
+    return this.request(`/notifications/recent?limit=${limit}`);
+  }
+
+  async getNotifications(): Promise<ApiResponse> {
+    return this.request('/notifications');
+  }
+
+  async markNotificationRead(notificationId: number): Promise<ApiResponse> {
+    return this.request(`/notifications/${notificationId}/read`, {
+      method: 'PUT',
+    });
+  }
+
+  async markAllNotificationsRead(): Promise<ApiResponse> {
+    return this.request('/notifications/read-all', {
+      method: 'PUT',
+    });
+  }
+
+  // Defense panels endpoints
+  async getMyDefense(): Promise<ApiResponse> {
+    return this.request('/defense-panels/my-defense');
+  }
+
+  async getMyDefensePanels(): Promise<ApiResponse> {
+    return this.request('/defense-panels/my-panels');
   }
 }
 

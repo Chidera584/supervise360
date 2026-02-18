@@ -228,25 +228,23 @@ export function Settings() {
             <h1 className="text-2xl font-bold text-gray-900">GPA Tier Configuration</h1>
             <p className="text-gray-600 mt-1">Configure student classification thresholds</p>
           </div>
-          <div className="p-3 bg-indigo-100 rounded-lg">
-            <Sliders className="text-indigo-600" size={28} />
+          <div className="p-3 bg-slate-100 rounded-lg">
+            <Sliders className="text-slate-700" size={28} />
           </div>
         </div>
 
         {message && (
-          <div className={`flex items-center gap-3 p-4 rounded-lg ${
-            message.type === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-          }`}>
-            {message.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-800">
+            {message.type === "success" ? <CheckCircle size={20} className="text-slate-600" /> : <AlertCircle size={20} className="text-slate-600" />}
             <span>{message.text}</span>
           </div>
         )}
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
-          <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
-          <div className="text-sm text-blue-900">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex gap-3">
+          <Info className="text-slate-600 flex-shrink-0 mt-0.5" size={20} />
+          <div className="text-sm text-slate-800">
             <p className="font-medium">How it works</p>
-            <p className="text-blue-700 mt-1">
+            <p className="text-slate-600 mt-1">
               Students are classified into HIGH, MEDIUM, or LOW tiers based on GPA. 
               Groups are formed with balanced tier distribution for optimal collaboration.
             </p>
@@ -255,11 +253,11 @@ export function Settings() {
 
         {/* Global Thresholds - Hidden for now, focusing on department-specific */}
         {false && isSuperAdmin && (
-          <Card>
+          <Card className="border border-slate-200">
             <div className="p-6 space-y-5">
               <div className="flex items-center gap-3 pb-4 border-b">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <TrendingUp className="text-purple-600" size={22} />
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <TrendingUp className="text-slate-700" size={22} />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Global Thresholds</h2>
@@ -277,7 +275,7 @@ export function Settings() {
                     max="5"
                     value={globalThresholds.high}
                     onChange={(e) => setGlobalThresholds({ ...globalThresholds, high: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg font-semibold text-green-700"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base font-medium text-gray-900 bg-white"
                   />
                   <p className="text-xs text-gray-500 mt-1">GPA greater than or equal to this value</p>
                 </div>
@@ -291,7 +289,7 @@ export function Settings() {
                     max="5"
                     value={globalThresholds.medium}
                     onChange={(e) => setGlobalThresholds({ ...globalThresholds, medium: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-lg font-semibold text-yellow-700"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base font-medium text-gray-900 bg-white"
                   />
                   <p className="text-xs text-gray-500 mt-1">GPA greater than or equal to this value</p>
                 </div>
@@ -305,15 +303,15 @@ export function Settings() {
                     max="5"
                     value={globalThresholds.low}
                     onChange={(e) => setGlobalThresholds({ ...globalThresholds, low: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg font-semibold text-red-700"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base font-medium text-gray-900 bg-white"
                   />
                   <p className="text-xs text-gray-500 mt-1">GPA greater than or equal to this value</p>
                 </div>
               </div>
 
               {!validateThresholds(globalThresholds) && (
-                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                  <AlertCircle size={16} />
+                <div className="flex items-center gap-2 text-slate-700 text-sm bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                  <AlertCircle size={16} className="text-slate-500" />
                   <span>Invalid: Must satisfy 0 less than or equal to LOW less than or equal to MEDIUM less than or equal to HIGH less than or equal to 5.0</span>
                 </div>
               )}
@@ -330,11 +328,11 @@ export function Settings() {
         )}
 
         {department && (
-          <Card>
+          <Card className="border border-slate-200">
             <div className="p-6 space-y-5">
               <div className="flex items-center gap-3 pb-4 border-b">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <TrendingUp className="text-blue-600" size={22} />
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <TrendingUp className="text-slate-700" size={22} />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Department Settings</h2>
@@ -342,13 +340,13 @@ export function Settings() {
                 </div>
               </div>
 
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={useCustomThresholds}
                     onChange={(e) => setUseCustomThresholds(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-4 h-4 text-slate-700 rounded focus:ring-2 focus:ring-slate-400"
                   />
                   <span className="text-sm font-medium text-gray-900">
                     Use custom thresholds for {department}
@@ -368,7 +366,7 @@ export function Settings() {
                         max="5"
                         value={deptThresholds.high}
                         onChange={(e) => setDeptThresholds({ ...deptThresholds, high: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg font-semibold text-green-700"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base font-medium text-gray-900 bg-white"
                       />
                     </div>
 
@@ -381,7 +379,7 @@ export function Settings() {
                         max="5"
                         value={deptThresholds.medium}
                         onChange={(e) => setDeptThresholds({ ...deptThresholds, medium: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-lg font-semibold text-yellow-700"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base font-medium text-gray-900 bg-white"
                       />
                     </div>
 
@@ -394,14 +392,14 @@ export function Settings() {
                         max="5"
                         value={deptThresholds.low}
                         onChange={(e) => setDeptThresholds({ ...deptThresholds, low: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg font-semibold text-red-700"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base font-medium text-gray-900 bg-white"
                       />
                     </div>
                   </div>
 
                   {!validateThresholds(deptThresholds) && (
-                    <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                      <AlertCircle size={16} />
+                    <div className="flex items-center gap-2 text-slate-700 text-sm bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                      <AlertCircle size={16} className="text-slate-500" />
                       <span>Invalid: Must satisfy 0 less than or equal to LOW less than or equal to MEDIUM less than or equal to HIGH less than or equal to 5.0</span>
                     </div>
                   )}
@@ -419,25 +417,25 @@ export function Settings() {
           </Card>
         )}
 
-        <Card>
+        <Card className="border border-slate-200">
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-3">
-              <BarChart3 className="text-indigo-600" size={22} />
+              <BarChart3 className="text-slate-700" size={22} />
               <h3 className="text-lg font-semibold text-gray-900">Preview Distribution</h3>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
               <div className="text-center">
                 <div className="text-xs text-gray-600 mb-1">HIGH</div>
-                <div className="text-xl font-bold text-green-600">greater than or equal to {activeThresholds.high}</div>
+                <div className="text-xl font-semibold text-slate-900">greater than or equal to {activeThresholds.high}</div>
               </div>
               <div className="text-center">
                 <div className="text-xs text-gray-600 mb-1">MEDIUM</div>
-                <div className="text-xl font-bold text-yellow-600">greater than or equal to {activeThresholds.medium}</div>
+                <div className="text-xl font-semibold text-slate-900">greater than or equal to {activeThresholds.medium}</div>
               </div>
               <div className="text-center">
                 <div className="text-xs text-gray-600 mb-1">LOW</div>
-                <div className="text-xl font-bold text-red-600">greater than or equal to {activeThresholds.low}</div>
+                <div className="text-xl font-semibold text-slate-900">greater than or equal to {activeThresholds.low}</div>
               </div>
             </div>
 
@@ -451,25 +449,25 @@ export function Settings() {
             </Button>
 
             {previewDistribution && (
-              <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <h4 className="font-semibold text-gray-900 mb-3">Current Distribution</h4>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">{previewDistribution.HIGH}</div>
+                    <div className="text-3xl font-semibold text-slate-900">{previewDistribution.HIGH}</div>
                     <div className="text-sm text-gray-600">HIGH</div>
                     <div className="text-xs text-gray-500">
                       {previewDistribution.total > 0 ? ((previewDistribution.HIGH / previewDistribution.total) * 100).toFixed(1) : 0}%
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-yellow-600">{previewDistribution.MEDIUM}</div>
+                    <div className="text-3xl font-semibold text-slate-900">{previewDistribution.MEDIUM}</div>
                     <div className="text-sm text-gray-600">MEDIUM</div>
                     <div className="text-xs text-gray-500">
                       {previewDistribution.total > 0 ? ((previewDistribution.MEDIUM / previewDistribution.total) * 100).toFixed(1) : 0}%
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-red-600">{previewDistribution.LOW}</div>
+                    <div className="text-3xl font-semibold text-slate-900">{previewDistribution.LOW}</div>
                     <div className="text-sm text-gray-600">LOW</div>
                     <div className="text-xs text-gray-500">
                       {previewDistribution.total > 0 ? ((previewDistribution.LOW / previewDistribution.total) * 100).toFixed(1) : 0}%

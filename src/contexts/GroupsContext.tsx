@@ -105,8 +105,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
               return { name: memberStr, gpa: 0, tier: 'LOW', matricNumber: 'N/A' };
             });
           } else if (Array.isArray(dbGroup.members)) {
-            // Normalize members - ensure matricNumber is present (primary identifier)
+            // Normalize members - ensure matricNumber and id are present
             members = dbGroup.members.map((m: any) => ({
+              id: m.id,
               name: m.name,
               gpa: m.gpa,
               tier: m.tier || 'LOW',

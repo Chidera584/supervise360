@@ -18,19 +18,23 @@ import { Project } from './pages/student/Project';
 import { Reports } from './pages/student/Reports';
 import { Messages } from './pages/student/Messages';
 import { Profile } from './pages/student/Profile';
+import { DefenseEvaluation } from './pages/student/DefenseEvaluation';
 
 // Supervisor Pages
 import { MyGroups } from './pages/supervisor/MyGroups';
 import { Evaluations } from './pages/supervisor/Evaluations';
 import { SupervisorMessages } from './pages/supervisor/SupervisorMessages';
 import { SupervisorProfile } from './pages/supervisor/SupervisorProfile';
+import { ReportReviews } from './pages/supervisor/ReportReviews';
+import { ProjectProposals } from './pages/supervisor/ProjectProposals';
 
 // Admin Pages
 import { Users } from './pages/admin/Users';
 import { Groups } from './pages/admin/Groups';
 import { SupervisorAssignment } from './pages/admin/SupervisorAssignment';
-import { Projects } from './pages/admin/Projects';
 import { Settings } from './pages/admin/Settings';
+import { DefenseScheduling } from './pages/admin/DefenseScheduling';
+import { ReportsAnalytics } from './pages/admin/ReportsAnalytics';
 
 function App() {
   const { user, loading } = useAuth();
@@ -134,6 +138,7 @@ function App() {
                 <Route path="/project" element={<Project />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/messages" element={<Messages />} />
+                <Route path="/defense-evaluation" element={<DefenseEvaluation />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </>
@@ -143,7 +148,9 @@ function App() {
               <>
                 <Route path="/dashboard" element={<SupervisorDashboard />} />
                 <Route path="/my-groups" element={<MyGroups />} />
+                <Route path="/project-proposals" element={<ProjectProposals />} />
                 <Route path="/evaluations" element={<Evaluations />} />
+                <Route path="/report-reviews" element={<ReportReviews />} />
                 <Route path="/messages" element={<SupervisorMessages />} />
                 <Route path="/profile" element={<SupervisorProfile />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -156,8 +163,9 @@ function App() {
                 <Route path="/users" element={<Users />} />
                 <Route path="/groups" element={<Groups />} />
                 <Route path="/supervisor-assignment" element={<SupervisorAssignment />} />
-                <Route path="/projects" element={<Projects />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/defense-scheduling" element={<DefenseScheduling />} />
+                <Route path="/reports-analytics" element={<ReportsAnalytics />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </>
             )}

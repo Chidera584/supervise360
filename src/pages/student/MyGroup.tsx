@@ -33,12 +33,12 @@ export function MyGroup() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.getMyGroup();
-      if (response.success && response.data) {
-        setGroupData(response.data);
+      const groupRes = await apiClient.getMyGroup();
+      if (groupRes.success && groupRes.data) {
+        setGroupData(groupRes.data);
       } else {
-        if (!response.success) {
-          setError(response.message || response.error || 'Failed to load group information');
+        if (!groupRes.success) {
+          setError(groupRes.message || groupRes.error || 'Failed to load group information');
         }
         setGroupData(null);
       }
@@ -117,7 +117,6 @@ export function MyGroup() {
               <h2 className="text-2xl font-bold text-[#1a237e]">{groupData.name}</h2>
               <p className="text-gray-600">
                 {groupData.department && `Department: ${groupData.department}`}
-                {groupData.avg_gpa && ` • Average GPA: ${groupData.avg_gpa}`}
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchMyGroup}>
@@ -135,11 +134,11 @@ export function MyGroup() {
               <div className="w-12 h-12 bg-[#26a69a] rounded-full flex items-center justify-center">
                 <UserCheck className="text-white" size={24} />
               </div>
-              <div>
+              <div className="flex-1">
                 <h4 className="font-semibold text-gray-900">{groupData.supervisor}</h4>
                 <p className="text-sm text-gray-600">Project Supervisor</p>
               </div>
-              <Button variant="outline" size="sm" className="ml-auto">
+              <Button variant="outline" size="sm">
                 <Mail className="mr-2" size={14} />
                 Contact
               </Button>
@@ -153,7 +152,6 @@ export function MyGroup() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {groupData.members.map((member, index) => {
               const isCurrentUser = member.matricNumber === student?.matric_number;
-              const roleLabel = index === 0 ? 'Leader (HIGH)' : member.tier ? `${member.tier} Tier` : 'Member';
               return (
                 <div
                   key={member.matricNumber || index}
@@ -169,7 +167,7 @@ export function MyGroup() {
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900">{member.name}</h4>
-                      <p className="text-xs text-gray-600">{roleLabel}</p>
+                      <p className="text-xs text-gray-600">Member</p>
                     </div>
                     {isCurrentUser && (
                       <span className="ml-auto text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">You</span>
@@ -180,22 +178,13 @@ export function MyGroup() {
                       <span className="text-gray-600">Matric:</span>
                       <span className="font-medium">{member.matricNumber || 'N/A'}</span>
                     </div>
-                    {member.gpa != null && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">GPA:</span>
-                        <span className="font-medium">{member.gpa}</span>
-                      </div>
-                    )}
                   </div>
-                  <Button variant="outline" size="sm" className="w-full mt-3">
-                    <Mail className="mr-2" size={14} />
-                    Contact
-                  </Button>
                 </div>
               );
             })}
           </div>
         </Card>
+
       </div>
     </MainLayout>
   );
