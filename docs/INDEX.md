@@ -50,6 +50,8 @@ Choose your starting point:
 | [CODEBASE_CLEANUP.md](CODEBASE_CLEANUP.md) | What was archived and why | 5 min | Project managers |
 | [RECOMMENDATIONS.md](RECOMMENDATIONS.md) | Best practices & next steps | 20 min | Tech leads |
 | [INDEX.md](INDEX.md) | This file - documentation navigator | 2 min | Everyone |
+| [EMAIL_SETUP.md](EMAIL_SETUP.md) | SMTP configuration | 5 min | Admins |
+| [VERCEL_DEPLOY.md](VERCEL_DEPLOY.md) | Deploy frontend to Vercel | 5 min | DevOps |
 
 ---
 
@@ -65,6 +67,7 @@ supervise360/
 │   ├── SETUP_GUIDE.md              ← Full setup
 │   ├── DATABASE_SETUP_GUIDE.md     ← MySQL setup
 │   ├── EMAIL_SETUP.md              ← SMTP configuration
+│   ├── VERCEL_DEPLOY.md            ← Deploy to Vercel
 │   ├── QUICK_REFERENCE.md          ← Commands & help
 │   ├── RECOMMENDATIONS.md          ← Best practices
 │   └── CODEBASE_CLEANUP.md         ← Cleanup summary
