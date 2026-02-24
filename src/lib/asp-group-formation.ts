@@ -1,5 +1,6 @@
 // ASP-based Group Formation Logic
 // This module implements Answer Set Programming rules for optimal group formation
+import { API_BASE_URL } from './api';
 
 export interface Student {
   name: string;
@@ -44,8 +45,8 @@ export async function fetchGpaThresholds(department?: string): Promise<{ high: n
   try {
     const token = localStorage.getItem('token');
     const url = department 
-      ? `http://localhost:5000/api/settings/gpa-thresholds/department/${department}`
-      : 'http://localhost:5000/api/settings/gpa-thresholds/global';
+      ? `${API_BASE_URL}/settings/gpa-thresholds/department/${department}`
+      : `${API_BASE_URL}/settings/gpa-thresholds/global`;
     
     const response = await fetch(url, {
       headers: {

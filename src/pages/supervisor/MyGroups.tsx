@@ -7,7 +7,7 @@ import { apiClient } from '../../lib/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Users, Calendar, MessageCircle, FileText, 
-  Eye, Star, Clock, CheckCircle, AlertCircle 
+  Star, Clock, CheckCircle, AlertCircle 
 } from 'lucide-react';
 
 interface SupervisorGroup {
@@ -54,9 +54,6 @@ export function MyGroups() {
   }, [loading, location.state]);
 
   const totalReportsPending = groups.reduce((s, g) => s + g.reportsPending, 0);
-  const avgProgress = groups.length > 0
-    ? Math.round(groups.reduce((s, g) => s + (g.project?.progress_percentage ?? 0), 0) / groups.length)
-    : 0;
 
   if (loading) {
     return (
@@ -93,22 +90,22 @@ export function MyGroups() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-[#1a237e]">My Supervised Groups</h2>
+              <h2 className="text-2xl font-bold text-[#022B3A]">My Supervised Groups</h2>
               <p className="text-gray-600 mt-1">
                 Manage and monitor your assigned project groups
               </p>
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-600">Current Load</div>
-              <div className="text-2xl font-bold text-[#1a237e]">
-                {groups.length} / {supervisor?.max_capacity || 7}
+              <div className="text-sm text-gray-600">Assigned Groups</div>
+              <div className="text-2xl font-bold text-[#022B3A]">
+                {groups.length}
               </div>
             </div>
           </div>
         </Card>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -116,7 +113,7 @@ export function MyGroups() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Active Groups</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
+                <p className="text-2xl font-bold text-[#022B3A]">
                   {groups.filter(g => g.status === 'active').length}
                 </p>
               </div>
@@ -130,7 +127,7 @@ export function MyGroups() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Reports Pending</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
+                <p className="text-2xl font-bold text-[#022B3A]">
                   {totalReportsPending}
                 </p>
               </div>
@@ -144,22 +141,8 @@ export function MyGroups() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Reports Reviewed</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
+                <p className="text-2xl font-bold text-[#022B3A]">
                   {groups.reduce((s, g) => s + g.reportsReviewed, 0)}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Star className="text-purple-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Avg Progress</p>
-                <p className="text-2xl font-bold text-[#1a237e]">
-                  {avgProgress}%
                 </p>
               </div>
             </div>
@@ -175,7 +158,7 @@ export function MyGroups() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-semibold text-[#1a237e]">{group.name}</h3>
+                      <h3 className="text-xl font-semibold text-[#022B3A]">{group.name}</h3>
                       <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(group.status)}`}>
                         {getStatusIcon(group.status)}
                         {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
@@ -201,10 +184,6 @@ export function MyGroups() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => document.getElementById(`group-card-${group.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                      <Eye className="mr-2" size={14} />
-                      View Details
-                    </Button>
                     <Button onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
                       <MessageCircle className="mr-2" size={14} />
                       Message Group
@@ -226,62 +205,81 @@ export function MyGroups() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Group Members */}
-                  <div>
-                    <h5 className="font-medium text-gray-900 mb-3">Group Members</h5>
-                    <div className="space-y-2">
-                      {Array.isArray(group.members) ? group.members.map((member, index) => (
-                        <div key={member.id ?? index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                          <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-semibold text-xs">
-                              {member.name.split(' ').map((n: string) => n[0]).join('')}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <span>{member.matricNumber || 'N/A'}</span>
-                              {member.gpa != null && <span>• GPA: {member.gpa}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      )) : (
-                        <div className="p-2 text-gray-500 text-sm">No members data available</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Reports */}
-                  <div>
-                    <h5 className="font-medium text-gray-900 mb-3">Reports</h5>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Submitted</span>
-                        <span className="font-semibold">{group.reportsTotal}</span>
+                {/* Reports Overview - Group-level totals, clearly separated */}
+                <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+                  <h5 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                    Report Status (Group Total)
+                  </h5>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow-sm border border-gray-100">
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                        <FileText size={20} className="text-slate-600" />
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Reviewed</span>
-                        <span className="font-semibold text-green-600">{group.reportsReviewed}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Pending Review</span>
-                        <span className="font-semibold text-amber-600">{group.reportsPending}</span>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Submitted</p>
+                        <p className="text-xl font-bold text-gray-900">{group.reportsTotal}</p>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Group Stats */}
-                  <div>
-                    <h5 className="font-medium text-gray-900 mb-3">Group Info</h5>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-600">Department</span>
-                        <span className="font-semibold">{group.department || 'N/A'}</span>
+                    <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow-sm border border-green-100">
+                      <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                        <CheckCircle size={20} className="text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Reviewed</p>
+                        <p className="text-xl font-bold text-green-700">{group.reportsReviewed}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow-sm border border-amber-100">
+                      <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                        <Clock size={20} className="text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Pending Review</p>
+                        <p className="text-xl font-bold text-amber-700">{group.reportsPending}</p>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Group Members - Clear section */}
+                <div>
+                  <h5 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                    Group Members ({group.members?.length ?? 0})
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Array.isArray(group.members) ? group.members.map((member, index) => (
+                      <div
+                        key={member.id ?? index}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-white border border-gray-100 hover:border-gray-200 transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-[#1F7A8C] rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white font-semibold text-sm">
+                            {member.name.split(' ').map((n: string) => n[0]).join('')}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{member.matricNumber || '—'}</p>
+                          {member.gpa != null && (
+                            <p className="text-xs text-gray-600 mt-0.5">GPA: {member.gpa}</p>
+                          )}
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="col-span-full p-4 text-gray-500 text-sm rounded-lg bg-gray-50">
+                        No members data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Group Meta */}
+                {group.department && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="font-medium text-gray-500">Department:</span>
+                    <span>{group.department}</span>
+                  </div>
+                )}
 
                 {/* Quick Actions */}
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-200">

@@ -1,26 +1,27 @@
-import { useState } from 'react';
-import { RoleSelection } from '../pages/RoleSelection';
+import { Routes, Route, Navigate, useSearchParams, useNavigate } from 'react-router-dom';
+import { LandingPage } from '../pages/LandingPage';
 import { Login } from '../pages/Login';
 
-export function AuthFlow() {
-  const [selectedRole, setSelectedRole] = useState<'student' | 'supervisor' | null>(null);
-
-  const handleRoleSelect = (role: 'student' | 'supervisor') => {
-    setSelectedRole(role);
-  };
-
-  const handleBackToRoleSelection = () => {
-    setSelectedRole(null);
-  };
-
-  if (!selectedRole) {
-    return <RoleSelection onRoleSelect={handleRoleSelect} />;
-  }
+function LoginWithRole() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const roleParam = searchParams.get('role');
+  const selectedRole = roleParam === 'supervisor' ? 'supervisor' : 'student';
 
   return (
-    <Login 
-      selectedRole={selectedRole} 
-      onBackToRoleSelection={handleBackToRoleSelection} 
+    <Login
+      selectedRole={selectedRole}
+      onBackToRoleSelection={() => navigate('/')}
     />
+  );
+}
+
+export function AuthFlow() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginWithRole />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

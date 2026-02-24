@@ -109,25 +109,86 @@ export class ProjectService {
     );
   }
 
-  async getPendingProjectsForSupervisor(supervisorName: string) {
+  /** Get group IDs for a supervisor - same flexible matching as my-groups and report reviews */
+  async getSupervisorGroupIds(supervisorUserId: number): Promise<number[]> {
+    const [userRows] = await this.db.execute(
+      'SELECT first_name, last_name FROM users WHERE id = ?',
+      [supervisorUserId]
+    );
+    const user = (userRows as any[])[0];
+    const firstName = (user?.first_name || '').trim();
+    const lastName = (user?.last_name || '').trim();
+    const fullName = `${firstName} ${lastName}`.trim().replace(/\s+/g, ' ');
+    if (!fullName && !firstName && !lastName) return [];
+
+    const params: any[] = [fullName, fullName];
+    if (firstName && lastName) params.push(firstName, lastName);
+    const bothClause = firstName && lastName
+      ? "OR (supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))"
+      : '';
+    const [rows] = await this.db.execute(
+      `SELECT id FROM project_groups
+       WHERE TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause}`,
+      params
+    );
+    return (rows as any[]).map((r: any) => r.id);
+  }
+
+  async getPendingProjectsForSupervisor(supervisorUserId: number) {
+    const groupIds = await this.getSupervisorGroupIds(supervisorUserId);
+    if (groupIds.length === 0) return [];
+
+    const placeholders = groupIds.map(() => '?').join(',');
     const [rows] = await this.db.execute(
       `SELECT p.id, p.group_id, p.title, p.description, p.objectives, p.methodology, p.expected_outcomes,
-              p.status, p.submitted_at, pg.name as group_name
+              p.status, p.submitted_at, p.rejection_reason, pg.name as group_name
        FROM projects p
        INNER JOIN project_groups pg ON p.group_id = pg.id
-       WHERE pg.supervisor_name = ? AND p.status = 'pending'
+       WHERE p.group_id IN (${placeholders}) AND p.status = 'pending'
        ORDER BY p.submitted_at DESC`,
-      [supervisorName]
+      groupIds
     );
     return rows as any[];
   }
 
-  async isProjectUnderSupervisor(projectId: number, supervisorName: string): Promise<boolean> {
+  async getAllProjectsForSupervisor(supervisorUserId: number) {
+    const groupIds = await this.getSupervisorGroupIds(supervisorUserId);
+    if (groupIds.length === 0) return [];
+
+    const placeholders = groupIds.map(() => '?').join(',');
     const [rows] = await this.db.execute(
-      `SELECT 1 FROM projects p
+      `SELECT p.id, p.group_id, p.title, p.description, p.objectives, p.methodology, p.expected_outcomes,
+              p.status, p.submitted_at, p.rejection_reason, p.approved_at, pg.name as group_name
+       FROM projects p
        INNER JOIN project_groups pg ON p.group_id = pg.id
-       WHERE p.id = ? AND pg.supervisor_name = ?`,
-      [projectId, supervisorName]
+       WHERE p.group_id IN (${placeholders})
+       ORDER BY CASE p.status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, p.submitted_at DESC`,
+      groupIds
+    );
+    return rows as any[];
+  }
+
+  async clearProjectByGroupId(groupId: number): Promise<{ success: boolean; message?: string }> {
+    const [rows] = await this.db.execute(
+      'SELECT id, status FROM projects WHERE group_id = ? LIMIT 1',
+      [groupId]
+    );
+    const project = (rows as any[])[0];
+    if (!project) return { success: false, message: 'No project to clear' };
+    if (project.status === 'approved') {
+      return { success: false, message: 'Cannot clear an approved project' };
+    }
+    await this.db.execute('DELETE FROM projects WHERE group_id = ?', [groupId]);
+    return { success: true };
+  }
+
+  async isProjectUnderSupervisor(projectId: number, supervisorUserId: number): Promise<boolean> {
+    const groupIds = await this.getSupervisorGroupIds(supervisorUserId);
+    if (groupIds.length === 0) return false;
+    const placeholders = groupIds.map(() => '?').join(',');
+    const [rows] = await this.db.execute(
+      `SELECT 1 FROM projects WHERE id = ? AND group_id IN (${placeholders})`,
+      [projectId, ...groupIds]
     );
     return (rows as any[]).length > 0;
   }

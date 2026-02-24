@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../lib/api';
 
 export interface GpaThresholds {
   high: number;
@@ -21,8 +22,8 @@ export function useGpaThresholds(department?: string) {
       
       const token = localStorage.getItem('supervise360_token') || localStorage.getItem('token');
       const url = department 
-        ? `http://localhost:5000/api/settings/gpa-thresholds/department/${encodeURIComponent(department)}?t=${Date.now()}`
-        : `http://localhost:5000/api/settings/gpa-thresholds/global?t=${Date.now()}`;
+        ? `${API_BASE_URL}/settings/gpa-thresholds/department/${encodeURIComponent(department)}?t=${Date.now()}`
+        : `${API_BASE_URL}/settings/gpa-thresholds/global?t=${Date.now()}`;
       
       console.log(`🔍 [useGpaThresholds] Fetching FRESH thresholds from: ${url}`);
       
@@ -38,7 +39,7 @@ export function useGpaThresholds(department?: string) {
         // If 404 for department, try global
         if (response.status === 404 && department) {
           console.log('⚠️ Department endpoint not found, fetching global thresholds');
-          const globalUrl = `http://localhost:5000/api/settings/gpa-thresholds/global?t=${Date.now()}`;
+          const globalUrl = `${API_BASE_URL}/settings/gpa-thresholds/global?t=${Date.now()}`;
           const globalResponse = await fetch(globalUrl, {
             headers: {
               'Authorization': `Bearer ${token}`

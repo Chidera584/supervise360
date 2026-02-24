@@ -6,6 +6,8 @@ import { DefensePanelService } from '../services/defensePanelService';
 import { DefenseAllocationService } from '../services/defenseAllocationService';
 import { ProjectService } from '../services/projectService';
 import { computeAllocation } from '../services/defenseSchedulingService';
+import { notifyUnassignedStudentsAlert } from '../services/notificationEmailService';
+import { sendGroupingAndSupervisorEmail, isEmailConfigured } from '../services/emailService';
 
 const router = Router();
 
@@ -25,6 +27,44 @@ export function createAdminRouter(db: Pool) {
     }
   });
 
+  // Test email - send a sample notification to verify SMTP works
+  router.post('/test-email', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      console.log('📧 Test email endpoint hit');
+      if (!isEmailConfigured()) {
+        console.warn('📧 Test email failed: SMTP not configured');
+        return res.status(400).json({
+          success: false,
+          message: 'Email not configured. Add SMTP_HOST, SMTP_USER, SMTP_PASS to .env (see .env.example)',
+        });
+      }
+      const authUser = (req as import('../types').AuthenticatedRequest).user;
+      const email = req.body?.email || authUser?.email;
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'No email to send to. Provide email in body or use your account email.' });
+      }
+      const [userRows] = await db.execute('SELECT first_name FROM users WHERE id = ?', [authUser?.id]);
+      const firstName = (userRows as any[])[0]?.first_name || 'Admin';
+      console.log(`📧 Sending test email to ${email}...`);
+      const ok = await sendGroupingAndSupervisorEmail(
+        email,
+        firstName,
+        'Group 1',
+        'Dr. Test Supervisor'
+      );
+      if (ok) {
+        console.log(`📧 Test email sent successfully to ${email}`);
+        res.json({ success: true, message: `Test email sent to ${email}` });
+      } else {
+        console.error('📧 Test email failed: sendEmail returned false');
+        res.status(500).json({ success: false, message: 'Failed to send email. Check server logs for SMTP error.' });
+      }
+    } catch (error) {
+      console.error('📧 Test email error:', error);
+      res.status(500).json({ success: false, message: 'Failed to send test email' });
+    }
+  });
+
   router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = await adminService.getAnalyticsStats();
@@ -32,6 +72,44 @@ export function createAdminRouter(db: Pool) {
     } catch (error) {
       console.error('Admin stats error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch admin statistics' });
+    }
+  });
+
+  // Send unassigned students alert to all admins (email + in-app)
+  router.post('/send-unassigned-alert', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const [rows] = await db.execute(
+        `SELECT pg.department, pg.name as group_name, gm.student_name, gm.matric_number
+         FROM project_groups pg
+         LEFT JOIN group_members gm ON gm.group_id = pg.id
+         WHERE (pg.supervisor_name IS NULL OR pg.supervisor_name = '')
+         ORDER BY pg.department, pg.name`
+      );
+      const data = rows as any[];
+      const byDept: Record<string, string[]> = {};
+      for (const r of data) {
+        const dept = r.department || 'Unknown';
+        if (!byDept[dept]) byDept[dept] = [];
+        const label = r.student_name ? `${r.student_name} (${r.matric_number || ''})` : r.group_name;
+        if (label && !byDept[dept].includes(label)) byDept[dept].push(label);
+      }
+      const [adminRows] = await db.execute(
+        'SELECT id, email FROM users WHERE role = ? AND is_active = TRUE',
+        ['admin']
+      );
+      const admins = adminRows as any[];
+      const adminIds = admins.map((a: any) => a.id);
+      const adminEmails = admins.map((a: any) => a.email || '');
+
+      for (const [department, studentList] of Object.entries(byDept)) {
+        if (studentList.length > 0) {
+          notifyUnassignedStudentsAlert(db, adminIds, adminEmails, department, studentList, studentList.length).catch(() => {});
+        }
+      }
+      res.json({ success: true, message: 'Unassigned students alert sent to admins' });
+    } catch (error) {
+      console.error('Send unassigned alert error:', error);
+      res.status(500).json({ success: false, message: 'Failed to send alert' });
     }
   });
 

@@ -22,7 +22,7 @@ export function ReportsAnalytics() {
     <MainLayout title="Reports & Analytics">
       <div className="space-y-6">
         <Card>
-          <h2 className="text-xl font-semibold text-[#1a237e] mb-4">System Performance</h2>
+          <h2 className="text-xl font-semibold text-[#022B3A] mb-4">System Performance</h2>
           {loading ? (
             <div className="text-gray-500">Loading analytics...</div>
           ) : (
@@ -48,7 +48,7 @@ export function ReportsAnalytics() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Grouping Quality</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Grouping Quality</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 border border-gray-200 rounded-lg">
               <p className="text-sm text-gray-600">Ideal Groups</p>
@@ -62,7 +62,7 @@ export function ReportsAnalytics() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Supervisor Workload</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Supervisor Workload</h2>
           <div className="space-y-3">
             {(stats?.supervisorWorkload || []).map((sup: any, index: number) => (
               <div key={index} className="border border-gray-200 rounded-lg p-4">

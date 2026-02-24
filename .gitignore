@@ -21,3 +21,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Backend build output and uploads
+backend/dist
+backend/uploads

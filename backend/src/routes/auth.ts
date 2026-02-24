@@ -112,6 +112,58 @@ router.post('/change-password', authenticateToken, async (req: AuthenticatedRequ
   }
 });
 
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+    const result = await AuthService.requestPasswordReset(email.trim());
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Forgot password route error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and new password are required'
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+    const result = await AuthService.resetPasswordWithToken(token, newPassword);
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('Reset password route error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 // POST /api/auth/logout
 router.post('/logout', authenticateToken, async (req: AuthenticatedRequest, res) => {
   // In a stateless JWT system, logout is handled client-side by removing the token

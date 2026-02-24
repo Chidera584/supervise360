@@ -9,6 +9,18 @@ const router = Router();
 export function createNotificationsRouter(db: Pool) {
   const notificationService = new NotificationService(db);
 
+  router.get('/unread-count', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      const count = await notificationService.getUnreadCount(userId);
+      res.json({ success: true, data: count });
+    } catch (error) {
+      console.error('Unread count error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
+    }
+  });
+
   router.get('/recent', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;

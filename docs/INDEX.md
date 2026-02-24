@@ -10,7 +10,7 @@ Choose your starting point:
 
 ### **First Time Setup?**
 👉 Read in this order:
-1. [README.md](README.md) - Project overview (5 min)
+1. [README.md](../README.md) - Project overview (5 min)
 2. [QUICK_START.md](QUICK_START.md) - Get running in 5 minutes (5 min)
 3. [SETUP_GUIDE.md](SETUP_GUIDE.md) - Complete installation guide (10 min)
 
@@ -42,7 +42,7 @@ Choose your starting point:
 
 | Document | Purpose | Read Time | For Whom |
 |----------|---------|-----------|----------|
-| [README.md](README.md) | Complete project overview & guide | 10 min | Everyone |
+| [README.md](../README.md) | Project overview & quick start | 5 min | Everyone |
 | [QUICK_START.md](QUICK_START.md) | Get the app running in 5 minutes | 5 min | Beginners |
 | [SETUP_GUIDE.md](SETUP_GUIDE.md) | Detailed installation instructions | 15 min | Developers |
 | [DATABASE_SETUP_GUIDE.md](DATABASE_SETUP_GUIDE.md) | MySQL database configuration | 10 min | DBAs / Backend devs |
@@ -58,14 +58,16 @@ Choose your starting point:
 ```
 supervise360/
 │
-├── 📄 README.md                    ← START HERE
-├── 📄 QUICK_START.md              ← Quick 5-min test
-├── 📄 SETUP_GUIDE.md              ← Full setup
-├── 📄 DATABASE_SETUP_GUIDE.md     ← Database setup
-├── 📄 QUICK_REFERENCE.md          ← Commands & help
-├── 📄 RECOMMENDATIONS.md          ← Best practices
-├── 📄 CODEBASE_CLEANUP.md         ← What was cleaned
-├── 📄 INDEX.md                    ← YOU ARE HERE
+├── 📄 README.md                   ← Project overview
+├── 📁 docs/                       ← Documentation (YOU ARE HERE)
+│   ├── INDEX.md                    ← Doc navigator
+│   ├── QUICK_START.md              ← 5-min setup
+│   ├── SETUP_GUIDE.md              ← Full setup
+│   ├── DATABASE_SETUP_GUIDE.md     ← MySQL setup
+│   ├── EMAIL_SETUP.md              ← SMTP configuration
+│   ├── QUICK_REFERENCE.md          ← Commands & help
+│   ├── RECOMMENDATIONS.md          ← Best practices
+│   └── CODEBASE_CLEANUP.md         ← Cleanup summary
 │
 ├── 📁 src/                         ← Frontend React code
 ├── 📁 backend/                     ← Backend Express API
@@ -74,10 +76,9 @@ supervise360/
 │   ├── triggers.sql                ← Use this!
 │   └── views.sql                   ← Use this!
 │
-├── 📁 .archive/                    ← Old files (safe to ignore)
-│   ├── test-files/                 ← 58 old test files
-│   ├── debug-docs/                 ← 18 debug docs
-│   └── database-migrations/        ← 10 old schemas
+├── 📁 scripts/                     ← Utilities
+│   ├── test-database.js            ← DB connection test
+│   └── legacy/                     ← Old utility scripts
 │
 └── 📄 .env                         ← Your config (not in git)
 ```
@@ -137,7 +138,7 @@ supervise360/
 ## 🎯 Common Questions
 
 ### "How do I get started?"
-→ [QUICK_START.md](QUICK_START.md)
+→ [QUICK_START.md](QUICK_START.md) (start here)
 
 ### "How do I install everything?"
 → [SETUP_GUIDE.md](SETUP_GUIDE.md)
@@ -157,7 +158,7 @@ supervise360/
 ### "What should we improve?"
 → [RECOMMENDATIONS.md](RECOMMENDATIONS.md)
 
-### "Why are there old files in .archive?"
+### "What was cleaned up in the project?"
 → [CODEBASE_CLEANUP.md](CODEBASE_CLEANUP.md)
 
 ### "What are the project roles?"

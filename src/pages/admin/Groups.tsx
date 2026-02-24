@@ -163,7 +163,7 @@ export function Groups() {
             <div className="flex gap-3">
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-[#1a237e] hover:bg-[#0d47a1]"
+                className="bg-[#022B3A] hover:bg-[#1F7A8C]"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Students
@@ -198,7 +198,7 @@ export function Groups() {
         {isLoading && (
           <Card>
             <div className="p-8 text-center">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#1a237e]" />
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#022B3A]" />
               <p className="text-gray-600">Loading groups data...</p>
             </div>
           </Card>
@@ -255,13 +255,8 @@ export function Groups() {
                     <>
                       <p className="text-sm font-semibold text-slate-900">GPA Thresholds</p>
                       <p className="text-xs text-slate-500">
-                          H≥{thresholds.high.toFixed(2)} M≥{thresholds.medium.toFixed(2)} L≥{thresholds.low.toFixed(2)}
-                        </p>
-                        {process.env.NODE_ENV === 'development' && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            Debug: {JSON.stringify(thresholds)}
-                          </p>
-                        )}
+                        H≥{thresholds.high.toFixed(2)} M≥{thresholds.medium.toFixed(2)} L≥{thresholds.low.toFixed(2)}
+                      </p>
                       </>
                     )}
                 </div>
@@ -296,7 +291,7 @@ export function Groups() {
                     placeholder="Search by group name, member, supervisor..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a237e] focus:border-transparent text-slate-900 placeholder-slate-400"
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#022B3A] focus:border-transparent text-slate-900 placeholder-slate-400"
                   />
                 </div>
               </div>
@@ -357,11 +352,11 @@ export function Groups() {
               <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Groups Found</h3>
               <p className="text-gray-600 mb-6">
-                Upload student data to automatically form groups using ASP algorithm.
+                Upload student data to automatically form groups.
               </p>
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-[#1a237e] hover:bg-[#0d47a1]"
+                className="bg-[#022B3A] hover:bg-[#1F7A8C]"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Students

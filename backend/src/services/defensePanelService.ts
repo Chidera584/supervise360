@@ -41,8 +41,8 @@ export class DefensePanelService {
     }
 
     const [insertResult] = await this.db.execute(
-      `INSERT INTO supervisors (user_id, department, max_capacity, current_load, is_available)
-       VALUES (?, ?, 7, 0, TRUE)`,
+      `INSERT INTO supervisors (user_id, department, current_load, is_available)
+       VALUES (?, ?, 0, TRUE)`,
       [userId, department || 'General']
     );
     return (insertResult as any).insertId;

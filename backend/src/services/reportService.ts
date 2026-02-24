@@ -31,26 +31,45 @@ export class ReportService {
     return rows as any[];
   }
 
-  async listPendingReviews(supervisorUserId: number) {
-    const [supRows] = await this.db.execute(
-      'SELECT id FROM supervisors WHERE user_id = ? LIMIT 1',
+  /** Get group IDs for a supervisor - same logic as my-groups endpoint */
+  async getSupervisorGroupIds(supervisorUserId: number): Promise<number[]> {
+    const [userRows] = await this.db.execute(
+      'SELECT first_name, last_name FROM users WHERE id = ?',
       [supervisorUserId]
     );
-    const supervisorId = (supRows as any[])[0]?.id;
+    const user = (userRows as any[])[0];
+    const firstName = (user?.first_name || '').trim();
+    const lastName = (user?.last_name || '').trim();
+    const fullName = `${firstName} ${lastName}`.trim().replace(/\s+/g, ' ');
+    if (!fullName && !firstName && !lastName) return [];
 
-    // Match by supervisor_id OR by supervisor_name (users first_name + last_name) for name-based assignment
+    const params: any[] = [fullName, fullName];
+    if (firstName && lastName) params.push(firstName, lastName);
+    const bothClause = firstName && lastName
+      ? "OR (supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))"
+      : '';
+    const [rows] = await this.db.execute(
+      `SELECT id FROM project_groups
+       WHERE TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause}`,
+      params
+    );
+    return (rows as any[]).map((r: any) => r.id);
+  }
+
+  async listPendingReviews(supervisorUserId: number) {
+    const groupIds = await this.getSupervisorGroupIds(supervisorUserId);
+    if (groupIds.length === 0) return [];
+
+    const placeholders = groupIds.map(() => '?').join(',');
     const [rows] = await this.db.execute(
       `SELECT r.*, pg.name as group_name, p.title as project_title
        FROM reports r
-       INNER JOIN projects p ON r.project_id = p.id
-       INNER JOIN project_groups pg ON p.group_id = pg.id
-       WHERE r.reviewed = FALSE
-       AND (
-         pg.supervisor_id = ?
-         OR pg.supervisor_name = (SELECT TRIM(CONCAT(IFNULL(first_name,''), ' ', IFNULL(last_name,''))) FROM users WHERE id = ?)
-       )
+       LEFT JOIN projects p ON r.project_id = p.id
+       LEFT JOIN project_groups pg ON r.group_id = pg.id
+       WHERE (r.reviewed = FALSE OR r.reviewed = 0 OR r.reviewed IS NULL)
+       AND r.group_id IN (${placeholders})
        ORDER BY r.submitted_at ASC`,
-      [supervisorId, supervisorUserId]
+      groupIds
     );
     return rows as any[];
   }
@@ -58,9 +77,9 @@ export class ReportService {
   async reviewReport(reportId: number, reviewerId: number, comments: string, approved: boolean) {
     await this.db.execute(
       `UPDATE reports 
-       SET reviewed = ?, reviewed_by = ?, reviewed_at = NOW(), review_comments = ?
+       SET reviewed = 1, reviewed_by = ?, reviewed_at = NOW(), review_comments = ?, approved = ?
        WHERE id = ?`,
-      [approved ? 1 : 1, reviewerId, comments, reportId]
+      [reviewerId, comments, approved ? 1 : 0, reportId]
     );
   }
 

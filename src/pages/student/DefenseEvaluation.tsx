@@ -37,7 +37,7 @@ export function DefenseEvaluation() {
     <MainLayout title="Defense & Evaluation">
       <div className="space-y-6">
         <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Defense Schedule</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Defense Schedule</h2>
           {hasDefensePanel ? (
             <div className="space-y-2 text-sm text-gray-700">
               {defense.defense_date && (
@@ -81,7 +81,7 @@ export function DefenseEvaluation() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Evaluation Results</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Evaluation Results</h2>
           {evaluations.length > 0 ? (
             <div className="space-y-3">
               {evaluations.map((evalItem) => (

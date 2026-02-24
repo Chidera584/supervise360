@@ -83,6 +83,36 @@ export function createProjectsRouter(db: Pool) {
     }
   });
 
+  router.delete('/clear', authenticateToken, requireStudent, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+
+      const [studentRows] = await db.execute(
+        'SELECT matric_number FROM students WHERE user_id = ?',
+        [userId]
+      );
+      const matric = (studentRows as any[])[0]?.matric_number;
+      if (!matric) return res.status(400).json({ success: false, message: 'Matric number not found' });
+
+      const [groupRows] = await db.execute(
+        'SELECT group_id FROM group_members WHERE matric_number = ? LIMIT 1',
+        [matric]
+      );
+      const groupId = (groupRows as any[])[0]?.group_id;
+      if (!groupId) return res.status(400).json({ success: false, message: 'Group not found' });
+
+      const result = await projectService.clearProjectByGroupId(groupId);
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.message });
+      }
+      res.json({ success: true, message: 'Project proposal cleared' });
+    } catch (error) {
+      console.error('Clear project error:', error);
+      res.status(500).json({ success: false, message: 'Failed to clear project' });
+    }
+  });
+
   router.put('/:id/update', authenticateToken, requireStudent, async (req, res) => {
     try {
       const { title, description, objectives, methodology, expected_outcomes } = req.body;
@@ -108,15 +138,24 @@ export function createProjectsRouter(db: Pool) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
-      const user = (userRows as any[])[0];
-      const supervisorName = user ? `${(user.first_name || '')} ${(user.last_name || '')}`.trim().replace(/\s+/g, ' ') : '';
-      if (!supervisorName) return res.json({ success: true, data: [] });
-      const projects = await projectService.getPendingProjectsForSupervisor(supervisorName);
+      const projects = await projectService.getPendingProjectsForSupervisor(userId);
       res.json({ success: true, data: projects });
     } catch (error) {
       console.error('Pending projects error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch pending projects' });
+    }
+  });
+
+  // Supervisor: get ALL project proposals (pending, approved, rejected) for their groups
+  router.get('/all-for-supervisor', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      const projects = await projectService.getAllProjectsForSupervisor(userId);
+      res.json({ success: true, data: projects });
+    } catch (error) {
+      console.error('All projects error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch project proposals' });
     }
   });
 
@@ -125,11 +164,8 @@ export function createProjectsRouter(db: Pool) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
-      const user = (userRows as any[])[0];
-      const supervisorName = user ? `${(user.first_name || '')} ${(user.last_name || '')}`.trim().replace(/\s+/g, ' ') : '';
       const projectId = Number(req.params.id);
-      const allowed = await projectService.isProjectUnderSupervisor(projectId, supervisorName);
+      const allowed = await projectService.isProjectUnderSupervisor(projectId, userId);
       if (!allowed) return res.status(403).json({ success: false, message: 'Project not under your supervision' });
       await projectService.approveProject(projectId);
       res.json({ success: true, message: 'Project approved' });
@@ -144,15 +180,12 @@ export function createProjectsRouter(db: Pool) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
-      const user = (userRows as any[])[0];
-      const supervisorName = user ? `${(user.first_name || '')} ${(user.last_name || '')}`.trim().replace(/\s+/g, ' ') : '';
       const projectId = Number(req.params.id);
       const { reason } = req.body;
       if (!reason || typeof reason !== 'string' || !reason.trim()) {
         return res.status(400).json({ success: false, message: 'Rejection reason is required' });
       }
-      const allowed = await projectService.isProjectUnderSupervisor(projectId, supervisorName);
+      const allowed = await projectService.isProjectUnderSupervisor(projectId, userId);
       if (!allowed) return res.status(403).json({ success: false, message: 'Project not under your supervision' });
       await projectService.rejectProject(projectId, reason.trim());
       res.json({ success: true, message: 'Project rejected' });

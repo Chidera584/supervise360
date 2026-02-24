@@ -1,3 +1,0 @@
-# Supervisor Assignment - Complete Solution ✅
-
-## 🎯

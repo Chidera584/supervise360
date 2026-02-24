@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getMany, getOne, updateRecord } from '../config/database';
 import { authenticateToken, requireAdmin, requireAny } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
+import { sendProfileUpdateEmailOnly } from '../services/notificationEmailService';
 
 const router = Router();
 
@@ -29,10 +30,16 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/users/students - Get all students with details
+// GET /api/users/students - Get all students with details (uses direct query - no view dependency)
 router.get('/students', authenticateToken, requireAny, async (req, res) => {
   try {
-    const students = await getMany('SELECT * FROM v_students_complete ORDER BY last_name, first_name');
+    const students = await getMany(`
+      SELECT s.id, s.matric_number, u.first_name, u.last_name, u.email, u.department, 
+             s.gpa, s.gpa_tier, s.academic_year, s.program
+      FROM students s
+      INNER JOIN users u ON s.user_id = u.id
+      ORDER BY u.last_name, u.first_name
+    `);
 
     res.status(200).json({
       success: true,
@@ -48,10 +55,17 @@ router.get('/students', authenticateToken, requireAny, async (req, res) => {
   }
 });
 
-// GET /api/users/supervisors - Get all supervisors with workload
+// GET /api/users/supervisors - Get all supervisors with workload (uses direct query - no view dependency)
 router.get('/supervisors', authenticateToken, requireAny, async (req, res) => {
   try {
-    const supervisors = await getMany('SELECT * FROM v_supervisor_workload ORDER BY last_name, first_name');
+    const supervisors = await getMany(`
+      SELECT sup.id, u.first_name, u.last_name, u.email, sup.department, sup.specialization, 
+             sup.office_location, sup.phone, sup.current_load,
+             sup.is_available, u.is_active, u.last_login
+      FROM supervisors sup
+      INNER JOIN users u ON sup.user_id = u.id
+      ORDER BY u.last_name, u.first_name
+    `);
 
     res.status(200).json({
       success: true,
@@ -152,15 +166,35 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
       if (office_location) supervisorUpdateData.office_location = office_location;
       if (specialization) supervisorUpdateData.specialization = specialization;
 
-      if (Object.keys(supervisorUpdateData).length > 0) {
-        await updateRecord('supervisors', supervisorUpdateData, 'user_id = ?', [userId]);
-      }
+    if (Object.keys(supervisorUpdateData).length > 0) {
+      await updateRecord('supervisors', supervisorUpdateData, 'user_id = ?', [userId]);
     }
+  }
 
-    res.status(200).json({
-      success: true,
-      message: 'User updated successfully'
-    });
+  // Send profile update confirmation email
+  const changes: string[] = [];
+  if (first_name) changes.push('First name');
+  if (last_name) changes.push('Last name');
+  if (department) changes.push('Department');
+  if (phone) changes.push('Phone');
+  if (office_location) changes.push('Office location');
+  if (specialization) changes.push('Specialization');
+  if (changes.length > 0) {
+    const user = await getOne('SELECT first_name, email FROM users WHERE id = ?', [userId]);
+    if (user?.email) {
+      sendProfileUpdateEmailOnly(
+        user.email,
+        user.first_name || 'User',
+        changes,
+        new Date().toLocaleString()
+      ).catch(() => {});
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'User updated successfully'
+  });
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({

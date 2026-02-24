@@ -47,7 +47,7 @@ BEGIN
         -- Increment new supervisor's load
         UPDATE supervisors 
         SET current_load = current_load + 1,
-            is_available = (current_load + 1 < max_capacity)
+            is_available = TRUE
         WHERE id = NEW.supervisor_id;
         
         -- Decrement old supervisor's load if exists

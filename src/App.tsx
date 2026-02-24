@@ -14,7 +14,6 @@ import { AdminDashboard } from './pages/AdminDashboard';
 
 // Student Pages
 import { MyGroup } from './pages/student/MyGroup';
-import { Project } from './pages/student/Project';
 import { Reports } from './pages/student/Reports';
 import { Messages } from './pages/student/Messages';
 import { Profile } from './pages/student/Profile';
@@ -26,13 +25,13 @@ import { Evaluations } from './pages/supervisor/Evaluations';
 import { SupervisorMessages } from './pages/supervisor/SupervisorMessages';
 import { SupervisorProfile } from './pages/supervisor/SupervisorProfile';
 import { ReportReviews } from './pages/supervisor/ReportReviews';
-import { ProjectProposals } from './pages/supervisor/ProjectProposals';
 
 // Admin Pages
 import { Users } from './pages/admin/Users';
 import { Groups } from './pages/admin/Groups';
 import { SupervisorAssignment } from './pages/admin/SupervisorAssignment';
 import { Settings } from './pages/admin/Settings';
+import { AdminProfile } from './pages/admin/AdminProfile';
 import { DefenseScheduling } from './pages/admin/DefenseScheduling';
 import { ReportsAnalytics } from './pages/admin/ReportsAnalytics';
 
@@ -135,7 +134,6 @@ function App() {
               <>
                 <Route path="/dashboard" element={<StudentDashboard />} />
                 <Route path="/my-group" element={<MyGroup />} />
-                <Route path="/project" element={<Project />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/defense-evaluation" element={<DefenseEvaluation />} />
@@ -148,7 +146,6 @@ function App() {
               <>
                 <Route path="/dashboard" element={<SupervisorDashboard />} />
                 <Route path="/my-groups" element={<MyGroups />} />
-                <Route path="/project-proposals" element={<ProjectProposals />} />
                 <Route path="/evaluations" element={<Evaluations />} />
                 <Route path="/report-reviews" element={<ReportReviews />} />
                 <Route path="/messages" element={<SupervisorMessages />} />
@@ -164,6 +161,7 @@ function App() {
                 <Route path="/groups" element={<Groups />} />
                 <Route path="/supervisor-assignment" element={<SupervisorAssignment />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/profile" element={<AdminProfile />} />
                 <Route path="/defense-scheduling" element={<DefenseScheduling />} />
                 <Route path="/reports-analytics" element={<ReportsAnalytics />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

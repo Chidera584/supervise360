@@ -20,6 +20,7 @@ import { createReportsRouter } from './routes/reports';
 import { createEvaluationsRouter } from './routes/evaluations';
 import { createMessagesRouter } from './routes/messages';
 import { createNotificationsRouter } from './routes/notifications';
+import { NotificationService } from './services/notificationService';
 import { createDefensePanelsRouter } from './routes/defensePanels';
 import { authenticateToken, requireAdmin, requireSupervisor } from './middleware/auth';
 import type { AuthenticatedRequest } from './types';
@@ -105,12 +106,19 @@ async function startServer() {
         if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
         const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
         const user = (userRows as any[])[0];
-        const fullName = user ? `${(user.first_name || '')} ${(user.last_name || '')}`.trim().replace(/\s+/g, ' ') : '';
-        if (!fullName) return res.json({ success: true, data: [] });
+        const firstName = (user?.first_name || '').trim();
+        const lastName = (user?.last_name || '').trim();
+        const fullName = `${firstName} ${lastName}`.trim().replace(/\s+/g, ' ');
+        if (!fullName && !firstName && !lastName) return res.json({ success: true, data: [] });
+        const groupParams: any[] = [fullName, fullName];
+        let groupWhere = `WHERE TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%')`;
+        if (firstName && lastName) {
+          groupWhere += ` OR (supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))`;
+          groupParams.push(firstName, lastName);
+        }
         const [groupRows] = await db.execute(
-          `SELECT id, name, department, status, avg_gpa, supervisor_name, created_at FROM project_groups
-           WHERE TRIM(COALESCE(supervisor_name, '')) = ? ORDER BY name ASC`,
-          [fullName]
+          `SELECT id, name, department, status, avg_gpa, supervisor_name, created_at FROM project_groups ${groupWhere} ORDER BY name ASC`,
+          groupParams
         );
         const groups = groupRows as any[];
         const result = await Promise.all(groups.map(async (g: any) => {
@@ -143,6 +151,18 @@ async function startServer() {
     app.use('/api/reports', reportsRouter);
     app.use('/api/evaluations', evaluationsRouter);
     app.use('/api/messages', messagesRouter);
+    // Explicit unread-count route (avoids any router mounting issues)
+    app.get('/api/notifications/unread-count', authenticateToken, async (req, res) => {
+      try {
+        const userId = (req as AuthenticatedRequest).user?.id;
+        if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+        const count = await new NotificationService(db).getUnreadCount(userId);
+        res.json({ success: true, data: count });
+      } catch (error) {
+        console.error('Unread count error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
+      }
+    });
     app.use('/api/notifications', notificationsRouter);
     app.use('/api/defense-panels', defensePanelsRouter);
 
@@ -198,6 +218,7 @@ async function startServer() {
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
       console.log(`📁 Upload directory: ${process.env.UPLOAD_DIR || 'uploads'}`);
+      console.log(`📧 Email: ${process.env.SMTP_HOST && process.env.SMTP_USER ? 'configured' : 'NOT configured (add SMTP_* to .env)'}`);
       
       if (process.env.NODE_ENV === 'development') {
         console.log(`\n🔗 API Endpoints:`);

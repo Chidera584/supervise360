@@ -3,6 +3,10 @@ import { Pool } from 'mysql2/promise';
 import { GroupFormationService } from '../services/groupFormationService';
 import { authenticateToken, requireStudent } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
+import {
+  notifyGroupingAndSupervisor,
+  notifyNewStudentAssignment,
+} from '../services/notificationEmailService';
 
 const router = Router();
 
@@ -188,7 +192,73 @@ export function createGroupsRouter(db: Pool) {
         );
 
         await connection.commit();
-        
+
+        // Notify students (grouping + supervisor) and supervisor (new assignment)
+        const [memberRows] = await db.execute(
+          'SELECT gm.matric_number, gm.student_name FROM group_members gm WHERE gm.group_id = ?',
+          [groupId]
+        );
+        const members = (memberRows as any[]);
+        const studentUserIds: number[] = [];
+        const studentEmails: string[] = [];
+        const studentNames: string[] = [];
+        for (const m of members) {
+          let uid: number | undefined;
+          const matric = m.matric_number ? String(m.matric_number).trim() : null;
+          if (matric) {
+            const [sRows] = await db.execute(
+              'SELECT user_id FROM students WHERE matric_number = ? OR TRIM(matric_number) = ? OR REPLACE(matric_number, "/", "") = REPLACE(?, "/", "")',
+              [matric, matric, matric]
+            );
+            uid = (sRows as any[])[0]?.user_id;
+          }
+          if (!uid && m.student_name) {
+            const name = String(m.student_name).trim();
+            const parts = name.split(/[\s,]+/).filter(Boolean);
+            const firstPart = parts[0] || '';
+            const lastPart = parts[parts.length - 1] || firstPart;
+            const [uRows] = await db.execute(
+              `SELECT u.id FROM users u INNER JOIN students s ON s.user_id = u.id
+               WHERE TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = ?
+                  OR (u.first_name LIKE ? AND u.last_name LIKE ?)
+                  OR (u.last_name LIKE ? AND u.first_name LIKE ?)
+               LIMIT 1`,
+              [name, `%${firstPart}%`, `%${lastPart}%`, `%${firstPart}%`, `%${lastPart}%`]
+            );
+            uid = (uRows as any[])[0]?.id;
+          }
+          if (uid) {
+            const [uRows] = await db.execute('SELECT first_name, last_name, email FROM users WHERE id = ?', [uid]);
+            const u = (uRows as any[])[0];
+            if (u) {
+              studentUserIds.push(uid);
+              studentEmails.push(u.email || '');
+              studentNames.push(`${u.first_name || ''} ${u.last_name || ''}`.trim() || m.student_name);
+            }
+          }
+        }
+        if (studentUserIds.length > 0) {
+          const [pgRows] = await db.execute('SELECT name FROM project_groups WHERE id = ?', [groupId]);
+          const groupName = (pgRows as any[])[0]?.name || `Group ${groupId}`;
+          notifyGroupingAndSupervisor(db, studentUserIds, studentEmails, studentNames, groupName, supervisorName).catch(() => {});
+        }
+
+        // Notify supervisor
+        const sn = String(supervisorName).trim().replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
+        const [supRows] = await db.execute(
+          `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
+           INNER JOIN supervisors s ON s.user_id = u.id
+           WHERE ? LIKE CONCAT('%', TRIM(u.first_name), '%') AND ? LIKE CONCAT('%', TRIM(u.last_name), '%') LIMIT 1`,
+          [sn, sn]
+        );
+        const supUser = (supRows as any[])[0];
+        if (supUser) {
+          const supFullName = `${supUser.first_name || ''} ${supUser.last_name || ''}`.trim();
+          const studentCount = studentNames.length;
+          const groupCount = 1;
+          notifyNewStudentAssignment(db, supUser.id, supUser.email, supFullName, studentCount, groupCount).catch(() => {});
+        }
+
         res.json({ success: true, message: 'Supervisor assigned successfully' });
       } catch (error) {
         await connection.rollback();

@@ -15,81 +15,54 @@ export function AdminLogin() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password');
       setLoading(false);
       return;
     }
-
-    console.log('AdminLogin: Attempting login for:', email);
     const result = await signIn(email, password);
-    console.log('AdminLogin: Login result:', result);
-
-    if (!result.success) {
-      console.error('AdminLogin: Login failed:', result.error);
-      setError(result.error || 'Login failed. Please try again.');
-    } else {
-      console.log('AdminLogin: Login successful, should redirect now');
-    }
-
+    if (!result.success) setError(result.error || 'Login failed. Please try again.');
     setLoading(false);
   };
 
+  const inputBase = 'w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1e4d8b]/30 focus:border-[#1e4d8b] transition-all duration-200 placeholder:text-slate-400';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+      <header className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 sticky top-0 z-50">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-[#1e4d8b] rounded-lg flex items-center justify-center">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/20">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-semibold text-[#333333]">Supervise360</span>
+              <span className="text-lg font-bold bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] bg-clip-text text-transparent">
+                SUPERVISE360
+              </span>
             </div>
-            <div className="text-sm text-[#666666]">
-              Administrator Portal
-            </div>
+            <span className="text-sm font-medium text-slate-500">Administrator Portal</span>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex items-center justify-center py-12 px-4">
-        <div className="w-full max-w-md">
-          {/* Admin Indicator */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#1e4d8b] rounded-2xl mb-4">
+      <div className="flex items-center justify-center py-12 px-4 min-h-[calc(100vh-140px)]">
+        <div className="w-full max-w-xl animate-slide-up opacity-0" style={{ animationFillMode: 'forwards' }}>
+          <div className="text-center mb-8 animate-fade-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#022B3A] to-[#1e4d8b] shadow-lg shadow-slate-900/25 mb-5">
               <Shield className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-[#333333] mb-2">
-              Administrator Login
-            </h1>
-            <p className="text-[#666666]">Access the admin dashboard</p>
+            <h1 className="text-2xl font-bold text-slate-800 mb-1">Administrator Login</h1>
+            <p className="text-slate-500">Access the admin dashboard</p>
           </div>
 
-          {/* Login Form */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-            <form onSubmit={handleSignIn} className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+            <form onSubmit={handleSignIn} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-[#333333] mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your admin email"
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1e4d8b] focus:border-transparent"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your admin email" required className={inputBase} />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-[#333333] mb-2">
-                  Password
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -97,50 +70,36 @@ export function AdminLogin() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1e4d8b] focus:border-transparent"
+                    className={`${inputBase} pr-12`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#666666] hover:text-[#1e4d8b]"
-                  >
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e4d8b] transition-colors">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
-
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-xl text-sm animate-fade-in">
                   {error}
                 </div>
               )}
-
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#1e4d8b] hover:bg-[#1a4178] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#1F7A8C] hover:bg-[#2a8a9c] hover:shadow-lg hover:shadow-teal-900/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
               >
                 {loading ? 'Signing In...' : 'Sign In as Administrator'}
               </button>
-
-              <div className="text-center">
-                <a
-                  href="/"
-                  className="text-[#666666] text-sm hover:text-[#1e4d8b] hover:underline"
-                >
+              <div className="text-center pt-2">
+                <a href="/" className="text-slate-500 text-sm font-medium hover:text-[#1e4d8b] hover:underline transition-colors">
                   ← Back to Main Portal
                 </a>
               </div>
             </form>
           </div>
 
-          {/* Development Note */}
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="text-center text-sm text-yellow-800">
-              <p className="font-medium mb-1">🔧 Development Access</p>
-              <p>This is a direct admin login for testing purposes.</p>
-              <p className="text-xs mt-2">Access: /admin-login</p>
-            </div>
+          <div className="mt-6 p-4 bg-amber-50/80 border border-amber-100 rounded-xl text-center text-sm text-amber-800 animate-fade-in" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
+            <p className="font-medium">Administrator access</p>
+            <p className="text-amber-700/90 mt-0.5">Direct login for authorized administrators.</p>
           </div>
         </div>
       </div>

@@ -13,7 +13,6 @@
     "test-db": "node scripts/test-database.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
     "@types/bcryptjs": "^2.4.6",
     "axios": "^1.13.4",
     "bcryptjs": "^3.0.3",

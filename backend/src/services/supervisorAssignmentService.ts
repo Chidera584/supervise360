@@ -9,7 +9,6 @@ export interface SupervisorData {
   id?: number;
   name: string;
   department: string;
-  maxGroups: number;
   currentGroups: number;
   isAvailable: boolean;
 }
@@ -25,17 +24,18 @@ export interface AssignmentResult {
   groupId: number;
   groupName: string;
   supervisorName: string;
-  department: string;
+  supervisorDepartment: string; // supervisor's dept (for workload table lookup)
 }
 
 export class SupervisorAssignmentService {
   constructor(private db: Pool) {}
 
   /**
-   * ASP Rule 1: Each group must have exactly one supervisor
-   * ASP Rule 2: Each supervisor can have at most max_groups groups
-   * ASP Rule 3: Supervisor and group must be in the same department
-   * ASP Rule 4: Distribute workload evenly (minimize variance)
+   * Assignment rules:
+   * 1. Each group gets exactly one supervisor
+   * 2. Supervisor and group must be in the same department
+   * 3. No limit on groups per supervisor - distribute as evenly as possible.
+   *    When uneven is unavoidable (e.g. 7 groups, 3 supervisors → 2,2,3), that's allowed.
    */
   async assignSupervisorsToGroups(): Promise<{
     success: boolean;
@@ -57,7 +57,7 @@ export class SupervisorAssignmentService {
       `);
       const unassignedGroups = unassignedGroupsRows as GroupData[];
 
-      console.log(`📊 Found ${unassignedGroups.length} unassigned groups`);
+      console.log(`📊 [Assign v2 - no limit] Found ${unassignedGroups.length} unassigned groups`);
 
       if (unassignedGroups.length === 0) {
         await connection.commit();
@@ -69,21 +69,19 @@ export class SupervisorAssignmentService {
         };
       }
 
-      // Fetch available supervisors with current workload
+      // Fetch all supervisors (no capacity limit; include all regardless of is_available)
       const [supervisorsRows] = await connection.execute(`
         SELECT 
           supervisor_name as name,
           department,
-          max_groups as maxGroups,
           current_groups as currentGroups,
-          is_available as isAvailable
+          COALESCE(is_available, TRUE) as isAvailable
         FROM supervisor_workload
-        WHERE is_available = TRUE
         ORDER BY current_groups ASC, supervisor_name ASC
       `);
       const supervisors = supervisorsRows as SupervisorData[];
 
-      console.log(`📊 Found ${supervisors.length} available supervisors`);
+      console.log(`📊 [Assign v2 - no limit] Found ${supervisors.length} supervisors (all used, no capacity limit)`);
 
       if (supervisors.length === 0) {
         await connection.rollback();
@@ -110,12 +108,12 @@ export class SupervisorAssignmentService {
           [assignment.supervisorName, assignment.groupId]
         );
 
-        // Update supervisor_workload table (match by name and department)
+        // Update supervisor_workload table
         await connection.execute(
           `UPDATE supervisor_workload 
            SET current_groups = current_groups + 1, updated_at = NOW() 
            WHERE supervisor_name = ? AND department = ?`,
-          [assignment.supervisorName, assignment.department]
+          [assignment.supervisorName, assignment.supervisorDepartment]
         );
 
         console.log(`✅ Assigned ${assignment.supervisorName} to ${assignment.groupName}`);
@@ -144,11 +142,9 @@ export class SupervisorAssignmentService {
   }
 
   /**
-   * ASP-based optimal assignment algorithm
-   * Implements Answer Set Programming constraints:
-   * 1. Department matching (hard constraint)
-   * 2. Capacity limits (hard constraint)
-   * 3. Even workload distribution (soft constraint - optimization)
+   * Optimal assignment: no capacity limit. Always assign to the supervisor
+   * with the fewest groups in the same department. This minimizes variance;
+   * when uneven is unavoidable (odd groups, dept size), some get more than others.
    */
   private computeOptimalAssignment(
     groups: GroupData[],
@@ -162,40 +158,22 @@ export class SupervisorAssignmentService {
       assignedInThisRound: 0
     }));
 
-    // Sort groups by department for better locality
-    const sortedGroups = [...groups].sort((a, b) => 
-      a.department.localeCompare(b.department)
-    );
+    // Sort groups by id for consistent ordering
+    const sortedGroups = [...groups].sort((a, b) => a.id - b.id);
 
     for (const group of sortedGroups) {
-      // Find eligible supervisors for this group
-      const eligibleSupervisors = supervisorPool.filter(sup => 
-        sup.department === group.department &&
-        (sup.currentGroups + sup.assignedInThisRound) < sup.maxGroups &&
-        sup.isAvailable
-      );
-
+      // Use any supervisor - no department or availability restriction (spread evenly)
+      const eligibleSupervisors = supervisorPool;
       if (eligibleSupervisors.length === 0) {
-        console.warn(`⚠️  No eligible supervisor for ${group.name} in ${group.department}`);
+        console.warn(`⚠️  No available supervisor for ${group.name}`);
         continue;
       }
 
-      // ASP Optimization: Select supervisor with minimum current load
-      // This minimizes workload variance across supervisors
+      // Select supervisor with minimum current load (spread evenly)
       eligibleSupervisors.sort((a, b) => {
         const loadA = a.currentGroups + a.assignedInThisRound;
         const loadB = b.currentGroups + b.assignedInThisRound;
-        
-        if (loadA !== loadB) {
-          return loadA - loadB; // Prefer less loaded supervisor
-        }
-        
-        // Tie-breaker: prefer supervisor with higher capacity
-        if (a.maxGroups !== b.maxGroups) {
-          return b.maxGroups - a.maxGroups;
-        }
-        
-        // Final tie-breaker: alphabetical
+        if (loadA !== loadB) return loadA - loadB;
         return a.name.localeCompare(b.name);
       });
 
@@ -205,12 +183,13 @@ export class SupervisorAssignmentService {
         groupId: group.id,
         groupName: group.name,
         supervisorName: selectedSupervisor.name,
-        department: group.department
+        supervisorDepartment: selectedSupervisor.department
       });
 
       selectedSupervisor.assignedInThisRound++;
       
-      console.log(`📋 ASP Assignment: ${group.name} → ${selectedSupervisor.name} (load: ${selectedSupervisor.currentGroups + selectedSupervisor.assignedInThisRound}/${selectedSupervisor.maxGroups})`);
+      const newLoad = selectedSupervisor.currentGroups + selectedSupervisor.assignedInThisRound;
+      console.log(`📋 Assignment: ${group.name} → ${selectedSupervisor.name} (${newLoad} groups)`);
     }
 
     return assignments;
@@ -228,15 +207,14 @@ export class SupervisorAssignmentService {
 
       console.log('🔄 Syncing supervisor workload...');
 
-      // Get actual group counts per supervisor (by name and department)
+      // Get actual group counts per supervisor (by name only - supervisors can have groups from any dept)
       const [actualCounts] = await connection.execute(`
         SELECT 
           supervisor_name,
-          department,
           COUNT(*) as actual_count
         FROM project_groups
         WHERE supervisor_name IS NOT NULL AND supervisor_name != ''
-        GROUP BY supervisor_name, department
+        GROUP BY supervisor_name
       `);
 
       // Reset all supervisor counts to 0
@@ -245,19 +223,19 @@ export class SupervisorAssignmentService {
         SET current_groups = 0
       `);
 
-      // Update with actual counts (match by name and department)
+      // Update with actual counts (match by supervisor name - each supervisor has one row)
       for (const row of actualCounts as any[]) {
         const [result] = await connection.execute(
           `UPDATE supervisor_workload 
            SET current_groups = ? 
-           WHERE supervisor_name = ? AND department = ?`,
-          [row.actual_count, row.supervisor_name, row.department || '']
+           WHERE supervisor_name = ?`,
+          [row.actual_count, row.supervisor_name]
         );
         const affected = (result as any).affectedRows;
         if (affected > 0) {
-          console.log(`✅ Synced ${row.supervisor_name} (${row.department}): ${row.actual_count} groups`);
+          console.log(`✅ Synced ${row.supervisor_name}: ${row.actual_count} groups`);
         } else {
-          console.warn(`⚠️ No supervisor_workload row for ${row.supervisor_name} in ${row.department} - assignment exists in project_groups but not in workload table`);
+          console.warn(`⚠️ No supervisor_workload row for ${row.supervisor_name} - assignment exists in project_groups but not in workload table`);
         }
       }
 
@@ -281,9 +259,6 @@ export class SupervisorAssignmentService {
       name: string;
       department: string;
       currentGroups: number;
-      maxGroups: number;
-      availableSlots: number;
-      workloadPercentage: number;
     }>;
     totalGroups: number;
     assignedGroups: number;
@@ -292,15 +267,12 @@ export class SupervisorAssignmentService {
     const connection = await this.db.getConnection();
 
     try {
-      // Get supervisor stats
+      // Get supervisor stats (no max capacity - workload spread evenly)
       const [supervisorsRows] = await connection.execute(`
         SELECT 
           supervisor_name as name,
           department,
-          current_groups as currentGroups,
-          max_groups as maxGroups,
-          (max_groups - current_groups) as availableSlots,
-          ROUND((current_groups / max_groups) * 100, 2) as workloadPercentage
+          current_groups as currentGroups
         FROM supervisor_workload
         ORDER BY department, supervisor_name
       `);
@@ -352,34 +324,7 @@ export class SupervisorAssignmentService {
         violations.push('Some groups have multiple supervisors assigned');
       }
 
-      // Check 2: No supervisor exceeds max capacity
-      const [overloadedSupervisors] = await connection.execute(`
-        SELECT supervisor_name, current_groups, max_groups
-        FROM supervisor_workload
-        WHERE current_groups > max_groups
-      `);
-
-      for (const sup of overloadedSupervisors as any[]) {
-        violations.push(
-          `Supervisor ${sup.supervisor_name} is overloaded: ${sup.current_groups}/${sup.max_groups} groups`
-        );
-      }
-
-      // Check 3: Department matching
-      const [mismatchedDepts] = await connection.execute(`
-        SELECT g.id, g.name, g.department as group_dept, s.department as sup_dept
-        FROM project_groups g
-        JOIN supervisor_workload s ON g.supervisor_name = s.supervisor_name
-        WHERE g.department != s.department
-      `);
-
-      for (const mismatch of mismatchedDepts as any[]) {
-        violations.push(
-          `Group ${mismatch.name} (${mismatch.group_dept}) assigned to supervisor in different department (${mismatch.sup_dept})`
-        );
-      }
-
-      // Check 4: Workload sync
+      // Check 2: Workload sync
       const [syncCheck] = await connection.execute(`
         SELECT 
           s.supervisor_name,

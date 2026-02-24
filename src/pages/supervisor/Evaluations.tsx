@@ -46,12 +46,12 @@ export function Evaluations() {
     <MainLayout title="Evaluations">
       <div className="space-y-6">
         <Card>
-          <h2 className="text-2xl font-bold text-[#1a237e]">Evaluations</h2>
+          <h2 className="text-2xl font-bold text-[#022B3A]">Evaluations</h2>
           <p className="text-gray-600 mt-1">Review and score group projects</p>
         </Card>
 
         <Card>
-          <h3 className="text-lg font-semibold text-[#1a237e] mb-4">Pending Evaluations</h3>
+          <h3 className="text-lg font-semibold text-[#022B3A] mb-4">Pending Evaluations</h3>
           {loading ? (
             <div className="text-gray-500">Loading evaluations...</div>
           ) : (
@@ -77,7 +77,7 @@ export function Evaluations() {
         </Card>
 
         <Card>
-          <h3 className="text-lg font-semibold text-[#1a237e] mb-4">Completed Evaluations</h3>
+          <h3 className="text-lg font-semibold text-[#022B3A] mb-4">Completed Evaluations</h3>
           <div className="space-y-3">
             {completed.map((item) => (
               <div key={item.id} className="border border-gray-200 rounded-lg p-4">

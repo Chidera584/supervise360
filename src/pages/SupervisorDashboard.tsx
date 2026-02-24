@@ -4,7 +4,7 @@ import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
-import { Users, FileText, MessageSquare, CheckCircle, Calendar, Eye } from 'lucide-react';
+import { Users, FileText, MessageSquare, CheckCircle, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 interface SupervisorGroup {
@@ -26,26 +26,33 @@ export function SupervisorDashboard() {
   const navigate = useNavigate();
   const [supervisorGroups, setSupervisorGroups] = useState<SupervisorGroup[]>([]);
   const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
+  const [reportsReviewedCount, setReportsReviewedCount] = useState(0);
+  const [inboxCount, setInboxCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
+    if (user) fetchDashboardData();
   }, [user]);
 
   const fetchDashboardData = async () => {
     try {
-      const myGroupsRes = await apiClient.getSupervisorMyGroups();
+      const [myGroupsRes, inboxRes] = await Promise.all([
+        apiClient.getSupervisorMyGroups(),
+        apiClient.getInbox(),
+      ]);
       if (myGroupsRes.success && Array.isArray(myGroupsRes.data)) {
-        setSupervisorGroups(myGroupsRes.data as SupervisorGroup[]);
+        const groups = myGroupsRes.data as SupervisorGroup[];
+        setSupervisorGroups(groups);
+        setPendingReviewsCount(groups.reduce((s, g) => s + (g.reportsPending ?? 0), 0));
+        setReportsReviewedCount(groups.reduce((s, g) => s + (g.reportsReviewed ?? 0), 0));
       } else if (!myGroupsRes.success) {
-        console.error('getSupervisorMyGroups failed:', myGroupsRes.message);
+        const pendingRes = await apiClient.getPendingReportReviews().catch(() => ({ success: false, data: [] }));
+        if (pendingRes.success && Array.isArray(pendingRes.data)) {
+          setPendingReviewsCount((pendingRes.data as any[]).length);
+        }
       }
-
-      const pendingRes = await apiClient.getPendingReportReviews().catch(() => ({ success: false, data: [] }));
-      if (pendingRes.success && Array.isArray(pendingRes.data)) {
-        setPendingReviewsCount((pendingRes.data as any[]).length);
+      if (inboxRes.success && Array.isArray(inboxRes.data)) {
+        setInboxCount((inboxRes.data as any[]).length);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -64,212 +71,153 @@ export function SupervisorDashboard() {
     );
   }
 
-  const availableSlots = (supervisor?.max_capacity || 7) - supervisorGroups.length;
-  const workloadPercentage = supervisor?.max_capacity ? Math.round((supervisorGroups.length / supervisor.max_capacity) * 100) : 0;
-
   return (
     <MainLayout title="Supervisor Dashboard">
-      <div className="space-y-6">
-        {/* Supervisor Information Card */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Supervisor Information</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Name</p>
-              <p className="font-medium">{user?.first_name} {user?.last_name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Department</p>
-              <p className="font-medium">{user?.department || 'Not specified'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Current Load</p>
-              <p className="font-medium">{supervisorGroups.length} / {supervisor?.max_capacity || 7} groups</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Available Slots</p>
-              <p className="font-medium text-green-600">{availableSlots} slots</p>
-            </div>
-          </div>
-          
-          {/* Workload Progress Bar */}
-          <div className="mt-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Workload</span>
-              <span>{workloadPercentage}%</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full">
-              <div
-                className={`h-2 rounded-full ${
-                  workloadPercentage > 80 ? 'bg-red-500' : 
-                  workloadPercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${Math.min(workloadPercentage, 100)}%` }}
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Assigned Groups</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{supervisorGroups.length}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <FileText className="text-orange-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Pending Reviews</p>
-                <p className="text-2xl font-bold text-[#1a237e]">{pendingReviewsCount}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <MessageSquare className="text-green-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Messages</p>
-                <p className="text-2xl font-bold text-[#1a237e]">0</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="text-purple-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-[#1a237e]">0</p>
-              </div>
-            </div>
-          </Card>
+      <div className="-m-6">
+        {/* Hero Section - Full-width blue header */}
+        <div className="relative bg-[#022B3A] px-6 pt-8 pb-24 text-white">
+          <h1 className="text-2xl md:text-3xl font-bold">
+            Welcome, {user?.first_name}
+          </h1>
+          <p className="text-[#BFDBF7] mt-1">
+            {user?.department || 'Supervisor'} • {supervisorGroups.length} groups assigned
+          </p>
         </div>
 
-        {/* Contact Information */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Contact Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Email</p>
-              <p className="font-medium">{user?.email}</p>
+        {/* Floating Cards */}
+        <div className="relative -mt-16 px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full">
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
+                  <Users className="text-[#1F7A8C]" size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-500">Assigned Groups</p>
+                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{supervisorGroups.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
+                  <FileText className="text-[#1F7A8C]" size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-500">Pending Reviews</p>
+                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{pendingReviewsCount}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
+                  <MessageSquare className="text-[#1F7A8C]" size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-500">Messages</p>
+                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{inboxCount}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
+                  <CheckCircle className="text-[#1F7A8C]" size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-500">Reports Reviewed</p>
+                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{reportsReviewedCount}</p>
+                </div>
+              </div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Assigned Groups */}
-        <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">My Assigned Groups</h2>
-          {supervisorGroups.length > 0 ? (
-            <div className="space-y-4">
-              {supervisorGroups.map((group) => (
-                <div key={group.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          group.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {group.status === 'active' ? 'Active' : 'Formed'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">
-                        {group.members.length} members • Department: {group.department || user?.department}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Project: {group.project?.title || "No project yet"}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link to="/my-groups" state={{ groupId: group.id, groupName: group.name }}>
-                        <Button variant="outline">
-                          <Eye className="mr-2" size={14} />
-                          View Details
-                        </Button>
-                      </Link>
-                      <Button onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
-                        <MessageSquare className="mr-2" size={14} />
-                        Message Group
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Group Members */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Group Members</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {Array.isArray(group.members) ? group.members.map((member, index) => (
-                        <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                          <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-semibold text-xs">
-                              {member.name.split(' ').map(n => n[0]).join('')}
+        {/* Main Content */}
+        <div className="mt-6 px-6 pb-8 bg-gradient-to-b from-slate-50 to-white min-h-[50vh]">
+          <div className="w-full space-y-6">
+            <Card className="rounded-2xl shadow-sm border-slate-100">
+              <h2 className="text-lg font-semibold text-[#022B3A] mb-4">My Assigned Groups</h2>
+              {supervisorGroups.length > 0 ? (
+                <div className="space-y-4">
+                  {supervisorGroups.map((group) => (
+                    <div key={group.id} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow bg-white">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-slate-900">{group.name}</h3>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              group.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {group.status === 'active' ? 'Active' : 'Formed'}
                             </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                            <p className="text-xs text-gray-600">{member.matricNumber}</p>
-                          </div>
+                          <p className="text-sm text-slate-600">
+                            {group.members.length} members • {group.project?.title || 'No project yet'}
+                          </p>
                         </div>
-                      )) : (
-                        <div className="col-span-3 p-2 text-gray-500 text-sm">No members data available</div>
-                      )}
+                        <div className="flex flex-wrap gap-2">
+                          <Link to="/my-groups" state={{ groupId: group.id, groupName: group.name }}>
+                            <Button variant="outline" size="sm">
+                              <Eye className="mr-2" size={14} />
+                              View
+                            </Button>
+                          </Link>
+                          <Button size="sm" onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
+                            <MessageSquare className="mr-2" size={14} />
+                            Message
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => navigate('/report-reviews', { state: { groupId: group.id } })}>
+                            <FileText className="mr-2" size={14} />
+                            Reports {group.reportsPending > 0 && `(${group.reportsPending})`}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => navigate('/evaluations', { state: { groupId: group.id } })}>
+                            <CheckCircle className="mr-2" size={14} />
+                            Grade
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-slate-100">
+                        <div className="flex flex-wrap gap-2">
+                          {Array.isArray(group.members) && group.members.slice(0, 4).map((member, index) => (
+                            <div key={index} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg">
+                              <div className="w-6 h-6 bg-[#1F7A8C] rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-medium">
+                                  {member.name.split(' ').map(n => n[0]).join('')}
+                                </span>
+                              </div>
+                              <span className="text-sm text-slate-700">{member.name}</span>
+                            </div>
+                          ))}
+                          {group.members.length > 4 && (
+                            <span className="text-sm text-slate-500 px-2 py-1">+{group.members.length - 4} more</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="flex items-center gap-3 pt-3 mt-3 border-t border-gray-200">
-                    <Button variant="outline" onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
-                      <Calendar className="mr-2" size={14} />
-                      Schedule Meeting
-                    </Button>
-                    <Button variant="outline" onClick={() => navigate('/report-reviews', { state: { groupId: group.id } })}>
-                      <FileText className="mr-2" size={14} />
-                      Review Reports {group.reportsPending > 0 && `(${group.reportsPending})`}
-                    </Button>
-                    <Button variant="outline" onClick={() => navigate('/evaluations', { state: { groupId: group.id } })}>
-                      <CheckCircle className="mr-2" size={14} />
-                      Grade Work
-                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Users className="mx-auto h-12 w-12 text-slate-300 mb-4" />
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">No Groups Assigned</h3>
+                  <p className="text-slate-600 mb-4">Groups will be assigned by the administrator.</p>
+                  <div className="bg-[#E1E5F2]/50 border border-[#BFDBF7]/50 rounded-xl p-4 max-w-md mx-auto text-left">
+                    <ul className="text-sm text-slate-700 space-y-1">
+                      <li>• Admin forms and assigns groups</li>
+                      <li>• You'll see them here automatically</li>
+                      <li>• Check back for updates</li>
+                    </ul>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Groups Assigned</h3>
-              <p className="text-gray-600 mb-4">
-                You haven't been assigned any groups yet. Groups will be assigned by the administrator after formation.
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <h4 className="font-medium text-blue-900 mb-2">What happens next?</h4>
-                <ul className="text-sm text-blue-800 space-y-1 text-left">
-                  <li>• Admin will form groups and assign supervisors</li>
-                  <li>• You'll see your assigned groups here automatically</li>
-                  <li>• Each group typically has 3 students</li>
-                  <li>• Check back here regularly for updates</li>
-                </ul>
-              </div>
-              <Button variant="outline">Contact Administrator</Button>
-            </div>
-          )}
-        </Card>
+              )}
+            </Card>
+          </div>
+        </div>
       </div>
     </MainLayout>
   );

@@ -1,17 +1,18 @@
 # Codebase Cleanup Summary
 
 **Date:** February 5, 2026  
-**Status:** ✅ Complete
+**Status:** ✅ Complete  
+**Update:** February 2026 – `.archive/` folder removed. Redundant root-level markdown files and loose utility scripts cleaned up.
 
 ---
 
 ## 📦 What Was Cleaned Up
 
-### 1. **Test Files Archived** (45+ files)
+### 1. **Test Files** (removed)
 - **Old test scripts** for authentication, groups, supervisors, file uploads
 - **Debug HTML files** for frontend debugging
 - **CSV sample files** used for testing
-- **Location**: `.archive/test-files/`
+- **Location**: Previously in `.archive/test-files/` – now removed
 
 **Examples:**
 - `test-complete-flow.cjs`, `test-complete-groups-flow.cjs`, `test-complete-workflow.cjs` → Duplicates
@@ -19,9 +20,9 @@
 - `debug-*.html` (5 variations) → Consolidated
 - `test-supervisor-count-fix.html`, `test-supervisor-count-fix-final.html` → Duplicates
 
-### 2. **Database Migration Files Archived** (10 files)
+### 2. **Database Migration Files** (removed)
 - **Outdated schema attempts** from development iterations
-- **Location**: `.archive/database-migrations/`
+- **Location**: Previously in `.archive/database-migrations/` – now removed
 
 **Kept (Active):**
 - ✅ `database/improved_schema.sql` - Main database schema
@@ -40,10 +41,10 @@
 - `manual_triggers.sql`
 - `triggers_simple.sql`
 
-### 3. **Duplicate Documentation Archived** (13 files)
+### 3. **Duplicate Documentation** (removed)
 - **Debugging notes** from development phase
 - **Fix summaries** for specific issues
-- **Location**: `.archive/debug-docs/`
+- **Location**: Previously in `.archive/debug-docs/` – now removed
 
 **Kept (Active):**
 - ✅ `QUICK_START.md` - 5-minute test guide
@@ -100,10 +101,7 @@ supervise360/
 ├── README.md               # ✨ NEW: Comprehensive guide
 ├── package.json
 ├── .env
-└── .archive/               # Deprecated files (git-ignored)
-    ├── test-files/         # Old test scripts
-    ├── debug-docs/         # Deprecated documentation
-    └── database-migrations/ # Old schema attempts
+└── docs/                   # Documentation (see docs/INDEX.md)
 ```
 
 ---
@@ -127,14 +125,8 @@ supervise360/
 
 ## 🎯 Recommendations
 
-### ✅ **Immediate Actions**
-1. **Delete `.archive/` after review** (optional)
-   - Once you've confirmed nothing critical is missing, safely delete `.archive/`
-   - This will reduce repository size by ~2-3 MB
-
-2. **Keep `.archive/` for reference**
-   - Useful if you need to review old debugging approaches
-   - Won't affect production builds
+### ✅ **Completed**
+- `.archive/` has been removed. Old test files, debug docs, and deprecated migrations are no longer in the project.
 
 ### 🔄 **Ongoing Best Practices**
 

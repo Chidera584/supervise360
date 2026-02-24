@@ -195,6 +195,7 @@ export class GroupFormationService {
   }
 
   // ASP-based group formation algorithm with flexible fallback strategies
+  // CRITICAL: No student is ever excluded. Leftover 2 → H+M or H+L only. Leftover 1 → HIGH tier only (rebalance if needed).
   async formGroupsUsingASP(students: StudentData[], department?: string): Promise<GroupData[]> {
     console.log('🔍 ASP Group Formation - Input students:', students.length);
     
@@ -203,8 +204,8 @@ export class GroupFormationService {
     console.log(`📊 [ASP GROUP FORMATION] Using GPA thresholds: HIGH≥${thresholds.high}, MEDIUM≥${thresholds.medium}, LOW≥${thresholds.low}`);
     console.log(`📊 [ASP GROUP FORMATION] Department: ${department || 'global'}`);
     
-    if (students.length < 3) {
-      throw new Error('Cannot form groups: Need at least 3 students to form groups.');
+    if (students.length < 1) {
+      throw new Error('Cannot form groups: Need at least 1 student.');
     }
     
     // Separate students by tier (already classified by processStudentData using current thresholds)
@@ -269,6 +270,28 @@ export class GroupFormationService {
     const remainingLow = lowTier.filter(s => !usedStudents.has(s.name));
     
     console.log(`🔄 Strategy 2: Remaining students - HIGH: ${remainingHigh.length}, MEDIUM: ${remainingMedium.length}, LOW: ${remainingLow.length}`);
+
+    // Form one H+H+x group early when possible - ensures we have a donor for rebalancing 2-remainder (M+L) or 1-remainder (M/L)
+    const totalRemaining = remainingHigh.length + remainingMedium.length + remainingLow.length;
+    if (totalRemaining >= 4 && totalRemaining % 3 !== 0 && remainingHigh.length >= 2) {
+      if (remainingMedium.length >= 1) {
+        const groupMembers = [remainingHigh.shift()!, remainingHigh.shift()!, remainingMedium.shift()!];
+        groupMembers.forEach(s => usedStudents.add(s.name));
+        groupMembers.sort((a, b) => b.gpa - a.gpa);
+        const avgGpa = parseFloat((groupMembers.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
+        groups.push({ name: `Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
+        console.log(`   📋 Pre-formed H+H+M (donor for possible solo remainder)`);
+        groupCounter++;
+      } else if (remainingLow.length >= 1) {
+        const groupMembers = [remainingHigh.shift()!, remainingHigh.shift()!, remainingLow.shift()!];
+        groupMembers.forEach(s => usedStudents.add(s.name));
+        groupMembers.sort((a, b) => b.gpa - a.gpa);
+        const avgGpa = parseFloat((groupMembers.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
+        groups.push({ name: `Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
+        console.log(`   📋 Pre-formed H+H+L (donor for possible solo remainder)`);
+        groupCounter++;
+      }
+    }
 
     // Try to form balanced groups from remaining students
     while (remainingHigh.length + remainingMedium.length + remainingLow.length >= 3) {
@@ -338,7 +361,7 @@ export class GroupFormationService {
         console.log(`   ⚠️  Same tier group (L,L,L) - not ideal`);
       }
       else {
-        // Can't form a complete group
+        // Can't form a complete group of 3 - will handle remainder below
         break;
       }
       
@@ -356,13 +379,106 @@ export class GroupFormationService {
         );
 
         groups.push({
-          name: `Group ${groupCounter}`, // Changed from letter to number
+          name: `Group ${groupCounter}`,
           members: groupMembers,
           avg_gpa: avgGpa,
           status: 'formed'
         });
         
         groupCounter++;
+      }
+    }
+
+    // REMAINDER HANDLING: No student left behind. All must be grouped.
+    const remainder = [...remainingHigh, ...remainingMedium, ...remainingLow];
+
+    if (remainder.length === 2) {
+      // Allowed: H+M only. NOT H+L, M+L, or L+L.
+      const [a, b] = remainder;
+      const tiers = [a.tier, b.tier].sort().join('+');
+      const validPairs = ['HIGH+MEDIUM'];
+      if (validPairs.includes(tiers)) {
+        const pair = remainder.sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
+        const avgGpa = parseFloat(((pair[0].gpa + pair[1].gpa) / 2).toFixed(2));
+        groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+        console.log(`🏗️  Forming Group ${groupCounter} (2-member H+M): ${pair[0].name} (${pair[0].tier}) + ${pair[1].name} (${pair[1].tier})`);
+        groupCounter++;
+      } else {
+        // H+L, M+L, or L+L: must rebalance. Only H+M allowed for 2-member.
+        // H+L: borrow M from group with H+H+M, form H+M, add our L to donor -> H+H+L
+        // M+L: borrow H from group with 2+ H, form H+M
+        // L+L: borrow H from group with 2+ H, form H+L+L (3-member)
+        const isHL = tiers === 'HIGH+LOW' || tiers === 'LOW+HIGH';
+        const isLL = tiers === 'LOW+LOW';
+        let donorGroup = groups.find(g => g.members.filter(m => m.tier === 'HIGH').length >= 2 && g.members.some(m => m.tier === 'MEDIUM'));
+        if (isHL && donorGroup) {
+          const donorMembers = [...donorGroup.members];
+          const mIdx = donorMembers.findIndex(m => m.tier === 'MEDIUM');
+          const borrowedM = donorMembers.splice(mIdx, 1)[0];
+          const ourH = remainder.find(r => r.tier === 'HIGH')!;
+          const ourL = remainder.find(r => r.tier === 'LOW')!;
+          const pair = [ourH, borrowedM].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
+          const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
+          groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+          groupCounter++;
+          donorMembers.push(ourL);
+          donorGroup.members = donorMembers.sort((x, y) => (y.gpa >= x.gpa ? 1 : -1));
+          donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
+          console.log(`🏗️  Rebalanced H+L: formed H+M, added L to donor -> H+H+L`);
+        } else {
+          donorGroup = groups.find(g => g.members.filter(m => m.tier === 'HIGH').length >= 2);
+          if (donorGroup) {
+            const donorMembers = [...donorGroup.members];
+            const hIdx = donorMembers.findIndex(m => m.tier === 'HIGH');
+            const borrowedH = donorMembers.splice(hIdx, 1)[0];
+            if (isLL) {
+              const trio = [borrowedH, ...remainder].sort((x, y) => (y.gpa >= x.gpa ? 1 : -1));
+              const avgGpa = parseFloat((trio.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
+              groups.push({ name: `Group ${groupCounter}`, members: trio, avg_gpa: avgGpa, status: 'formed' });
+              groupCounter++;
+              console.log(`🏗️  Rebalanced L+L: borrowed H, formed H+L+L (3-member)`);
+            } else {
+              const pair = [borrowedH, ...remainder].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
+              const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
+              groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+              groupCounter++;
+              console.log(`🏗️  Rebalanced M+L: formed H+M, donor now has 2`);
+            }
+            donorGroup.members = donorMembers;
+            donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
+          } else {
+            throw new Error(`Cannot form valid 2-member group: remainder ${a.tier}+${b.tier}. Only H+M allowed. No suitable donor group to rebalance.`);
+          }
+        }
+      }
+    } else if (remainder.length === 1) {
+      const solo = remainder[0];
+      if (solo.tier === 'HIGH') {
+        groups.push({
+          name: `Group ${groupCounter}`,
+          members: [solo],
+          avg_gpa: solo.gpa,
+          status: 'formed'
+        });
+        console.log(`🏗️  Forming Group ${groupCounter} (1-member HIGH): ${solo.name} (${solo.gpa})`);
+        groupCounter++;
+      } else {
+        // M or L alone: NOT allowed. Rebalance - borrow H from a group with 2+ HIGH.
+        const donorGroup = groups.find(g => g.members.filter(m => m.tier === 'HIGH').length >= 2);
+        if (donorGroup) {
+          const donorMembers = [...donorGroup.members];
+          const hIdx = donorMembers.findIndex(m => m.tier === 'HIGH');
+          const borrowedH = donorMembers.splice(hIdx, 1)[0];
+          const pair = [borrowedH, solo].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
+          const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
+          groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+          groupCounter++;
+          donorGroup.members = donorMembers;
+          donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
+          console.log(`🏗️  Rebalanced: solo ${solo.tier} paired with H from donor. Group ${groupCounter - 1} (2-member).`);
+        } else {
+          throw new Error(`Cannot form valid group: 1 remaining student (${solo.name}) is ${solo.tier} tier. Only HIGH tier may be in a 1-member group. No group with 2+ HIGH to rebalance.`);
+        }
       }
     }
 
@@ -434,11 +550,12 @@ export class GroupFormationService {
 
     const connection = await this.db.getConnection();
     try {
+      const trimmed = matricNumber.trim();
       const [rows] = await connection.execute(
         `SELECT gm.group_id FROM group_members gm 
-         WHERE gm.matric_number = ? 
+         WHERE gm.matric_number = ? OR TRIM(COALESCE(gm.matric_number,'')) = ?
          LIMIT 1`,
-        [matricNumber.trim()]
+        [trimmed, trimmed]
       );
 
       const memberRows = rows as any[];
@@ -537,24 +654,29 @@ export class GroupFormationService {
     const violations: string[] = [];
 
     groups.forEach((group) => {
-      // Check if group has exactly 3 members
-      if (group.members.length !== 3) {
-        violations.push(`Group ${group.name}: Must have exactly 3 members`);
+      const n = group.members.length;
+      if (n < 1 || n > 3) {
+        violations.push(`Group ${group.name}: Must have 1, 2, or 3 members`);
       }
 
-      // RELAXED VALIDATION: Allow flexible tier distribution
-      // Only check that all members have valid tier classifications
       const tiers = group.members.map(m => m.tier);
       const hasInvalidTiers = tiers.some(tier => !['HIGH', 'MEDIUM', 'LOW'].includes(tier));
-      
       if (hasInvalidTiers) {
         violations.push(`Group ${group.name}: All members must have valid tier classification (HIGH, MEDIUM, or LOW)`);
       }
 
-      // REMOVED: Strict requirement for one student from each tier
-      // REMOVED: Strict tier ordering requirement
-      // This allows the algorithm to form balanced groups even when
-      // the student distribution across tiers is uneven
+      // 2-member groups: only H+M allowed (not H+L, M+L, or L+L)
+      if (n === 2) {
+        const combo = [...tiers].sort().join('+');
+        if (combo !== 'HIGH+MEDIUM') {
+          violations.push(`Group ${group.name}: 2-member groups must be H+M only (got ${combo})`);
+        }
+      }
+
+      // 1-member groups: only HIGH tier allowed
+      if (n === 1 && tiers[0] !== 'HIGH') {
+        violations.push(`Group ${group.name}: 1-member groups must have HIGH tier student only`);
+      }
     });
 
     return {

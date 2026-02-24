@@ -22,11 +22,8 @@ export function SupervisorAssignment() {
   const [supervisorsByDepartment, setSupervisorsByDepartment] = useState({});
   const [totalStats, setTotalStats] = useState({
     totalSupervisors: 0,
-    totalCapacity: 0,
     totalAssigned: 0,
-    availableSlots: 0,
     departments: 0,
-    averageWorkload: 0,
     userDepartment: '',
     isSystemAdmin: false
   });
@@ -79,11 +76,8 @@ export function SupervisorAssignment() {
         setSupervisorsByDepartment(response.data.supervisorsByDepartment || {});
         setTotalStats(response.data.totalStats || {
           totalSupervisors: 0,
-          totalCapacity: 0,
           totalAssigned: 0,
-          availableSlots: 0,
           departments: 0,
-          averageWorkload: 0,
           userDepartment: response.data.userDepartment || '',
           isSystemAdmin: response.data.isSystemAdmin || false
         });
@@ -118,23 +112,18 @@ export function SupervisorAssignment() {
       
       // Check if this looks like a database export with only PK
       if (parsedData.headers.length === 1 && parsedData.headers[0].toLowerCase().includes('pk')) {
-        throw new Error('This appears to be a database export with only primary keys. Please export a CSV with the actual data columns needed (Name, Department, Max Groups).');
+        throw new Error('This appears to be a database export with only primary keys. Please export a CSV with the actual data columns needed (Name, Department).');
       }
       
-      // Validate required columns for supervisors
+      // Validate required columns for supervisors (Name, Department only - no max groups)
       const nameColumns = ['name', 'supervisor name', 'full name'];
       const deptColumns = ['department', 'dept', 'division'];
-      const maxColumns = ['max groups', 'max', 'capacity', 'maximum groups'];
       
       const hasNameColumn = nameColumns.some(col => 
         parsedData.headers.some(header => header.toLowerCase().includes(col))
       );
       
       const hasDeptColumn = deptColumns.some(col => 
-        parsedData.headers.some(header => header.toLowerCase().includes(col))
-      );
-      
-      const hasMaxColumn = maxColumns.some(col => 
         parsedData.headers.some(header => header.toLowerCase().includes(col))
       );
       
@@ -146,32 +135,14 @@ export function SupervisorAssignment() {
         throw new Error(`CSV must contain a department column. Found columns: ${parsedData.headers.join(', ')}`);
       }
       
-      if (!hasMaxColumn) {
-        throw new Error(`CSV must contain a max groups column. Found columns: ${parsedData.headers.join(', ')}`);
-      }
-      
       const processedSupervisors = parsedData.rows.map(row => {
-        // Find name column
-        const nameKey = Object.keys(row).find(key => 
-          key.toLowerCase().includes('name')
-        );
-        
-        // Find department column
+        const nameKey = Object.keys(row).find(key => key.toLowerCase().includes('name'));
         const deptKey = Object.keys(row).find(key => 
-          key.toLowerCase().includes('department') || 
-          key.toLowerCase().includes('dept')
+          key.toLowerCase().includes('department') || key.toLowerCase().includes('dept')
         );
-        
-        // Find max groups column
-        const maxKey = Object.keys(row).find(key => 
-          key.toLowerCase().includes('max') || 
-          key.toLowerCase().includes('capacity')
-        );
-        
         return {
           name: nameKey ? row[nameKey] : row.name || row.Name,
-          department: deptKey ? row[deptKey] : row.department || row.Department || userDepartment,
-          maxGroups: parseInt(maxKey ? row[maxKey] : row['max groups'] || row['Max Groups'] || row.maxGroups || '3')
+          department: deptKey ? row[deptKey] : row.department || row.Department || userDepartment
         };
       });
       
@@ -216,8 +187,33 @@ export function SupervisorAssignment() {
       
       setUploadedSupervisors([]);
       setAssigning(false);
-      
-      alert(`Successfully assigned supervisors to ${assignResponse.data?.assignedCount || 0} groups`);
+    } catch (error) {
+      console.error('Error in auto-assignment:', error);
+      alert(error instanceof Error ? error.message : 'Failed to assign supervisors');
+      setAssigning(false);
+    }
+  };
+
+  /** Auto-assign using existing supervisors in the system (no upload needed) - for when groups were reformed but supervisors already exist */
+  const handleAutoAssignFromExisting = async () => {
+    if (supervisors.length === 0) {
+      alert('No supervisors in the system. Upload supervisor CSV in the Upload & Assign tab first.');
+      return;
+    }
+    if (unassignedGroups.length === 0) {
+      alert('No groups awaiting assignment. All groups are already assigned.');
+      return;
+    }
+    setAssigning(true);
+    try {
+      const assignResponse = await apiClient.autoAssignSupervisors();
+      if (!assignResponse.success) {
+        throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
+      }
+      await apiClient.syncSupervisorWorkload();
+      await loadSupervisorWorkload();
+      await syncWithDatabase();
+      setAssigning(false);
     } catch (error) {
       console.error('Error in auto-assignment:', error);
       alert(error instanceof Error ? error.message : 'Failed to assign supervisors');
@@ -331,7 +327,7 @@ export function SupervisorAssignment() {
 
   return (
     <MainLayout title="Supervisor Assignment">
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4 flex-1 min-h-0">
         {/* Header */}
         <Card className="border border-slate-200 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -411,8 +407,8 @@ export function SupervisorAssignment() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-[#26a69a]" />
+              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-[#1F7A8C]" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{assignedGroups.length}</p>
@@ -422,8 +418,8 @@ export function SupervisorAssignment() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-[#26a69a]" />
+              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-[#1F7A8C]" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{unassignedGroups.length}</p>
@@ -433,12 +429,12 @@ export function SupervisorAssignment() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-[#26a69a]" />
+              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-[#1F7A8C]" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">{totalStats.availableSlots}</p>
-                <p className="text-sm text-slate-500">Slots Free</p>
+                <p className="text-xl font-bold text-slate-900">{totalStats.totalSupervisors}</p>
+                <p className="text-sm text-slate-500">Supervisors</p>
               </div>
             </div>
           </Card>
@@ -466,21 +462,25 @@ export function SupervisorAssignment() {
 
         {/* Tab: Supervisor Workload (Default) - only show when groups exist (groups precede supervisors) */}
         {activeTab === 'workload' && (
-        <Card className="border border-slate-200 p-6">
+        <Card className="border border-slate-200 p-6 flex-1 min-h-0 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-900">Supervisor Workload</h3>
-            {convertedGroups.length > 0 && totalStats.totalSupervisors > 0 && (
-              <span className="text-sm text-slate-500">{totalStats.totalSupervisors} supervisors</span>
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-slate-900">Supervisor Workload</h3>
+              {totalStats.totalSupervisors > 0 && (
+                <span className="text-sm text-slate-500">{totalStats.totalSupervisors} supervisors</span>
+              )}
+            </div>
+            {supervisors.length > 0 && unassignedGroups.length > 0 && (
+              <Button onClick={handleAutoAssignFromExisting} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
+                {assigning ? (
+                  <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
+                ) : (
+                  <><UserCheck className="mr-2" size={16} />Auto-Assign</>
+                )}
+              </Button>
             )}
           </div>
-          {convertedGroups.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              <Building className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-              <p className="font-medium">No groups yet</p>
-              <p className="text-sm mt-1">Form groups in the Groups page first, then return here to assign supervisors</p>
-              <Button variant="outline" className="mt-4" onClick={() => navigate('/groups')}>Go to Groups</Button>
-            </div>
-          ) : supervisors.length === 0 ? (
+          {supervisors.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <Users className="mx-auto h-12 w-12 text-slate-300 mb-3" />
               <p className="font-medium">No supervisors in the system</p>
@@ -489,19 +489,19 @@ export function SupervisorAssignment() {
             </div>
           ) : (
             <>
-            <div className="space-y-5">
+            <div className="space-y-5 flex-1 min-h-0 overflow-y-auto">
               {Object.values(supervisorsByDepartment).map((dept: any) => (
                 <div key={dept.department} className="border border-slate-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h5 className="font-semibold text-slate-900">{dept.department}</h5>
                       <p className="text-xs text-slate-500">
-                        {dept.departmentStats.count} supervisors · {dept.departmentStats.totalAssigned}/{dept.departmentStats.totalCapacity} capacity · {dept.departmentStats.availableSlots} free
+                        {dept.departmentStats.count} supervisors · {dept.departmentStats.totalAssigned} groups assigned
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#26a69a]/15 text-[#26a69a]">
-                        {dept.departmentStats.totalAssigned}/{dept.departmentStats.totalCapacity}
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C]">
+                        {dept.departmentStats.totalAssigned} groups
                       </span>
                     </div>
                   </div>
@@ -513,11 +513,11 @@ export function SupervisorAssignment() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <h6 className="text-base font-medium text-slate-900 truncate">{supervisor.name}</h6>
-                              <p className="text-sm text-slate-500">{supervisor.current_groups}/{supervisor.max_groups} groups</p>
+                              <p className="text-sm text-slate-500">{(supervisor.current_groups || 0)} groups</p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#26a69a]/15 text-[#26a69a]">
-                                {supervisor.current_groups}/{supervisor.max_groups}
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C]">
+                                {(supervisor.current_groups || 0)} groups
                               </span>
                               {supGroups.length > 0 && (
                                 <div className="flex gap-1">
@@ -595,7 +595,7 @@ export function SupervisorAssignment() {
                     <div key={group.id} className="flex items-center justify-between border border-slate-200 rounded-lg p-4 hover:bg-slate-50">
                       <div className="min-w-0">
                         <p className="text-base font-medium text-slate-900 truncate">{group.name}</p>
-                        <p className="text-sm text-[#26a69a] font-medium">{group.supervisor}</p>
+                        <p className="text-sm text-[#1F7A8C] font-medium">{group.supervisor}</p>
                         <p className="text-sm text-slate-500 truncate">{group.members.join(', ')}</p>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
@@ -617,7 +617,7 @@ export function SupervisorAssignment() {
 
         {/* Tab: Upload & Assign */}
         {activeTab === 'upload' && (
-        <div className="space-y-4">
+        <div className={`flex flex-col gap-4 ${uploadedSupervisors.length > 0 ? 'flex-1 min-h-0' : ''}`}>
           {uploading && (
             <Card className="border border-slate-200 p-4">
               <div className="flex items-center gap-3 text-slate-600">
@@ -627,10 +627,10 @@ export function SupervisorAssignment() {
             </Card>
           )}
           {uploadedSupervisors.length > 0 ? (
-            <Card className="border border-slate-200 p-6">
+            <Card className="border border-slate-200 p-6 flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">Uploaded Supervisors ({uploadedSupervisors.length})</h3>
-                <Button onClick={handleAutoAssignSupervisors} disabled={assigning} className="bg-[#26a69a] hover:bg-[#2bbbad]">
+                <Button onClick={handleAutoAssignSupervisors} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
                   {assigning ? (
                     <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
                   ) : (
@@ -638,14 +638,11 @@ export function SupervisorAssignment() {
                   )}
                 </Button>
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-slate-700">Supervisors are matched to groups from the same department. Each has a max group capacity.</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 flex-1 min-h-0 overflow-y-auto">
                 {uploadedSupervisors.map((s, i) => (
                   <div key={i} className="border border-slate-200 rounded-lg p-4">
                     <p className="text-base font-medium truncate">{s.name}</p>
-                    <p className="text-sm text-slate-500">{s.department} · Max {s.maxGroups}</p>
+                    <p className="text-sm text-slate-500">{s.department}</p>
                   </div>
                 ))}
               </div>
@@ -654,17 +651,12 @@ export function SupervisorAssignment() {
             <Card className="py-12 text-center">
               <Upload className="mx-auto h-12 w-12 text-slate-300 mb-3" />
               <p className="font-medium text-slate-700">Upload supervisor CSV to get started</p>
-              <p className="text-sm text-slate-500 mt-1">Required columns: Name, Department, Max Groups</p>
+              <p className="text-sm text-slate-500 mt-1">Required columns: Name, Department</p>
               <Button className="mt-4" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="mr-2" size={16} />
                 Choose File
               </Button>
             </Card>
-          )}
-          {convertedGroups.length > 0 && (
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-              <p className="text-sm text-slate-700">Assignments persist until groups are cleared or reassigned.</p>
-            </div>
           )}
         </div>
         )}
@@ -781,7 +773,7 @@ export function SupervisorAssignment() {
                   </div>
                 </div>
                 {swapMember1 && swapMember2 && swapMember1.groupId === swapMember2.groupId && (
-                  <p className="text-sm text-[#26a69a]">Select students from different groups.</p>
+                  <p className="text-sm text-[#1F7A8C]">Select students from different groups.</p>
                 )}
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setEditSwapModal(false)} disabled={swapping}>Cancel</Button>

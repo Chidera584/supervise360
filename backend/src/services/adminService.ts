@@ -27,9 +27,9 @@ export class AdminService {
     const [workloadRows] = await this.db.execute(
       'SELECT COUNT(*) as count FROM supervisor_workload'
     ) as any;
-    const workloadCount = workloadRows[0]?.count ?? 0;
-    const totalSupervisors =
-      workloadCount > 0 ? workloadCount : supervisorsCount;
+    const workloadCount = Number(workloadRows?.[0]?.count ?? 0);
+    // Prefer supervisor_workload (matches Supervisor Assignment page); fallback to supervisors table
+    const totalSupervisors = workloadCount > 0 ? workloadCount : supervisorsCount;
 
     const [projectRows] = await this.db.execute(
       'SELECT COUNT(*) as count FROM projects'
@@ -150,7 +150,7 @@ export class AdminService {
     const reviewedReports = reviewedRows[0]?.count ?? 0;
 
     const [supervisorWorkload] = await this.db.execute(
-      `SELECT supervisor_name, department, max_groups, current_groups
+      `SELECT supervisor_name, department, current_groups
        FROM supervisor_workload
        ORDER BY department, supervisor_name`
     );

@@ -1,6 +1,7 @@
 import type { LoginRequest, RegisterRequest, AuthResponse, ApiResponse } from '../types/database';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '') || 'http://localhost:5000';
 
 console.log('API Base URL:', API_BASE_URL); // Debug log
 
@@ -122,6 +123,20 @@ class ApiClient {
     });
   }
 
+  async forgotPassword(email: string): Promise<ApiResponse> {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<ApiResponse> {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
+
   // User endpoints
   async getUsers(): Promise<ApiResponse> {
     return this.request('/users');
@@ -155,7 +170,7 @@ class ApiClient {
 
   // Health check
   async healthCheck(): Promise<ApiResponse> {
-    return fetch(`${this.baseURL.replace('/api', '')}/health`)
+    return fetch(`${API_ORIGIN}/health`)
       .then(res => res.json())
       .catch(error => ({
         success: false,
@@ -235,6 +250,17 @@ class ApiClient {
 
   async getAdminStats(): Promise<ApiResponse> {
     return this.request('/admin/stats');
+  }
+
+  async sendUnassignedStudentsAlert(): Promise<ApiResponse> {
+    return this.request('/admin/send-unassigned-alert', { method: 'POST' });
+  }
+
+  async sendTestEmail(email?: string): Promise<ApiResponse> {
+    return this.request('/admin/test-email', {
+      method: 'POST',
+      body: JSON.stringify(email ? { email } : {}),
+    });
   }
 
   async approveProject(projectId: number): Promise<ApiResponse> {
@@ -324,9 +350,19 @@ class ApiClient {
     });
   }
 
+  async clearProject(): Promise<ApiResponse> {
+    return this.request('/projects/clear', {
+      method: 'DELETE',
+    });
+  }
+
   // Supervisor: get pending project proposals for their groups
   async getPendingProjectProposals(): Promise<ApiResponse> {
     return this.request('/projects/pending-for-supervisor');
+  }
+
+  async getAllProjectProposals(): Promise<ApiResponse> {
+    return this.request('/projects/all-for-supervisor');
   }
 
   async approveProjectProposal(projectId: number): Promise<ApiResponse> {
@@ -347,7 +383,6 @@ class ApiClient {
     return this.request('/reports/upload', {
       method: 'POST',
       body: formData,
-      headers: {}
     });
   }
 
@@ -368,6 +403,16 @@ class ApiClient {
 
   async downloadReport(reportId: number): Promise<ApiResponse> {
     return this.request(`/reports/${reportId}/download`);
+  }
+
+  /** Fetch report file as blob for viewing/downloading (for supervisors) */
+  async fetchReportFile(reportId: number): Promise<Blob> {
+    const url = `${this.baseURL}/reports/${reportId}/download`;
+    const res = await fetch(url, {
+      headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
+    });
+    if (!res.ok) throw new Error('Failed to fetch report document');
+    return res.blob();
   }
 
   async deleteReport(reportId: number): Promise<ApiResponse> {
@@ -397,6 +442,14 @@ class ApiClient {
   }
 
   // Messages endpoints
+  async getMessageContacts(groupId?: number, debug?: boolean): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (groupId) params.set('group_id', String(groupId));
+    if (debug) params.set('debug', '1');
+    const q = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/messages/contacts${q}`);
+  }
+
   async getInbox(): Promise<ApiResponse> {
     return this.request('/messages/inbox');
   }
@@ -405,14 +458,38 @@ class ApiClient {
     return this.request('/messages/sent');
   }
 
-  async sendMessage(payload: any): Promise<ApiResponse> {
+  async sendMessage(payload: {
+    recipient_id?: number;
+    recipient_ids?: number[];
+    group_id?: number;
+    broadcast?: boolean;
+    parent_id?: number;
+    subject: string;
+    content: string;
+  }): Promise<ApiResponse> {
     return this.request('/messages/send', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   }
 
+  async markMessageRead(messageId: number): Promise<ApiResponse> {
+    return this.request(`/messages/${messageId}/read`, { method: 'PUT' });
+  }
+
+  async clearInbox(): Promise<ApiResponse> {
+    return this.request('/messages/inbox', { method: 'DELETE' });
+  }
+
+  async clearSent(): Promise<ApiResponse> {
+    return this.request('/messages/sent', { method: 'DELETE' });
+  }
+
   // Notifications endpoints
+  async getNotificationUnreadCount(): Promise<ApiResponse> {
+    return this.request('/notifications/unread-count');
+  }
+
   async getRecentNotifications(limit: number = 5): Promise<ApiResponse> {
     return this.request(`/notifications/recent?limit=${limit}`);
   }

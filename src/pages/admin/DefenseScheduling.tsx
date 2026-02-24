@@ -277,7 +277,7 @@ export function DefenseScheduling() {
                 size="sm"
                 onClick={handleGenerate}
                 disabled={loading || staffRows.length === 0 || venueRows.length === 0}
-                className="bg-[#26a69a] hover:bg-[#2bbbad] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#1F7A8C] hover:bg-[#2a8a9c] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Generating...' : 'Generate Allocation'}
               </Button>
@@ -311,8 +311,8 @@ export function DefenseScheduling() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
-                <Building className="w-5 h-5 text-[#26a69a]" />
+              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
+                <Building className="w-5 h-5 text-[#1F7A8C]" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{venueRows.length}</p>
@@ -322,8 +322,8 @@ export function DefenseScheduling() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-[#26a69a]" />
+              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-[#1F7A8C]" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{configuredRanges}</p>
@@ -333,8 +333,8 @@ export function DefenseScheduling() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#26a69a]/10 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-[#26a69a]" />
+              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-[#1F7A8C]" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{allocations?.length ?? 0}</p>
@@ -498,11 +498,11 @@ export function DefenseScheduling() {
                       size="sm"
                       onClick={handlePublishToStudents}
                       disabled={publishing}
-                      className="text-[#26a69a] hover:text-[#2bbbad] hover:border-[#26a69a]"
+                      className="text-[#1F7A8C] hover:text-[#2a8a9c] hover:border-[#1F7A8C]"
                     >
                       {publishing ? (
                         <span className="flex items-center gap-1.5">
-                          <span className="animate-spin rounded-full h-3 w-3 border-2 border-[#26a69a] border-t-transparent" />
+                          <span className="animate-spin rounded-full h-3 w-3 border-2 border-[#1F7A8C] border-t-transparent" />
                           Publishing...
                         </span>
                       ) : (

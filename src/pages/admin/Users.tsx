@@ -12,9 +12,15 @@ export function Users() {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState<any | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
       const [usersRes, studentsRes, supervisorsRes] = await Promise.all([
         apiClient.getUsers(),
         apiClient.getStudents(),
@@ -23,30 +29,39 @@ export function Users() {
 
       if (usersRes.success && usersRes.data) {
         setUsers(usersRes.data);
+      } else {
+        setError(usersRes.message || 'Failed to load users');
       }
       if (studentsRes.success && studentsRes.data) {
         const map: Record<string, any> = {};
-        (studentsRes.data as any[]).forEach(student => {
+        (studentsRes.data as any[]).forEach((student: any) => {
           map[student.email] = student;
         });
         setStudentDetails(map);
       }
       if (supervisorsRes.success && supervisorsRes.data) {
         const map: Record<string, any> = {};
-        (supervisorsRes.data as any[]).forEach(supervisor => {
+        (supervisorsRes.data as any[]).forEach((supervisor: any) => {
           map[supervisor.email] = supervisor;
         });
         setSupervisorDetails(map);
       }
+    } catch (err) {
+      console.error('Fetch users error:', err);
+      setError('Failed to load users. Please try again.');
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchUsers();
   }, []);
 
   const filteredUsers = users.filter((user) => {
     const name = `${user.first_name} ${user.last_name}`.trim();
-    const matchesFilter = filter === 'all' || user.role === filter;
+    const matchesFilter = filter === 'all' || user.role === filter ||
+      (filter === 'supervisor' && user.role === 'external_supervisor');
     const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -58,6 +73,50 @@ export function Users() {
       case 'supervisor': return 'text-green-600 bg-green-100';
       case 'admin': return 'text-purple-600 bg-purple-100';
       default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    if (!editUser) return;
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await apiClient.updateUser(editUser.id, {
+        first_name: editUser.first_name,
+        last_name: editUser.last_name,
+        department: editUser.department || undefined,
+        phone: editUser.phone || undefined,
+        office_location: editUser.office_location || undefined,
+        specialization: editUser.specialization || undefined,
+      });
+      if (res.success) {
+        setEditUser(null);
+        fetchUsers();
+      } else {
+        setError(res.message || 'Failed to update user');
+      }
+    } catch (err) {
+      setError('Failed to update user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!deleteConfirm) return;
+    setSaving(true);
+    try {
+      const res = await apiClient.updateUserStatus(deleteConfirm.id, false);
+      if (res.success) {
+        setDeleteConfirm(null);
+        fetchUsers();
+      } else {
+        setError(res.message || 'Failed to deactivate user');
+      }
+    } catch (err) {
+      setError('Failed to deactivate user');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -74,10 +133,16 @@ export function Users() {
   return (
     <MainLayout title="Users">
       <div className="space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 font-medium">Dismiss</button>
+          </div>
+        )}
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-[#1a237e]">User Management</h2>
+              <h2 className="text-2xl font-bold text-[#022B3A]">User Management</h2>
               <p className="text-gray-600 mt-1">Manage students, supervisors, and administrators</p>
             </div>
             <Button>
@@ -113,6 +178,17 @@ export function Users() {
         </Card>
 
         <div className="space-y-4">
+          {filteredUsers.length === 0 && (
+            <Card>
+              <div className="text-center py-12 text-gray-500">
+                <UsersIcon size={48} className="mx-auto mb-4 opacity-50" />
+                <p className="font-medium">No users found</p>
+                <p className="text-sm mt-1">
+                  {searchTerm || filter !== 'all' ? 'Try adjusting your search or filter.' : 'Users will appear here once they register.'}
+                </p>
+              </div>
+            </Card>
+          )}
           {filteredUsers.map((user) => {
             const name = `${user.first_name} ${user.last_name}`.trim();
             const student = studentDetails[user.email];
@@ -155,7 +231,7 @@ export function Users() {
                   {supervisor?.current_load != null && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <UsersIcon size={14} />
-                      <span>Groups: {supervisor.current_load}/{supervisor.max_capacity}</span>
+                      <span>Groups: {supervisor.current_load}</span>
                     </div>
                   )}
                   {supervisor?.phone && (
@@ -167,19 +243,110 @@ export function Users() {
                 </div>
 
                 <div className="mt-4 flex items-center gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setEditUser({ ...user, ...supervisorDetails[user.email] })}>
                     <Edit size={14} className="mr-1" />
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="text-red-600 hover:border-red-300" onClick={() => setDeleteConfirm(user)}>
                     <Trash2 size={14} className="mr-1" />
-                    Delete
+                    Deactivate
                   </Button>
                 </div>
               </Card>
             );
           })}
         </div>
+
+        {/* Edit User Modal */}
+        {editUser && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-[#022B3A] mb-4">Edit User</h3>
+              <form onSubmit={handleEdit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    value={editUser.first_name || ''}
+                    onChange={(e) => setEditUser({ ...editUser, first_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={editUser.last_name || ''}
+                    onChange={(e) => setEditUser({ ...editUser, last_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                  <input
+                    type="text"
+                    value={editUser.department || ''}
+                    onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {(editUser.role === 'supervisor' || editUser.role === 'external_supervisor') && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <input
+                        type="text"
+                        value={editUser.phone || ''}
+                        onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Office Location</label>
+                      <input
+                        type="text"
+                        value={editUser.office_location || ''}
+                        onChange={(e) => setEditUser({ ...editUser, office_location: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
+                      <input
+                        type="text"
+                        value={editUser.specialization || ''}
+                        onChange={(e) => setEditUser({ ...editUser, specialization: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </>
+                )}
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+                  <Button type="button" variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete/Deactivate Confirmation */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-[#022B3A] mb-2">Deactivate User</h3>
+              <p className="text-gray-600 mb-4">
+                Deactivate {deleteConfirm.first_name} {deleteConfirm.last_name}? They will no longer be able to log in.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="danger" onClick={handleDeactivate} disabled={saving}>
+                  {saving ? 'Deactivating...' : 'Deactivate'}
+                </Button>
+                <Button variant="outline" onClick={() => setDeleteConfirm(null)} disabled={saving}>Cancel</Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );

@@ -4,8 +4,7 @@ import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../lib/api';
-import { Link } from 'react-router-dom';
-import { Mail, Building2, Users, Calendar, Key, FileText } from 'lucide-react';
+import { Mail, Building2, Calendar, Key } from 'lucide-react';
 
 export function SupervisorProfile() {
   const { user, supervisor } = useAuth();
@@ -45,18 +44,14 @@ export function SupervisorProfile() {
     }
   };
 
-  const capacity = supervisor?.max_capacity ?? 7;
-  const available = Math.max(0, capacity - groupsCount);
-  const workloadPct = capacity > 0 ? Math.round((groupsCount / capacity) * 100) : 0;
-
   return (
     <MainLayout title="Profile">
       <div className="space-y-6">
         <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Profile</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Profile</h2>
           <div className="flex flex-col sm:flex-row gap-6">
-            <div className="w-16 h-16 bg-gray-200 flex items-center justify-center shrink-0">
-              <span className="text-xl font-semibold text-gray-600">
+            <div className="w-16 h-16 bg-[#1F7A8C] rounded-full flex items-center justify-center shrink-0">
+              <span className="text-xl font-semibold text-white">
                 {user?.first_name?.[0]}
                 {user?.last_name?.[0]}
               </span>
@@ -78,30 +73,13 @@ export function SupervisorProfile() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
-            <p className="text-sm text-gray-600 mb-1">Groups</p>
-            <p className="text-xl font-bold text-[#1a237e]">{groupsCount}</p>
-            <p className="text-xs text-gray-500">of {capacity} capacity</p>
-          </Card>
-          <Card>
-            <p className="text-sm text-gray-600 mb-1">Available slots</p>
-            <p className="text-xl font-bold text-[#1a237e]">{available}</p>
-          </Card>
-          <Card>
-            <p className="text-sm text-gray-600 mb-1">Workload</p>
-            <p className="text-xl font-bold text-[#1a237e]">{workloadPct}%</p>
-            <div className="mt-2 h-1.5 bg-gray-200 w-full">
-              <div
-                className={`h-1.5 ${
-                  workloadPct > 80 ? 'bg-red-500' : workloadPct > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${Math.min(workloadPct, 100)}%` }}
-              />
-            </div>
+            <p className="text-sm text-gray-600 mb-1">Assigned Groups</p>
+            <p className="text-xl font-bold text-[#022B3A]">{groupsCount}</p>
           </Card>
         </div>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Contact</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Contact</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Email</p>
@@ -127,32 +105,8 @@ export function SupervisorProfile() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <Card>
-            <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Shortcuts</h2>
-            <div className="space-y-3">
-              <Link to="/my-groups">
-                <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <span className="flex items-center gap-2">
-                    <Users size={16} className="text-gray-500" />
-                    My Groups
-                  </span>
-                  <span className="text-xs text-gray-500">{groupsCount} groups</span>
-                </div>
-              </Link>
-              <Link to="/report-reviews">
-                <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <span className="flex items-center gap-2">
-                    <FileText size={16} className="text-gray-500" />
-                    Report Reviews
-                  </span>
-                </div>
-              </Link>
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="text-lg font-semibold text-[#1a237e] mb-4">Password</h2>
+        <Card>
+            <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Password</h2>
             {passwordSuccess && (
               <p className="text-sm text-green-600 mb-4">Password updated.</p>
             )}
@@ -163,21 +117,21 @@ export function SupervisorProfile() {
                   placeholder="Current password"
                   value={passwordForm.currentPassword}
                   onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1a237e]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#022B3A]"
                 />
                 <input
                   type="password"
                   placeholder="New password"
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1a237e]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#022B3A]"
                 />
                 <input
                   type="password"
                   placeholder="Confirm"
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1a237e]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#022B3A]"
                 />
                 {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
                 <div className="flex gap-2 pt-2">
@@ -207,8 +161,7 @@ export function SupervisorProfile() {
                 </Button>
               </div>
             )}
-          </Card>
-        </div>
+        </Card>
       </div>
     </MainLayout>
   );

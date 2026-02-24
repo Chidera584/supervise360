@@ -6,6 +6,11 @@ import multer from 'multer';
 import { authenticateToken, requireStudent, requireSupervisor } from '../middleware/auth';
 import { ReportService } from '../services/reportService';
 import { AuthenticatedRequest } from '../types';
+import {
+  notifySubmissionConfirmation,
+  notifySupervisorFeedback,
+  notifyStudentSubmission,
+} from '../services/notificationEmailService';
 
 const router = Router();
 
@@ -67,10 +72,54 @@ export function createReportsRouter(db: Pool) {
         ]
       );
 
+      // Notify student (submission confirmation) and supervisor (student submission)
+      const reportTitle = title || report_type;
+      const [userRows] = await db.execute('SELECT first_name, last_name, email FROM users WHERE id = ?', [userId]);
+      const submitter = (userRows as any[])[0];
+      const submitterName = submitter ? `${submitter.first_name || ''} ${submitter.last_name || ''}`.trim() : 'Student';
+      notifySubmissionConfirmation(db, userId, submitter?.email, submitterName, reportTitle, req.file.originalname).catch(() => {});
+
+      // Get supervisor for this group and notify them
+      const [pgRows] = await db.execute('SELECT supervisor_name FROM project_groups WHERE id = ?', [groupId]);
+      const supName = (pgRows as any[])[0]?.supervisor_name;
+      if (supName) {
+        const sn = String(supName).trim().replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
+        const parts = sn.split(/[\s,]+/).filter(Boolean);
+        const lastPart = parts[parts.length - 1];
+        const [supUserRows] = await db.execute(
+          `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
+           INNER JOIN supervisors s ON s.user_id = u.id
+           WHERE ? LIKE CONCAT('%', TRIM(COALESCE(u.first_name,'')), '%')
+             AND ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%')
+             AND COALESCE(u.first_name,'') != '' AND COALESCE(u.last_name,'') != ''
+           LIMIT 1`,
+          [sn, sn]
+        );
+        let supUser = (supUserRows as any[])[0];
+        if (!supUser && lastPart) {
+          const [fallback] = await db.execute(
+            `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
+             INNER JOIN supervisors s ON s.user_id = u.id
+             WHERE (u.last_name = ? OR ? LIKE CONCAT('%', u.last_name, '%')) LIMIT 1`,
+            [lastPart, sn]
+          );
+          supUser = (fallback as any[])[0];
+        }
+        if (supUser) {
+          const supFullName = `${supUser.first_name || ''} ${supUser.last_name || ''}`.trim();
+          notifyStudentSubmission(db, supUser.id, supUser.email, supFullName, submitterName, reportTitle, req.file.originalname).catch(() => {});
+        }
+      }
+
       res.json({ success: true, message: 'Report uploaded', data: { id: (result as any).insertId } });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload report error:', error);
-      res.status(500).json({ success: false, message: 'Failed to upload report' });
+      const msg = error?.message || String(error);
+      const isFkError = msg.toLowerCase().includes('foreign key') || msg.includes("doesn't exist");
+      res.status(500).json({
+        success: false,
+        message: isFkError ? `Database error: ${msg}. Run: node backend/fix-reports-table.cjs` : (process.env.NODE_ENV === 'development' ? msg : 'Failed to upload report')
+      });
     }
   });
 
@@ -91,6 +140,32 @@ export function createReportsRouter(db: Pool) {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
       const data = await reportService.listPendingReviews(userId);
+
+      if (data.length === 0) {
+        const [userRows] = await db.execute('SELECT id, first_name, last_name FROM users WHERE id = ?', [userId]);
+        const groupIds = await reportService.getSupervisorGroupIds(userId);
+        const [allUnreviewed] = await db.execute(
+          `SELECT r.id, r.title, r.reviewed, r.group_id as r_group_id, r.project_id, p.group_id as p_group_id, pg.supervisor_name
+           FROM reports r
+           LEFT JOIN projects p ON r.project_id = p.id
+           LEFT JOIN project_groups pg ON COALESCE(p.group_id, r.group_id) = pg.id
+           WHERE r.reviewed = 0 OR r.reviewed = FALSE OR r.reviewed IS NULL`
+        );
+        const [allGroups] = await db.execute(
+          'SELECT id, name, supervisor_name FROM project_groups WHERE supervisor_name IS NOT NULL'
+        );
+        return res.json({
+          success: true,
+          data,
+          _debug: {
+            userId,
+            userName: (userRows as any[])[0],
+            myGroupIds: groupIds,
+            allUnreviewedReports: allUnreviewed,
+            allGroupsWithSupervisor: allGroups,
+          },
+        });
+      }
       res.json({ success: true, data });
     } catch (error) {
       console.error('Pending review reports error:', error);
@@ -104,7 +179,39 @@ export function createReportsRouter(db: Pool) {
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
       const { comments, approved } = req.body;
       if (!comments) return res.status(400).json({ success: false, message: 'Review comments are required' });
-      await reportService.reviewReport(Number(req.params.id), userId, comments, !!approved);
+      const reportId = Number(req.params.id);
+
+      // Get report and submitter before review
+      const [reportRows] = await db.execute(
+        'SELECT r.title, r.submitted_by FROM reports r WHERE r.id = ?',
+        [reportId]
+      );
+      const report = (reportRows as any[])[0];
+      const submittedBy = report?.submitted_by;
+
+      await reportService.reviewReport(reportId, userId, comments, !!approved);
+
+      // Notify student of supervisor feedback
+      if (submittedBy) {
+        const [submitterRows] = await db.execute('SELECT first_name, last_name, email FROM users WHERE id = ?', [submittedBy]);
+        const [reviewerRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
+        const submitter = (submitterRows as any[])[0];
+        const reviewer = (reviewerRows as any[])[0];
+        const submitterName = submitter ? `${submitter.first_name || ''} ${submitter.last_name || ''}`.trim() : 'Student';
+        const reviewerName = reviewer ? `${reviewer.first_name || ''} ${reviewer.last_name || ''}`.trim() : 'Supervisor';
+        notifySupervisorFeedback(
+          db,
+          submittedBy,
+          submitter?.email,
+          submitterName,
+          reviewerName,
+          report?.title || 'Report',
+          comments,
+          !!approved,
+          !approved ? comments : undefined
+        ).catch(() => {});
+      }
+
       res.json({ success: true, message: 'Report reviewed' });
     } catch (error) {
       console.error('Review report error:', error);

@@ -1,7 +1,10 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { getOne, insertRecord, updateRecord } from '../config/database';
+import { pool } from '../config/database';
 import { User, Student, Supervisor, LoginRequest, RegisterRequest, AuthResponse } from '../types';
+import { sendPasswordResetEmailOnly, sendWelcomeEmailOnly } from './notificationEmailService';
 
 export class AuthService {
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
@@ -157,6 +160,14 @@ export class AuthService {
         }
       }
 
+      // Send welcome email (fire-and-forget)
+      sendWelcomeEmailOnly(
+        userData.email,
+        userData.first_name,
+        userData.role,
+        undefined
+      ).catch(() => {});
+
       // Auto-login after successful registration
       return await this.login({ email: userData.email, password: userData.password });
     } catch (error) {
@@ -217,6 +228,48 @@ export class AuthService {
         success: false,
         message: 'Failed to retrieve user data'
       };
+    }
+  }
+
+  static async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const user = await getOne('SELECT id, first_name, email FROM users WHERE email = ? AND is_active = TRUE', [email]) as any;
+      if (!user) {
+        return { success: true, message: 'If an account exists with that email, a reset link has been sent.' };
+      }
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await pool.execute(
+        'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+        [user.id, token, expiresAt]
+      );
+      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+      if (user?.email) {
+        sendPasswordResetEmailOnly(user.email, user.first_name || 'User', resetLink, 60).catch(() => {});
+      }
+      return { success: true, message: 'If an account exists with that email, a reset link has been sent.' };
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      return { success: false, message: 'Failed to process password reset request' };
+    }
+  }
+
+  static async resetPasswordWithToken(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const row = await getOne(
+        'SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token = ?',
+        [token]
+      ) as any;
+      if (!row) return { success: false, message: 'Invalid or expired reset link' };
+      if (row.used_at) return { success: false, message: 'This reset link has already been used' };
+      if (new Date() > new Date(row.expires_at)) return { success: false, message: 'This reset link has expired' };
+      const password_hash = await bcrypt.hash(newPassword, 12);
+      await updateRecord('users', { password_hash }, 'id = ?', [row.user_id]);
+      await pool.execute('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = ?', [row.id]);
+      return { success: true, message: 'Password has been reset successfully' };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return { success: false, message: 'Failed to reset password' };
     }
   }
 
