@@ -124,15 +124,13 @@ export class AuthService {
 
       // Create role-specific record
       if (userData.role === 'student' && userData.matric_number) {
+        const gpa = userData.gpa !== undefined && userData.gpa !== null ? Number(userData.gpa) : 0;
         const studentData: any = {
           user_id: userId,
-          matric_number: userData.matric_number
+          matric_number: userData.matric_number,
+          gpa: Math.min(5, Math.max(0, gpa)),
+          gpa_tier: gpa >= 3.8 ? 'HIGH' : gpa >= 3.3 ? 'MEDIUM' : 'LOW'
         };
-
-        // Only add GPA if provided
-        if (userData.gpa !== undefined) {
-          studentData.gpa = userData.gpa;
-        }
 
         const studentResult = await insertRecord('students', studentData);
 
