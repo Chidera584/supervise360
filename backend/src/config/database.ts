@@ -3,24 +3,32 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Database configuration
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'supervise360',
-  port: parseInt(process.env.DB_PORT || '3306'),
-  charset: 'utf8mb4',
-  timezone: '+00:00',
-  connectionLimit: 10,
-  queueLimit: 0,
-  waitForConnections: true,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0
-};
+// Support Railway MYSQL_URL or individual vars
+const mysqlUrl = process.env.MYSQL_URL;
+let pool: mysql.Pool;
 
-// Create connection pool for better performance
-export const pool = mysql.createPool(dbConfig);
+if (mysqlUrl) {
+  // Railway provides MYSQL_URL - use it directly (handles SSL)
+  pool = mysql.createPool(mysqlUrl);
+} else {
+  pool = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'supervise360',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    charset: 'utf8mb4',
+    timezone: '+00:00',
+    connectionLimit: 10,
+    queueLimit: 0,
+    waitForConnections: true,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+  });
+}
+
+export { pool };
 
 // Test database connection
 export async function testConnection(): Promise<boolean> {
