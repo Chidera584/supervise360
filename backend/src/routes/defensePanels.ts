@@ -4,6 +4,7 @@ import { authenticateToken, requireStudent, requireSupervisor, requireAdmin } fr
 import { DefensePanelService } from '../services/defensePanelService';
 import { DefenseAllocationService } from '../services/defenseAllocationService';
 import { computeAllocation } from '../services/defenseSchedulingService';
+import { notifyDefenseScheduled } from '../services/notificationEmailService';
 import { AuthenticatedRequest } from '../types';
 
 const router = Router();
@@ -108,6 +109,13 @@ export function createDefensePanelsRouter(db: Pool) {
         };
       });
       await defenseAllocService.saveAllocations(toSave);
+
+      // Notify students via in-app notification + email
+      const studentsToNotify = await defenseAllocService.getStudentsToNotifyForPublishedDefense();
+      for (const s of studentsToNotify) {
+        notifyDefenseScheduled(db, s.userId, s.email, s.studentName, s.venue, s.assessors, s.groupName).catch(() => {});
+      }
+
       res.json({ success: true, message: 'Allocations published. Students and supervisors can now see their defense schedule.' });
     } catch (error) {
       console.error('Publish allocations error:', error);

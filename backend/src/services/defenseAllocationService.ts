@@ -304,4 +304,96 @@ export class DefenseAllocationService {
 
     return results.sort((a, b) => a.groupNumber - b.groupNumber);
   }
+
+  /**
+   * Get all students to notify when defense allocations are published.
+   * Returns { userId, email, studentName, venue, assessors, groupName } for each student.
+   */
+  async getStudentsToNotifyForPublishedDefense(): Promise<Array<{
+    userId: number;
+    email: string;
+    studentName: string;
+    venue: string;
+    assessors: string[];
+    groupName: string;
+  }>> {
+    await this.ensureTable();
+    const results: Array<{ userId: number; email: string; studentName: string; venue: string; assessors: string[]; groupName: string }> = [];
+    try {
+      const [allocRows] = await this.db.execute(
+        'SELECT venue_name, department, group_start, group_end, assessors FROM defense_allocations'
+      );
+      const allocations = allocRows as any[];
+      if (allocations.length === 0) return results;
+
+      for (const alloc of allocations) {
+        const dept = normalizeDepartment(alloc.department);
+        const start = Number(alloc.group_start) || 0;
+        const end = Number(alloc.group_end) || 0;
+        const venue = String(alloc.venue_name || '').trim();
+        let assessors: string[] = [];
+        try {
+          assessors = typeof alloc.assessors === 'string' ? JSON.parse(alloc.assessors) : (alloc.assessors || []);
+        } catch {
+          assessors = [];
+        }
+        if (!venue) continue;
+
+        const deptVariants = getDepartmentMatchVariants(dept);
+        if (deptVariants.length === 0 && !dept) continue;
+
+        const placeholders = deptVariants.map(() => '?').join(',');
+        const [groupRows] = await this.db.execute(
+          `SELECT id, name, department FROM project_groups
+           WHERE LOWER(TRIM(department)) IN (${placeholders})`,
+          deptVariants
+        );
+        const groups = groupRows as any[];
+        for (const g of groups) {
+          const groupNumber = parseGroupNumber(g.name);
+          if (groupNumber === null || groupNumber < start || groupNumber > end) continue;
+
+          const [memberRows] = await this.db.execute(
+            'SELECT matric_number, student_name FROM group_members WHERE group_id = ?',
+            [g.id]
+          );
+          const members = memberRows as any[];
+          for (const m of members) {
+            const matric = m.matric_number ? String(m.matric_number).trim() : null;
+            const studentName = String(m.student_name || '').trim() || 'Student';
+            if (!matric) continue;
+
+            const [studentRows] = await this.db.execute(
+              'SELECT user_id FROM students WHERE TRIM(matric_number) = ? OR matric_number = ? LIMIT 1',
+              [matric, matric]
+            );
+            const students = studentRows as any[];
+            if (students.length === 0) continue;
+
+            const userId = students[0].user_id;
+            const [userRows] = await this.db.execute(
+              'SELECT email, first_name, last_name FROM users WHERE id = ? LIMIT 1',
+              [userId]
+            );
+            const users = userRows as any[];
+            if (users.length === 0) continue;
+
+            const u = users[0];
+            const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim() || studentName;
+            results.push({
+              userId,
+              email: u.email || '',
+              studentName: fullName,
+              venue,
+              assessors,
+              groupName: g.name || `Group ${groupNumber}`,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('getStudentsToNotifyForPublishedDefense error:', err);
+    }
+    return results;
+  }
 }

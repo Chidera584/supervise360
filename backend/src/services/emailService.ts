@@ -418,6 +418,42 @@ export async function sendProfileUpdateConfirmationEmail(
   return sendEmail(to, subject, html);
 }
 
+// ─── DEFENSE NOTIFICATIONS ───────────────────────────────────────────────────
+
+export async function sendDefenseScheduledEmail(
+  to: string,
+  studentName: string,
+  venue: string,
+  assessors: string[],
+  groupName?: string
+): Promise<boolean> {
+  const assessorsList = Array.isArray(assessors) && assessors.length > 0
+    ? assessors.map(a => `<li style="margin:4px 0; font-size:14px;">${a}</li>`).join('')
+    : '<li style="margin:4px 0; font-size:14px;">To be announced</li>';
+  const groupInfo = groupName ? `<p style="margin:0 0 8px; font-size:14px;"><strong>Group:</strong> ${groupName}</p>` : '';
+  const subject = 'Your defense schedule has been published';
+  const html = emailLayout({
+    categoryLabel: 'Defense schedule',
+    title: 'Defense date, venue & assessors published',
+    subtitle: `Hello ${studentName}`,
+    content: `
+      <p style="margin:0 0 12px;">Your defense schedule has been published. Please note the following details:</p>
+      <div style="background:#f0fdf4; border-radius:8px; padding:16px; margin:16px 0 0; border-left:4px solid #22c55e;">
+        ${groupInfo}
+        <p style="margin:0 0 8px; font-size:14px;"><strong>Venue / Location:</strong> ${venue}</p>
+        <p style="margin:0 0 4px; font-size:14px;"><strong>Assessors:</strong></p>
+        <ul style="margin:4px 0 0; padding-left:20px;">${assessorsList}</ul>
+      </div>
+      <p style="margin:16px 0 0; font-size:14px;">Log in to view full details and any updates.</p>
+    `,
+    ctaLabel: 'View my defense schedule',
+    ctaUrl: `${FRONTEND_URL}/dashboard`,
+    accentColor: '#22c55e',
+    metadata: `Published ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
+  });
+  return sendEmail(to, subject, html);
+}
+
 export async function sendSessionSecurityAlertEmail(
   to: string,
   firstName: string,

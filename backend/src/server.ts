@@ -194,6 +194,13 @@ async function startServer() {
         }));
         await allocService.saveAllocations(toSave);
 
+        // Notify students via in-app notification + email
+        const { notifyDefenseScheduled } = await import('./services/notificationEmailService');
+        const studentsToNotify = await allocService.getStudentsToNotifyForPublishedDefense();
+        for (const s of studentsToNotify) {
+          notifyDefenseScheduled(db, s.userId, s.email, s.studentName, s.venue, s.assessors, s.groupName).catch(() => {});
+        }
+
         res.json({ success: true, data: result });
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Allocation failed';

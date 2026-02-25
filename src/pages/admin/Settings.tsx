@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { MainLayout } from "../../components/Layout/MainLayout";
 import { Card } from "../../components/UI/Card";
 import { Button } from "../../components/UI/Button";
-import { Sliders, TrendingUp, AlertCircle, CheckCircle, Info, BarChart3, Mail } from "lucide-react";
+import { Sliders, TrendingUp, AlertCircle, CheckCircle, Info, Mail } from "lucide-react";
 import { apiClient, API_BASE_URL } from "../../lib/api";
 import { useDepartment } from "../../contexts/DepartmentContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -11,13 +11,6 @@ interface GpaThresholds {
   high: number;
   medium: number;
   low: number;
-}
-
-interface TierDistribution {
-  HIGH: number;
-  MEDIUM: number;
-  LOW: number;
-  total: number;
 }
 
 export function Settings() {
@@ -41,7 +34,6 @@ export function Settings() {
     low: 0.00
   });
   
-  const [previewDistribution, setPreviewDistribution] = useState<TierDistribution | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
@@ -164,50 +156,6 @@ export function Settings() {
     }
   };
 
-  const previewTierDistribution = async () => {
-    try {
-      setLoading(true);
-      // Use department thresholds if custom thresholds are enabled, otherwise use global
-      const thresholds = useCustomThresholds ? deptThresholds : globalThresholds;
-      
-      console.log('🔍 [Settings] Previewing with thresholds:', thresholds);
-      console.log('🔍 [Settings] Department:', department);
-      console.log('🔍 [Settings] Use custom thresholds:', useCustomThresholds);
-      
-      const payload = { 
-        ...thresholds, 
-        department: department || null 
-      };
-      
-      console.log('📤 [Settings] Sending preview request:', payload);
-      
-      const res = await fetch(`${API_BASE_URL}/settings/gpa-thresholds/preview`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}`
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await res.json();
-      console.log('📥 [Settings] Preview response:', data);
-      
-      if (res.ok) {
-        setPreviewDistribution(data.data.distribution);
-        showMessage("success", "Preview generated successfully");
-      } else {
-        console.error('❌ [Settings] Preview failed:', data);
-        showMessage("error", data.message || "Failed to preview");
-      }
-    } catch (error) {
-      console.error('❌ [Settings] Preview error:', error);
-      showMessage("error", error instanceof Error ? error.message : "Failed to preview");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const showMessage = (type: string, text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 5000);
@@ -236,9 +184,6 @@ export function Settings() {
            thresholds.low >= 0 && 
            thresholds.high <= 5.0;
   };
-
-  const activeThresholds = department && useCustomThresholds ? deptThresholds : globalThresholds;
-  const isValid = validateThresholds(activeThresholds);
 
   return (
     <MainLayout title="Settings">
@@ -436,71 +381,6 @@ export function Settings() {
             </div>
           </Card>
         )}
-
-        <Card className="border border-slate-200">
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="text-slate-700" size={22} />
-              <h3 className="text-lg font-semibold text-gray-900">Preview Distribution</h3>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="text-center">
-                <div className="text-xs text-gray-600 mb-1">HIGH</div>
-                <div className="text-xl font-semibold text-slate-900">greater than or equal to {activeThresholds.high}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-gray-600 mb-1">MEDIUM</div>
-                <div className="text-xl font-semibold text-slate-900">greater than or equal to {activeThresholds.medium}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-gray-600 mb-1">LOW</div>
-                <div className="text-xl font-semibold text-slate-900">greater than or equal to {activeThresholds.low}</div>
-              </div>
-            </div>
-
-            <Button 
-              onClick={previewTierDistribution} 
-              disabled={loading || !isValid}
-              variant="outline"
-              className="w-full"
-            >
-              {loading ? "Loading..." : "Preview Student Distribution"}
-            </Button>
-
-            {previewDistribution && (
-              <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <h4 className="font-semibold text-gray-900 mb-3">Current Distribution</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-semibold text-slate-900">{previewDistribution.HIGH}</div>
-                    <div className="text-sm text-gray-600">HIGH</div>
-                    <div className="text-xs text-gray-500">
-                      {previewDistribution.total > 0 ? ((previewDistribution.HIGH / previewDistribution.total) * 100).toFixed(1) : 0}%
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-semibold text-slate-900">{previewDistribution.MEDIUM}</div>
-                    <div className="text-sm text-gray-600">MEDIUM</div>
-                    <div className="text-xs text-gray-500">
-                      {previewDistribution.total > 0 ? ((previewDistribution.MEDIUM / previewDistribution.total) * 100).toFixed(1) : 0}%
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-semibold text-slate-900">{previewDistribution.LOW}</div>
-                    <div className="text-sm text-gray-600">LOW</div>
-                    <div className="text-xs text-gray-500">
-                      {previewDistribution.total > 0 ? ((previewDistribution.LOW / previewDistribution.total) * 100).toFixed(1) : 0}%
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 text-center text-sm text-gray-600">
-                  Total: {previewDistribution.total} students
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
 
         {user?.role === "admin" && (
           <Card className="border border-slate-200">

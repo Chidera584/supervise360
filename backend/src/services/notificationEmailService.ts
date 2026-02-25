@@ -13,6 +13,7 @@ import {
   sendStudentSubmissionEmail,
   sendStudentMessageEmail,
   sendUnassignedStudentsAlertEmail,
+  sendDefenseScheduledEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendProfileUpdateConfirmationEmail,
@@ -232,6 +233,33 @@ export async function notifyUnassignedStudentsAlert(
     if (isEmailConfigured() && adminEmails[i]) {
       sendUnassignedStudentsAlertEmail(adminEmails[i], department, studentList, count).catch(() => {});
     }
+  }
+}
+
+export async function notifyDefenseScheduled(
+  db: Pool,
+  studentUserId: number,
+  studentEmail: string,
+  studentName: string,
+  venue: string,
+  assessors: string[],
+  groupName?: string
+): Promise<void> {
+  const ns = new NotificationService(db);
+  const assessorsStr = Array.isArray(assessors) && assessors.length > 0 ? assessors.join(', ') : 'To be announced';
+  const title = 'Defense schedule published';
+  const message = `Venue: ${venue}. Assessors: ${assessorsStr}.`;
+
+  await ns.create({
+    userId: studentUserId,
+    title,
+    message,
+    type: 'defense_scheduled',
+    priority: 'high',
+    actionUrl: `${FRONTEND_URL}/dashboard`,
+  });
+  if (isEmailConfigured() && studentEmail) {
+    sendDefenseScheduledEmail(studentEmail, studentName, venue, assessors, groupName).catch(() => {});
   }
 }
 
