@@ -1,0 +1,14 @@
+---
+description: Auto commit and push after making changes to this project
+alwaysApply: true
+---
+
+# Auto Commit & Push
+
+After making any code change requested by the user in this project:
+
+1. Stage the changed files
+2. Commit with a clear, descriptive message
+3. Push to the remote (origin/master)
+
+Do this automatically right after completing the requested change—do not wait for the user to ask.
