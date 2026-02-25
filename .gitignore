@@ -25,3 +25,6 @@ dist-ssr
 # Backend build output and uploads
 backend/dist
 backend/uploads
+
+# Logo source (processed output in public/logo.png)
+public/logo-source.png
