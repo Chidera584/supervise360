@@ -32,6 +32,7 @@ function emailLayout(options: {
           <!-- Brand Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 24px 32px;">
+              <img src="${FRONTEND_URL}/logo.png" alt="Supervise360" width="32" height="32" style="vertical-align:middle; margin-right:10px; filter:brightness(0) invert(1);" />
               <span style="font-size:22px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">Supervise360</span>
               <span style="font-size:12px; color:rgba(255,255,255,0.85); margin-left:8px; font-weight:400;">Student Project Management</span>
             </td>
@@ -90,6 +91,7 @@ function getTransporter(): nodemailer.Transporter | null {
     host,
     port: port ? parseInt(port, 10) : 587,
     secure: false,
+    requireTLS: true, // Gmail and most SMTP servers need this for port 587
     auth: { user, pass },
   });
   return transporter;
@@ -100,10 +102,26 @@ export function isEmailConfigured(): boolean {
 }
 
 export async function sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
+  const result = await sendEmailWithError(to, subject, html, text);
+  return result.ok;
+}
+
+/** Send a simple test email; returns ok/error for debugging */
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+  const html = `<p>This is a test email from Supervise360. If you received this, email is working.</p>`;
+  return sendEmailWithError(to, 'Supervise360 – Test Email', html);
+}
+
+/** Same as sendEmail but returns error message for debugging (e.g. test-email endpoint) */
+export async function sendEmailWithError(
+  to: string,
+  subject: string,
+  html: string,
+  text?: string
+): Promise<{ ok: boolean; error?: string }> {
   const trans = getTransporter();
-  if (!trans) return false;
+  if (!trans) return { ok: false, error: 'SMTP not configured (SMTP_HOST, SMTP_USER, SMTP_PASS required)' };
   try {
-    // Use SMTP_USER as fallback for "from" - Gmail works better when from matches auth
     const fromAddr = process.env.FROM_EMAIL || process.env.SMTP_USER || FROM_EMAIL;
     await trans.sendMail({
       from: `"${FROM_NAME}" <${fromAddr}>`,
@@ -112,11 +130,12 @@ export async function sendEmail(to: string, subject: string, html: string, text?
       html,
       text: text || html.replace(/<[^>]*>/g, ''),
     });
-    return true;
+    return { ok: true };
   } catch (err: any) {
-    console.error('📧 Email send error:', err?.message || err);
-    if (err?.response) console.error('📧 SMTP response:', err.response);
-    return false;
+    const msg = err?.message || String(err);
+    const smtp = err?.response ? ` | SMTP: ${err.response}` : '';
+    console.error('📧 Email send error:', msg, smtp);
+    return { ok: false, error: msg + smtp };
   }
 }
 
