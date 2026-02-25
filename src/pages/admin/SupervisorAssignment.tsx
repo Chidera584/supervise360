@@ -339,8 +339,8 @@ export function SupervisorAssignment() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {convertedGroups.length > 0 && (supervisors.length > 0 || totalStats.totalAssigned > 0) && (
-                <Button variant="outline" size="sm" onClick={() => setClearAllModal(true)} className="text-red-600 hover:text-red-700 hover:border-red-300">
+              {convertedGroups.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setClearAllModal(true)} className="text-red-600 hover:text-red-700 hover:border-red-300" title="Clear all supervisor assignments from groups">
                   <Trash2 size={14} className="mr-1.5" />
                   Clear All
                 </Button>
