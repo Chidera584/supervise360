@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS supervisor_workload (
     id INT PRIMARY KEY AUTO_INCREMENT,
     supervisor_name VARCHAR(255) NOT NULL,
     department VARCHAR(100) NOT NULL,
-    allocated_count INT DEFAULT 0,
+    current_groups INT DEFAULT 0,
+    is_available BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_supervisor_dept (supervisor_name, department)
