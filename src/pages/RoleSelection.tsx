@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/UI/Button';
-import { GraduationCap, Users, ArrowRight, BookOpen, Target, Shield } from 'lucide-react';
+import { GraduationCap, Users, ArrowRight, Target, Shield } from 'lucide-react';
 
 interface RoleSelectionProps {
   onRoleSelect: (role: 'student' | 'supervisor') => void;
@@ -22,9 +22,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-[#1e4d8b] rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
+              <img src="/logo.png" alt="Supervise360" className="h-9 w-auto object-contain" />
               <span className="text-xl font-semibold text-[#333333]">Supervise360</span>
             </div>
             <div className="text-sm text-[#666666]">

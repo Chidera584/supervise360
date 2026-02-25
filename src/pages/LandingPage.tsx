@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -20,10 +19,7 @@ export function LandingPage() {
               onClick={() => navigate('/')}
               className="flex items-center gap-2.5 group"
             >
-              <div className="relative p-2 rounded-xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/20 group-hover:shadow-blue-900/30 transition-shadow">
-                <GraduationCap className="w-6 h-6 text-white" />
-                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#c41e3a] rounded-full ring-2 ring-white" />
-              </div>
+              <img src="/logo.png" alt="Supervise360" className="h-10 w-auto object-contain" />
               <span className="text-xl font-bold bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] bg-clip-text text-transparent">
                 SUPERVISE360
               </span>
