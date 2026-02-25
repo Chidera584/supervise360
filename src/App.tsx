@@ -71,29 +71,36 @@ function App() {
     );
   }
 
-  // Show database connection error
+  // Show backend connection error (with option to continue - Railway cold start can take time)
   if (dbStatus && !dbStatus.success) {
     return (
       <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full mx-4">
           <div className="text-center">
-            <div className="text-red-600 text-xl mb-4">⚠️ Database Connection Failed</div>
+            <div className="text-red-600 text-xl mb-4">⚠️ Backend Connection Failed</div>
             <p className="text-gray-600 mb-4">{dbStatus.message}</p>
             <div className="text-sm text-gray-500">
               <p className="mb-2">Please check:</p>
               <ul className="text-left list-disc list-inside space-y-1">
-                <li>MySQL server is running</li>
-                <li>Database credentials in .env file</li>
-                <li>Database 'supervise360' exists</li>
-                <li>Tables have been created</li>
+                <li>Backend is deployed and running</li>
+                <li>VITE_API_URL is set in frontend variables</li>
+                <li>Backend URL is correct (e.g. https://your-backend.up.railway.app/api)</li>
               </ul>
             </div>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Retry Connection
-            </button>
+            <div className="flex gap-2 justify-center mt-4">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+              <button 
+                onClick={() => setDbStatus({ success: true, message: '' })} 
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              >
+                Continue anyway
+              </button>
+            </div>
           </div>
         </div>
       </div>
