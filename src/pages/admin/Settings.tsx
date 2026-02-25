@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { MainLayout } from "../../components/Layout/MainLayout";
 import { Card } from "../../components/UI/Card";
 import { Button } from "../../components/UI/Button";
-import { Sliders, TrendingUp, AlertCircle, CheckCircle, Info, Mail } from "lucide-react";
-import { apiClient, API_BASE_URL } from "../../lib/api";
+import { Sliders, TrendingUp, AlertCircle, CheckCircle, Info } from "lucide-react";
+import { API_BASE_URL } from "../../lib/api";
 import { useDepartment } from "../../contexts/DepartmentContext";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -36,8 +36,6 @@ export function Settings() {
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [sendingTestEmail, setSendingTestEmail] = useState(false);
-  const [testEmailTo, setTestEmailTo] = useState("");
   const [message, setMessage] = useState<{type: string; text: string} | null>(null);
 
   useEffect(() => {
@@ -159,23 +157,6 @@ export function Settings() {
   const showMessage = (type: string, text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 5000);
-  };
-
-  const sendTestEmail = async () => {
-    try {
-      setSendingTestEmail(true);
-      const emailToUse = testEmailTo.trim() || undefined;
-      const res = await apiClient.sendTestEmail(emailToUse);
-      if (res.success) {
-        showMessage("success", res.message || "Test email sent! Check your inbox.");
-      } else {
-        showMessage("error", res.message || "Failed to send test email");
-      }
-    } catch (err) {
-      showMessage("error", err instanceof Error ? err.message : "Failed to send test email");
-    } finally {
-      setSendingTestEmail(false);
-    }
   };
 
   const validateThresholds = (thresholds: GpaThresholds): boolean => {
@@ -378,37 +359,6 @@ export function Settings() {
               >
                 {saving ? "Saving..." : "Save Department Settings"}
               </Button>
-            </div>
-          </Card>
-        )}
-
-        {user?.role === "admin" && (
-          <Card className="border border-slate-200">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <Mail className="text-slate-700" size={22} />
-                <h3 className="text-lg font-semibold text-gray-900">Email</h3>
-              </div>
-              <p className="text-sm text-slate-600">
-                Send a test email to verify SMTP is configured correctly. Enter your real email below (your admin account may use a dummy address).
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="email"
-                  placeholder="your-real-email@example.com"
-                  value={testEmailTo}
-                  onChange={(e) => setTestEmailTo(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent text-sm"
-                />
-                <Button
-                  onClick={sendTestEmail}
-                  disabled={sendingTestEmail || !testEmailTo.trim()}
-                  variant="outline"
-                  className="sm:w-auto"
-                >
-                  {sendingTestEmail ? "Sending..." : "Send test email"}
-                </Button>
-              </div>
             </div>
           </Card>
         )}
