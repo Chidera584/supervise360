@@ -70,5 +70,29 @@ export function createNotificationsRouter(db: Pool) {
     }
   });
 
+  router.delete('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      await notificationService.deleteAll(userId);
+      res.json({ success: true, message: 'All notifications cleared' });
+    } catch (error) {
+      console.error('Clear all notifications error:', error);
+      res.status(500).json({ success: false, message: 'Failed to clear notifications' });
+    }
+  });
+
+  router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      await notificationService.delete(userId, Number(req.params.id));
+      res.json({ success: true, message: 'Notification cleared' });
+    } catch (error) {
+      console.error('Clear notification error:', error);
+      res.status(500).json({ success: false, message: 'Failed to clear notification' });
+    }
+  });
+
   return router;
 }

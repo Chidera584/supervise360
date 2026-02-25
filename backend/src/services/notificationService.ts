@@ -86,4 +86,18 @@ export class NotificationService {
       [userId]
     );
   }
+
+  async delete(userId: number, notificationId: number) {
+    await this.db.execute(
+      'DELETE FROM notifications WHERE id = ? AND user_id = ?',
+      [notificationId, userId]
+    );
+  }
+
+  async deleteAll(userId: number) {
+    await this.db.execute(
+      'DELETE FROM notifications WHERE user_id = ?',
+      [userId]
+    );
+  }
 }

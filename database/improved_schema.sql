@@ -262,7 +262,7 @@ CREATE TABLE messages (
     
     FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id) REFERENCES project_groups(id) ON DELETE SET NULL,
+    FOREIGN KEY (group_id) REFERENCES student_groups(id) ON DELETE SET NULL,
     FOREIGN KEY (parent_id) REFERENCES messages(id) ON DELETE SET NULL,
     
     INDEX idx_sender (sender_id),

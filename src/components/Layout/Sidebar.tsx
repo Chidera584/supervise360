@@ -151,8 +151,8 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex w-64 flex-shrink-0 sticky top-0 h-screen bg-[#022B3A] flex-col text-white">
+      {/* Desktop sidebar - fixed so it stays static when scrolling */}
+      <div className="hidden lg:flex w-64 flex-shrink-0 fixed left-0 top-0 h-screen bg-[#022B3A] flex-col text-white z-30">
       {navContent}
       </div>
     </>

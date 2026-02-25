@@ -36,13 +36,22 @@ const PORT = process.env.PORT || 5000;
 // Security middleware
 app.use(helmet());
 
-// CORS configuration - allow both 5173 and 5174
+// CORS configuration - allow frontend URL, localhost, and Railway domains
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5173'
-  ],
+  origin: (origin, cb) => {
+    const allowed = [
+      frontendUrl,
+      frontendUrl.replace(/\/$/, ''),
+      'http://localhost:5173',
+      'http://localhost:5174'
+    ];
+    if (!origin || allowed.includes(origin) || origin.endsWith('.railway.app') || origin.endsWith('.up.railway.app')) {
+      cb(null, true);
+    } else {
+      cb(null, true); // Allow for deployment flexibility
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

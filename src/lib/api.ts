@@ -510,6 +510,18 @@ class ApiClient {
     });
   }
 
+  async clearNotification(notificationId: number): Promise<ApiResponse> {
+    return this.request(`/notifications/${notificationId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async clearAllNotifications(): Promise<ApiResponse> {
+    return this.request('/notifications', {
+      method: 'DELETE',
+    });
+  }
+
   // Defense panels endpoints
   async getMyDefense(): Promise<ApiResponse> {
     return this.request('/defense-panels/my-defense');

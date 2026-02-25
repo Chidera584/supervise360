@@ -1,4 +1,4 @@
-import { Bell, User, LogOut } from 'lucide-react';
+import { Bell, User, LogOut, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../lib/api';
@@ -94,6 +94,33 @@ export function Header({ title }: HeaderProps) {
     }
   };
 
+  const handleClearOne = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    if (loading) return;
+    try {
+      await apiClient.clearNotification(id);
+      const n = notifications.find((x) => x.id === id);
+      setNotifications((prev) => prev.filter((x) => x.id !== id));
+      if (n && !n.read_status) setUnreadCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error('Failed to clear notification:', err);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (loading || notifications.length === 0) return;
+    setLoading(true);
+    try {
+      await apiClient.clearAllNotifications();
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to clear all notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -130,17 +157,30 @@ export function Header({ title }: HeaderProps) {
 
           {dropdownOpen && (
             <div className="absolute right-0 mt-2 w-80 max-h-96 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
-              <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 gap-2">
                 <h3 className="font-semibold text-slate-800">Notifications</h3>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={handleMarkAllRead}
-                    disabled={loading}
-                    className="text-xs text-[#1F7A8C] hover:underline font-medium disabled:opacity-50"
-                  >
-                    Mark all read
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      disabled={loading}
+                      className="text-xs text-[#1F7A8C] hover:underline font-medium disabled:opacity-50"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={handleClearAll}
+                      disabled={loading}
+                      className="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50 flex items-center gap-1"
+                      title="Clear all notifications"
+                    >
+                      <Trash2 size={12} />
+                      Clear all
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="max-h-72 overflow-y-auto">
                 {notifications.length === 0 ? (
@@ -152,11 +192,11 @@ export function Header({ title }: HeaderProps) {
                     <div
                       key={n.id}
                       onClick={() => !n.read_status && handleMarkRead(n.id)}
-                      className={`px-4 py-3 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors ${
+                      className={`px-4 py-3 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors group flex items-start gap-2 ${
                         !n.read_status ? 'bg-[#BFDBF7]/20' : ''
                       }`}
                     >
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-1 min-w-0">
                         {!n.read_status && (
                           <span className="w-2 h-2 rounded-full bg-[#1F7A8C] mt-1.5 shrink-0" />
                         )}
@@ -172,6 +212,15 @@ export function Header({ title }: HeaderProps) {
                           </p>
                         </div>
                       </div>
+                      <button
+                        onClick={(e) => handleClearOne(e, n.id)}
+                        disabled={loading}
+                        className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-red-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                        title="Clear notification"
+                        aria-label="Clear notification"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   ))
                 )}

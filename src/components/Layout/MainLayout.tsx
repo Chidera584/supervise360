@@ -10,7 +10,7 @@ export function MainLayout({ children, title }: MainLayoutProps) {
   return (
     <div className="flex min-h-screen bg-[#f5f5f5]">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col lg:ml-64">
         <Header title={title} />
         <main className="flex-1 flex flex-col min-h-0 p-4 sm:p-6 pt-16 lg:pt-6 overflow-y-auto">
           {children}
