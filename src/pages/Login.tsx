@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, GraduationCap, Users, BookOpen, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import type { RegisterRequest } from '../types/database';
 
 interface LoginProps {
@@ -16,9 +16,7 @@ function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => vo
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/20">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="Supervise360" className="h-9 w-auto object-contain rounded-xl" />
             <span className="text-lg font-bold bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] bg-clip-text text-transparent">
               SUPERVISE360
             </span>
@@ -39,12 +37,8 @@ function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => vo
 function RoleBadge({ title, subtitle, selectedRole }: { title: string; subtitle: string; selectedRole: 'student' | 'supervisor' }) {
   return (
     <div className="text-center mb-8 animate-fade-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/25 mb-5">
-        {selectedRole === 'student' ? (
-          <GraduationCap className="w-8 h-8 text-white" />
-        ) : (
-          <Users className="w-8 h-8 text-white" />
-        )}
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/25 mb-5 p-2">
+        <img src="/logo.png" alt="Supervise360" className="w-full h-full object-contain rounded-xl" />
       </div>
       <h1 className="text-2xl font-bold text-slate-800 mb-1">{title}</h1>
       <p className="text-slate-500">{subtitle}</p>

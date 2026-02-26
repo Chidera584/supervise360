@@ -73,7 +73,7 @@ export function Sidebar() {
   const navContent = (
     <>
       <div className="p-6 border-b border-gray-600 flex items-center gap-3">
-        <img src="/logo.png" alt="" className="h-8 w-8 object-contain invert" />
+        <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl" />
         <h1 className="text-xl font-bold">Supervise360</h1>
       </div>
       <nav className="flex-1 p-4 overflow-y-auto">
@@ -124,7 +124,7 @@ export function Sidebar() {
       <div className={`lg:hidden fixed top-0 left-0 h-full w-72 max-w-[85vw] bg-[#022B3A] flex flex-col text-white z-50 transform transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-600">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="" className="h-8 w-8 object-contain invert" />
+            <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl" />
             <h1 className="text-xl font-bold">Supervise360</h1>
           </div>
           <button onClick={() => setMobileOpen(false)} className="p-2 hover:bg-gray-700 rounded-lg" aria-label="Close menu">

@@ -1,5 +1,3 @@
-import { GraduationCap } from 'lucide-react';
-
 interface LoadingPageProps {
   message?: string;
 }
@@ -15,12 +13,12 @@ export function LoadingPage({ message = 'Loading...' }: LoadingPageProps) {
       <div className="fixed bottom-1/4 -right-32 w-96 h-96 bg-[#163d6b]/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
 
       <div className="relative z-10 flex flex-col items-center">
-        {/* Logo / icon */}
+        {/* Logo */}
         <div className="mb-8 flex items-center justify-center">
           <div className="relative">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] blur-xl opacity-40 animate-pulse" />
-            <div className="relative p-5 rounded-2xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/25">
-              <GraduationCap className="w-12 h-12 text-white" strokeWidth={1.5} />
+            <div className="relative p-4 rounded-2xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/25">
+              <img src="/logo.png" alt="Supervise360" className="w-14 h-14 object-contain rounded-xl" />
             </div>
           </div>
         </div>

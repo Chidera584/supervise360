@@ -32,7 +32,7 @@ function emailLayout(options: {
           <!-- Brand Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 24px 32px;">
-              <img src="${FRONTEND_URL}/logo.png" alt="Supervise360" width="32" height="32" style="vertical-align:middle; margin-right:10px; filter:brightness(0) invert(1);" />
+              <img src="${FRONTEND_URL}/logo-email.png" alt="Supervise360" width="32" height="32" style="vertical-align:middle; margin-right:10px; filter:invert(1); border-radius:8px;" />
               <span style="font-size:22px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">Supervise360</span>
               <span style="font-size:12px; color:rgba(255,255,255,0.85); margin-left:8px; font-weight:400;">Student Project Management</span>
             </td>

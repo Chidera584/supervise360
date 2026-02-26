@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/UI/Button';
-import { GraduationCap, Users, ArrowRight, Target, Shield } from 'lucide-react';
+import { ArrowRight, Target, Shield } from 'lucide-react';
 
 interface RoleSelectionProps {
   onRoleSelect: (role: 'student' | 'supervisor') => void;
@@ -22,7 +22,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src="/logo.png" alt="Supervise360" className="h-9 w-auto object-contain" />
+              <img src="/logo.png" alt="Supervise360" className="h-8 w-auto object-contain rounded-xl" />
               <span className="text-xl font-semibold text-[#333333]">Supervise360</span>
             </div>
             <div className="text-sm text-[#666666]">
@@ -66,10 +66,10 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
             >
               <div className="text-center">
                 <div className={`
-                  w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-colors
-                  ${selectedRole === 'student' ? 'bg-[#1e4d8b] text-white' : 'bg-gray-100 text-[#666666] group-hover:bg-[#e3f2fd]'}
+                  w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center p-2 transition-colors overflow-hidden
+                  ${selectedRole === 'student' ? 'bg-[#1e4d8b]' : 'bg-gray-100 group-hover:bg-[#e3f2fd]'}
                 `}>
-                  <GraduationCap size={32} />
+                  <img src="/logo.png" alt="" className="w-full h-full object-contain rounded-xl" />
                 </div>
                 
                 <h3 className="text-2xl font-bold text-[#333333] mb-4">Student</h3>
@@ -119,10 +119,10 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
             >
               <div className="text-center">
                 <div className={`
-                  w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-colors
-                  ${selectedRole === 'supervisor' ? 'bg-[#1e4d8b] text-white' : 'bg-gray-100 text-[#666666] group-hover:bg-[#e3f2fd]'}
+                  w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center p-2 transition-colors overflow-hidden
+                  ${selectedRole === 'supervisor' ? 'bg-[#1e4d8b]' : 'bg-gray-100 group-hover:bg-[#e3f2fd]'}
                 `}>
-                  <Users size={32} />
+                  <img src="/logo.png" alt="" className="w-full h-full object-contain rounded-xl" />
                 </div>
                 
                 <h3 className="text-2xl font-bold text-[#333333] mb-4">Supervisor</h3>
