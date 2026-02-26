@@ -5,6 +5,7 @@ import { GroupsProvider } from './contexts/GroupsContext';
 import { DepartmentProvider } from './contexts/DepartmentContext';
 import { testDatabaseConnection } from './lib/database-test';
 import { AuthFlow } from './components/AuthFlow';
+import { LoadingPage } from './components/LoadingPage';
 import { AdminLogin } from './pages/AdminLogin';
 
 // Dashboard Pages
@@ -61,42 +62,39 @@ function App() {
 
   // Show database connection status
   if (testingDb) {
-    return (
-      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-500 mb-2">Testing database connection...</div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        </div>
-      </div>
-    );
+    return <LoadingPage message="Connecting to server..." />;
   }
 
   // Show backend connection error (with option to continue - Railway cold start can take time)
   if (dbStatus && !dbStatus.success) {
     return (
-      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full mx-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#c41e3a] via-[#e63950] to-[#c41e3a]" />
+        <div className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 max-w-md w-full mx-4 border border-slate-100">
           <div className="text-center">
-            <div className="text-red-600 text-xl mb-4">⚠️ Backend Connection Failed</div>
-            <p className="text-gray-600 mb-4">{dbStatus.message}</p>
-            <div className="text-sm text-gray-500">
-              <p className="mb-2">Please check:</p>
-              <ul className="text-left list-disc list-inside space-y-1">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-50 mb-4">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 mb-2">Backend Connection Failed</h2>
+            <p className="text-slate-600 text-sm mb-4">{dbStatus.message}</p>
+            <div className="text-xs text-slate-500 text-left bg-slate-50 rounded-xl p-4 mb-6">
+              <p className="font-medium text-slate-600 mb-2">Please check:</p>
+              <ul className="list-disc list-inside space-y-1">
                 <li>Backend is deployed and running</li>
                 <li>VITE_API_URL is set in frontend variables</li>
-                <li>Backend URL is correct (e.g. https://your-backend.up.railway.app/api)</li>
+                <li>Backend URL is correct</li>
               </ul>
             </div>
-            <div className="flex gap-2 justify-center mt-4">
-              <button 
-                onClick={() => window.location.reload()} 
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-5 py-2.5 bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg shadow-blue-900/20"
               >
                 Retry
               </button>
-              <button 
-                onClick={() => setDbStatus({ success: true, message: '' })} 
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              <button
+                onClick={() => setDbStatus({ success: true, message: '' })}
+                className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
               >
                 Continue anyway
               </button>
@@ -109,14 +107,7 @@ function App() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-500 mb-2">Loading...</div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        </div>
-      </div>
-    );
+    return <LoadingPage message="Loading your dashboard..." />;
   }
 
   // Show login if not authenticated

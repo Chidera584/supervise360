@@ -7,7 +7,7 @@ import { DefenseAllocationService } from '../services/defenseAllocationService';
 import { ProjectService } from '../services/projectService';
 import { computeAllocation } from '../services/defenseSchedulingService';
 import { notifyUnassignedStudentsAlert } from '../services/notificationEmailService';
-import { sendGroupingAndSupervisorEmail, isEmailConfigured } from '../services/emailService';
+import { sendTestEmail, isEmailConfigured } from '../services/emailService';
 
 const router = Router();
 
@@ -43,21 +43,18 @@ export function createAdminRouter(db: Pool) {
       if (!email) {
         return res.status(400).json({ success: false, message: 'No email to send to. Provide email in body or use your account email.' });
       }
-      const [userRows] = await db.execute('SELECT first_name FROM users WHERE id = ?', [authUser?.id]);
-      const firstName = (userRows as any[])[0]?.first_name || 'Admin';
       console.log(`📧 Sending test email to ${email}...`);
-      const ok = await sendGroupingAndSupervisorEmail(
-        email,
-        firstName,
-        'Group 1',
-        'Dr. Test Supervisor'
-      );
-      if (ok) {
+      const result = await sendTestEmail(email);
+      if (result.ok) {
         console.log(`📧 Test email sent successfully to ${email}`);
-        res.json({ success: true, message: `Test email sent to ${email}` });
+        res.json({ success: true, message: `Test email sent to ${email}. Check your inbox (and spam folder).` });
       } else {
-        console.error('📧 Test email failed: sendEmail returned false');
-        res.status(500).json({ success: false, message: 'Failed to send email. Check server logs for SMTP error.' });
+        console.error('📧 Test email failed:', result.error);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to send email.',
+          error: result.error,
+        });
       }
     } catch (error) {
       console.error('📧 Test email error:', error);

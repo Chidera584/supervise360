@@ -44,7 +44,9 @@ export async function notifyGroupingAndSupervisor(
       actionUrl: `${FRONTEND_URL}/student/my-group`,
     });
     if (isEmailConfigured() && studentEmails[i]) {
-      sendGroupingAndSupervisorEmail(studentEmails[i], studentNames[i], groupNumber, supervisorName).catch(() => {});
+      sendGroupingAndSupervisorEmail(studentEmails[i], studentNames[i], groupNumber, supervisorName).catch((err) => {
+        console.error('📧 Grouping email failed:', err?.message || err);
+      });
     }
   }
 }
@@ -81,7 +83,9 @@ export async function notifySupervisorFeedback(
       feedbackSummary,
       approved,
       requiredChanges
-    ).catch(() => {});
+    ).catch((err) => {
+      console.error('📧 Supervisor feedback email failed:', err?.message || err);
+    });
   }
 }
 
@@ -106,7 +110,9 @@ export async function notifySubmissionConfirmation(
     actionUrl: `${FRONTEND_URL}/student/reports`,
   });
   if (isEmailConfigured() && studentEmail) {
-    sendSubmissionConfirmationEmail(studentEmail, studentName, reportTitle, fileName, timestamp).catch(() => {});
+    sendSubmissionConfirmationEmail(studentEmail, studentName, reportTitle, fileName, timestamp).catch((err) => {
+      console.error('📧 Submission confirmation email failed:', err?.message || err);
+    });
   }
 }
 
@@ -131,7 +137,9 @@ export async function notifySupervisorMessage(
     actionUrl: `${FRONTEND_URL}/student/messages`,
   });
   if (isEmailConfigured() && recipientEmail) {
-    sendSupervisorMessageEmail(recipientEmail, recipientName, senderName, messagePreview, messageSubject).catch(() => {});
+    sendSupervisorMessageEmail(recipientEmail, recipientName, senderName, messagePreview, messageSubject).catch((err) => {
+      console.error('📧 Supervisor message email failed:', err?.message || err);
+    });
   }
 }
 
@@ -155,7 +163,9 @@ export async function notifyNewStudentAssignment(
     actionUrl: `${FRONTEND_URL}/supervisor/my-groups`,
   });
   if (isEmailConfigured() && supervisorEmail) {
-    sendNewStudentAssignmentEmail(supervisorEmail, supervisorName, studentCount, groupCount).catch(() => {});
+    sendNewStudentAssignmentEmail(supervisorEmail, supervisorName, studentCount, groupCount).catch((err) => {
+      console.error('📧 New student assignment email failed:', err?.message || err);
+    });
   }
 }
 
@@ -180,7 +190,9 @@ export async function notifyStudentSubmission(
     actionUrl: `${FRONTEND_URL}/supervisor/report-reviews`,
   });
   if (isEmailConfigured() && supervisorEmail) {
-    sendStudentSubmissionEmail(supervisorEmail, supervisorName, studentName, submissionTitle, fileName).catch(() => {});
+    sendStudentSubmissionEmail(supervisorEmail, supervisorName, studentName, submissionTitle, fileName).catch((err) => {
+      console.error('📧 Student submission email failed:', err?.message || err);
+    });
   }
 }
 
@@ -205,7 +217,9 @@ export async function notifyStudentMessage(
     actionUrl: `${FRONTEND_URL}/supervisor/messages`,
   });
   if (isEmailConfigured() && recipientEmail) {
-    sendStudentMessageEmail(recipientEmail, recipientName, senderName, messagePreview, messageSubject).catch(() => {});
+    sendStudentMessageEmail(recipientEmail, recipientName, senderName, messagePreview, messageSubject).catch((err) => {
+      console.error('📧 Student message email failed:', err?.message || err);
+    });
   }
 }
 
@@ -231,7 +245,9 @@ export async function notifyUnassignedStudentsAlert(
       actionUrl: `${FRONTEND_URL}/admin/supervisor-assignment`,
     });
     if (isEmailConfigured() && adminEmails[i]) {
-      sendUnassignedStudentsAlertEmail(adminEmails[i], department, studentList, count).catch(() => {});
+      sendUnassignedStudentsAlertEmail(adminEmails[i], department, studentList, count).catch((err) => {
+        console.error('📧 Unassigned students alert email failed:', err?.message || err);
+      });
     }
   }
 }
@@ -259,7 +275,9 @@ export async function notifyDefenseScheduled(
     actionUrl: `${FRONTEND_URL}/dashboard`,
   });
   if (isEmailConfigured() && studentEmail) {
-    sendDefenseScheduledEmail(studentEmail, studentName, venue, assessors, groupName).catch(() => {});
+    sendDefenseScheduledEmail(studentEmail, studentName, venue, assessors, groupName).catch((err) => {
+      console.error('📧 Defense scheduled email failed:', err?.message || err);
+    });
   }
 }
 
@@ -270,7 +288,9 @@ export async function sendWelcomeEmailOnly(
   tempPassword?: string
 ): Promise<void> {
   if (isEmailConfigured()) {
-    sendWelcomeEmail(email, firstName, email, role, tempPassword).catch(() => {});
+    sendWelcomeEmail(email, firstName, email, role, tempPassword).catch((err) => {
+      console.error('📧 Welcome email failed:', err?.message || err);
+    });
   }
 }
 
@@ -281,7 +301,9 @@ export async function sendPasswordResetEmailOnly(
   expiryMinutes: number = 60
 ): Promise<void> {
   if (isEmailConfigured()) {
-    sendPasswordResetEmail(email, firstName, resetLink, expiryMinutes).catch(() => {});
+    sendPasswordResetEmail(email, firstName, resetLink, expiryMinutes).catch((err) => {
+      console.error('📧 Password reset email failed:', err?.message || err);
+    });
   }
 }
 
@@ -292,7 +314,9 @@ export async function sendProfileUpdateEmailOnly(
   timestamp: string
 ): Promise<void> {
   if (isEmailConfigured()) {
-    sendProfileUpdateConfirmationEmail(email, firstName, changes, timestamp).catch(() => {});
+    sendProfileUpdateConfirmationEmail(email, firstName, changes, timestamp).catch((err) => {
+      console.error('📧 Profile update email failed:', err?.message || err);
+    });
   }
 }
 
@@ -305,6 +329,8 @@ export async function sendSessionSecurityAlertOnly(
   secureAccountLink: string
 ): Promise<void> {
   if (isEmailConfigured()) {
-    sendSessionSecurityAlertEmail(email, firstName, deviceInfo, location, time, secureAccountLink).catch(() => {});
+    sendSessionSecurityAlertEmail(email, firstName, deviceInfo, location, time, secureAccountLink).catch((err) => {
+      console.error('📧 Session security alert email failed:', err?.message || err);
+    });
   }
 }
