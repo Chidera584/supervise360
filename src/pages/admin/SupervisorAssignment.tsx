@@ -33,8 +33,8 @@ export function SupervisorAssignment() {
   const [uploadedSupervisors, setUploadedSupervisors] = useState([]);
   const [viewGroupsSupervisor, setViewGroupsSupervisor] = useState<string | null>(null);
   const [editSwapModal, setEditSwapModal] = useState(false);
-  const [swapMember1, setSwapMember1] = useState<{ groupId: number; memberId: number; name: string } | null>(null);
-  const [swapMember2, setSwapMember2] = useState<{ groupId: number; memberId: number; name: string } | null>(null);
+  const [swapMember1, setSwapMember1] = useState<{ groupId: number; memberId: number; name: string; tier?: string } | null>(null);
+  const [swapMember2, setSwapMember2] = useState<{ groupId: number; memberId: number; name: string; tier?: string } | null>(null);
   const [swapping, setSwapping] = useState(false);
   const [clearAllModal, setClearAllModal] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -721,7 +721,7 @@ export function SupervisorAssignment() {
                 </button>
               </div>
               <div className="p-4 space-y-4">
-                <p className="text-sm text-gray-600">Select two students from different groups to swap their assignments.</p>
+                <p className="text-sm text-gray-600">Select two students from different groups to swap. Students can only be swapped within the same GPA tier (HIGH↔HIGH, MEDIUM↔MEDIUM, LOW↔LOW).</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Student A</label>
@@ -730,25 +730,31 @@ export function SupervisorAssignment() {
                       value={swapMember1 ? `${swapMember1.groupId}-${swapMember1.memberId}` : ''}
                       onChange={(e) => {
                         const v = e.target.value;
-                        if (!v) { setSwapMember1(null); return; }
+                        if (!v) { setSwapMember1(null); setSwapMember2(null); return; }
                         const [gid, mid] = v.split('-').map(Number);
                         const g = departmentGroups.find(gg => gg.id === gid);
                         const m = g?.members?.find((mm: any) => mm.id === mid);
-                        setSwapMember1(m ? { groupId: gid, memberId: mid, name: m.name } : null);
+                        if (m) {
+                          setSwapMember1({ groupId: gid, memberId: mid, name: m.name, tier: m.tier });
+                          setSwapMember2(null);
+                        } else {
+                          setSwapMember1(null);
+                          setSwapMember2(null);
+                        }
                       }}
                     >
                       <option value="">Select student...</option>
-                      {departmentGroups.map(g => 
+                      {departmentGroups.map(g =>
                         Array.isArray(g.members) ? g.members.map((m: any) => (
                           <option key={`${g.id}-${m.id}`} value={`${g.id}-${m.id}`}>
-                            {m.name} ({g.name})
+                            {m.name} ({g.name}){m.tier ? ` - ${m.tier}` : ''}
                           </option>
                         )) : null
                       )}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Student B</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Student B (same tier only)</label>
                     <select
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                       value={swapMember2 ? `${swapMember2.groupId}-${swapMember2.memberId}` : ''}
@@ -758,16 +764,23 @@ export function SupervisorAssignment() {
                         const [gid, mid] = v.split('-').map(Number);
                         const g = departmentGroups.find(gg => gg.id === gid);
                         const m = g?.members?.find((mm: any) => mm.id === mid);
-                        setSwapMember2(m ? { groupId: gid, memberId: mid, name: m.name } : null);
+                        setSwapMember2(m ? { groupId: gid, memberId: mid, name: m.name, tier: m.tier } : null);
                       }}
+                      disabled={!swapMember1}
                     >
-                      <option value="">Select student...</option>
-                      {departmentGroups.map(g => 
-                        Array.isArray(g.members) ? g.members.map((m: any) => (
-                          <option key={`${g.id}-${m.id}`} value={`${g.id}-${m.id}`}>
-                            {m.name} ({g.name})
-                          </option>
-                        )) : null
+                      <option value="">{swapMember1 ? `Select ${swapMember1.tier || 'same tier'} student...` : 'Select Student A first'}</option>
+                      {swapMember1 && departmentGroups.map(g =>
+                        Array.isArray(g.members) ? g.members
+                          .filter((m: any) => {
+                            const sameTier = (m.tier || '') === (swapMember1.tier || '');
+                            const notSameMember = !(g.id === swapMember1.groupId && m.id === swapMember1.memberId);
+                            return sameTier && notSameMember;
+                          })
+                          .map((m: any) => (
+                            <option key={`${g.id}-${m.id}`} value={`${g.id}-${m.id}`}>
+                              {m.name} ({g.name})
+                            </option>
+                          )) : null
                       )}
                     </select>
                   </div>
@@ -775,11 +788,14 @@ export function SupervisorAssignment() {
                 {swapMember1 && swapMember2 && swapMember1.groupId === swapMember2.groupId && (
                   <p className="text-sm text-[#1F7A8C]">Select students from different groups.</p>
                 )}
+                {swapMember1 && swapMember2 && swapMember1.tier !== swapMember2.tier && (
+                  <p className="text-sm text-red-600">Students must be in the same tier to swap.</p>
+                )}
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setEditSwapModal(false)} disabled={swapping}>Cancel</Button>
                   <Button
                     onClick={handleSwap}
-                    disabled={swapping || !swapMember1 || !swapMember2 || swapMember1.groupId === swapMember2.groupId}
+                    disabled={swapping || !swapMember1 || !swapMember2 || swapMember1.groupId === swapMember2.groupId || swapMember1.tier !== swapMember2.tier}
                   >
                     {swapping ? 'Swapping...' : 'Swap Students'}
                   </Button>

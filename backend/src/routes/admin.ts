@@ -266,8 +266,8 @@ export function createAdminRouter(db: Pool) {
         let r1: any, r2: any;
         if (id1 && id2) {
           const [[rows1], [rows2]] = await Promise.all([
-            conn.execute('SELECT id, group_id FROM group_members WHERE id = ?', [id1]) as any,
-            conn.execute('SELECT id, group_id FROM group_members WHERE id = ?', [id2]) as any
+            conn.execute('SELECT id, group_id, gpa_tier FROM group_members WHERE id = ?', [id1]) as any,
+            conn.execute('SELECT id, group_id, gpa_tier FROM group_members WHERE id = ?', [id2]) as any
           ]);
           r1 = (rows1 as any[])[0];
           r2 = (rows2 as any[])[0];
@@ -279,8 +279,8 @@ export function createAdminRouter(db: Pool) {
             return res.status(400).json({ success: false, message: 'matricNumber required when memberId not provided' });
           }
           const [[rows1], [rows2]] = await Promise.all([
-            conn.execute('SELECT id, group_id FROM group_members WHERE group_id = ? AND matric_number = ?', [g1, m1]) as any,
-            conn.execute('SELECT id, group_id FROM group_members WHERE group_id = ? AND matric_number = ?', [g2, m2]) as any
+            conn.execute('SELECT id, group_id, gpa_tier FROM group_members WHERE group_id = ? AND matric_number = ?', [g1, m1]) as any,
+            conn.execute('SELECT id, group_id, gpa_tier FROM group_members WHERE group_id = ? AND matric_number = ?', [g2, m2]) as any
           ]);
           r1 = (rows1 as any[])[0];
           r2 = (rows2 as any[])[0];
@@ -288,6 +288,12 @@ export function createAdminRouter(db: Pool) {
         if (!r1 || !r2 || r1.group_id !== g1 || r2.group_id !== g2) {
           await conn.rollback();
           return res.status(404).json({ success: false, message: 'Members not found or group mismatch' });
+        }
+        const tier1 = r1.gpa_tier ?? null;
+        const tier2 = r2.gpa_tier ?? null;
+        if (tier1 !== tier2) {
+          await conn.rollback();
+          return res.status(400).json({ success: false, message: 'Students must be in the same GPA tier to swap (HIGH↔HIGH, MEDIUM↔MEDIUM, LOW↔LOW)' });
         }
         await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [g2, r1.id]);
         await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [g1, r2.id]);
