@@ -54,49 +54,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      setLoading(true);
-      console.log('AuthContext: Attempting login for:', email);
       const response = await apiClient.login({ email, password });
-      
-      console.log('AuthContext: Login response:', response);
-      
+
       if (response.success && response.data) {
-        console.log('AuthContext: Setting user data:', response.data.user);
         setUser(response.data.user);
         setStudent(response.data.student || null);
         setSupervisor(response.data.supervisor || null);
-        console.log('AuthContext: Login successful, user state updated');
         return { success: true };
       } else {
-        console.error('AuthContext: Login failed:', response.message || response.error);
-        return { success: false, error: response.message || response.error || 'Login failed' };
+        const errMsg = response.message || response.error || 'Invalid email or password. Please try again.';
+        return { success: false, error: errMsg };
       }
     } catch (error) {
-      console.error('AuthContext: Sign in error:', error);
-      return { success: false, error: 'Login failed. Please try again.' };
-    } finally {
-      setLoading(false);
+      const msg = error instanceof Error ? error.message : 'Network error. Please check your connection.';
+      return { success: false, error: msg };
     }
   };
 
   const signUp = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string }> => {
     try {
-      setLoading(true);
       const response = await apiClient.register(userData);
-      
+
       if (response.success && response.data) {
         setUser(response.data.user);
         setStudent(response.data.student || null);
         setSupervisor(response.data.supervisor || null);
         return { success: true };
       } else {
-        return { success: false, error: response.message || 'Registration failed' };
+        const errMsg = response.message || response.error || 'Registration failed. Please try again.';
+        return { success: false, error: errMsg };
       }
     } catch (error) {
-      console.error('Sign up error:', error);
-      return { success: false, error: 'Registration failed. Please try again.' };
-    } finally {
-      setLoading(false);
+      const msg = error instanceof Error ? error.message : 'Network error. Please check your connection.';
+      return { success: false, error: msg };
     }
   };
 
