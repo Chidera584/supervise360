@@ -12,7 +12,6 @@ export function StudentDashboard() {
   const { user, student } = useAuth();
   const { groups, syncWithDatabase } = useGroups();
   const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [reportsCount, setReportsCount] = useState(0);
   const [reportsReviewedCount, setReportsReviewedCount] = useState(0);
   const [inboxCount, setInboxCount] = useState(0);
@@ -29,12 +28,10 @@ export function StudentDashboard() {
       try {
         setLoading(true);
         await syncWithDatabase();
-        const [notifRes, reportsRes, inboxRes] = await Promise.all([
-          apiClient.getRecentNotifications(5),
+        const [reportsRes, inboxRes] = await Promise.all([
           apiClient.getMyReports(),
           apiClient.getInbox(),
         ]);
-        if (notifRes.success) setNotifications(notifRes.data || []);
         if (reportsRes.success && Array.isArray(reportsRes.data)) {
           const reports = reportsRes.data as any[];
           setReportsCount(reports.length);
@@ -197,22 +194,6 @@ export function StudentDashboard() {
                   </p>
                 </div>
               )}
-            </Card>
-
-            {/* Recent Notifications */}
-            <Card className="rounded-2xl shadow-sm border-slate-100">
-              <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Recent Notifications</h2>
-              <div className="space-y-3">
-                {notifications.map((note) => (
-                  <div key={note.id} className="text-sm py-3 border-b border-slate-100 last:border-0">
-                    <div className="font-medium text-slate-900">{note.title}</div>
-                    <div className="text-slate-500 mt-0.5">{note.message}</div>
-                  </div>
-                ))}
-                {notifications.length === 0 && (
-                  <div className="text-slate-500 text-sm py-4">No notifications yet.</div>
-                )}
-              </div>
             </Card>
           </div>
         </div>
