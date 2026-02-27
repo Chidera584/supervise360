@@ -201,19 +201,22 @@ function balanceTeamSizes(teams: AssessorTeam[], pool: StaffMember[]): AssessorT
 }
 
 /**
- * Assign each assessor team to exactly one venue. Teams count must match venues count.
+ * Assign assessor teams to venues. Spreads teams across all venues:
+ * - When teams < venues: cycles through teams so each venue gets a team
+ * - When teams >= venues: assigns one team per venue (extra teams unused)
+ * No strict 1:1 constraint - lecturers are distributed across all locations.
  */
 export function assignTeamsToVenues(teams: AssessorTeam[], venues: Venue[]): VenueAllocation[] {
-  if (teams.length !== venues.length) {
-    throw new Error(
-      `Allocation error: Number of assessor teams (${teams.length}) must match number of venues (${venues.length}). ` +
-      `Please adjust staff or venues.`
-    );
+  if (teams.length === 0) {
+    throw new Error('No assessor teams available. Add staff with Professor, Lecturer, and Lab Technician roles.');
+  }
+  if (venues.length === 0) {
+    throw new Error('No venues provided. Add at least one venue.');
   }
 
   return venues.map((venue, i) => ({
     venue,
-    team: teams[i],
+    team: teams[i % teams.length],
     groupRange: undefined
   }));
 }

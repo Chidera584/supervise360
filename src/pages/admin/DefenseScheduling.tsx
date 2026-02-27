@@ -394,7 +394,7 @@ export function DefenseScheduling() {
                 2. Upload Venues CSV
               </h3>
               <p className="text-sm text-slate-600 mb-4">
-                Required columns: venue_id, venue_name. Number of venues must match number of assessor teams.
+                Required columns: venue_id, venue_name. Teams are spread across all venues.
               </p>
               <div className="flex items-center gap-3">
                 <Button onClick={() => venueInputRef.current?.click()} variant="outline">
