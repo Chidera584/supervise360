@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="seq-003" version="22.0.0" type="device">
   <diagram name="Sequence Diagram - Supervise360" id="seq-supervise360">
-    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
@@ -25,19 +25,19 @@
 
         <!-- Lifelines -->
         <mxCell id="life-s" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#6c8ebf;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="140" as="sourcePoint"/><mxPoint x="100" y="920" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="140" as="sourcePoint"/><mxPoint x="100" y="1050" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="life-a" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#d6b656;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="140" as="sourcePoint"/><mxPoint x="220" y="920" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="140" as="sourcePoint"/><mxPoint x="220" y="1050" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="life-sp" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#82b366;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="340" y="140" as="sourcePoint"/><mxPoint x="340" y="920" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="340" y="140" as="sourcePoint"/><mxPoint x="340" y="1050" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="life-sys" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#9673a6;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="140" as="sourcePoint"/><mxPoint x="490" y="920" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="140" as="sourcePoint"/><mxPoint x="490" y="1050" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="life-db" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=1;strokeColor=#b85450;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="660" y="140" as="sourcePoint"/><mxPoint x="660" y="920" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="660" y="140" as="sourcePoint"/><mxPoint x="660" y="1050" as="targetPoint"/></mxGeometry>
         </mxCell>
 
         <!-- 1. Login (all users) -->
@@ -62,42 +62,59 @@
           <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="400" as="sourcePoint"/><mxPoint x="660" y="400" as="targetPoint"/></mxGeometry>
         </mxCell>
 
-        <!-- 3. System notifies Student -->
-        <mxCell id="m7" value="Notify assigned group and supervisor" style="endArrow=block;html=1;rounded=0;strokeWidth=2;dashed=1;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="450" as="sourcePoint"/><mxPoint x="100" y="450" as="targetPoint"/></mxGeometry>
+        <!-- 2b. Admin: Schedule defense -->
+        <mxCell id="m6a" value="Schedule defense (venue, assessors)" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="440" as="sourcePoint"/><mxPoint x="490" y="440" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m6b" value="Store defense allocations" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="480" as="sourcePoint"/><mxPoint x="660" y="480" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m6c" value="Notify students (defense scheduled)" style="endArrow=block;html=1;rounded=0;strokeWidth=2;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="520" as="sourcePoint"/><mxPoint x="100" y="520" as="targetPoint"/></mxGeometry>
         </mxCell>
 
-        <!-- 4. Student: View group, upload report -->
+        <!-- 3. System notifies Student -->
+        <mxCell id="m7" value="Notify assigned group and supervisor" style="endArrow=block;html=1;rounded=0;strokeWidth=2;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="560" as="sourcePoint"/><mxPoint x="100" y="560" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- 4. Student: View group, defense schedule, upload report -->
         <mxCell id="m8" value="Request group and supervisor details" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="510" as="sourcePoint"/><mxPoint x="490" y="510" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="620" as="sourcePoint"/><mxPoint x="490" y="620" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="m9" value="Display group members and supervisor" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#82b366;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="550" as="sourcePoint"/><mxPoint x="100" y="550" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="660" as="sourcePoint"/><mxPoint x="100" y="660" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m9a" value="Request defense schedule" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="700" as="sourcePoint"/><mxPoint x="490" y="700" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m9b" value="Display venue and assessors" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#82b366;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="740" as="sourcePoint"/><mxPoint x="100" y="740" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="m10" value="Upload project report" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="610" as="sourcePoint"/><mxPoint x="490" y="610" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="780" as="sourcePoint"/><mxPoint x="490" y="780" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="m11" value="Save report (resolve matric to group)" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="650" as="sourcePoint"/><mxPoint x="660" y="650" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="820" as="sourcePoint"/><mxPoint x="660" y="820" as="targetPoint"/></mxGeometry>
         </mxCell>
 
         <!-- 5. System notifies Supervisor -->
         <mxCell id="m12" value="Notify supervisor of new submission" style="endArrow=block;html=1;rounded=0;strokeWidth=2;dashed=1;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="710" as="sourcePoint"/><mxPoint x="340" y="710" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="860" as="sourcePoint"/><mxPoint x="340" y="860" as="targetPoint"/></mxGeometry>
         </mxCell>
 
         <!-- 6. Supervisor: Review report -->
         <mxCell id="m13" value="Open student report" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="340" y="770" as="sourcePoint"/><mxPoint x="490" y="770" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="340" y="910" as="sourcePoint"/><mxPoint x="490" y="910" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="m14" value="Display report" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#82b366;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="810" as="sourcePoint"/><mxPoint x="340" y="810" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="950" as="sourcePoint"/><mxPoint x="340" y="950" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="m15" value="Submit feedback and approve/reject" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="340" y="870" as="sourcePoint"/><mxPoint x="490" y="870" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="340" y="990" as="sourcePoint"/><mxPoint x="490" y="990" as="targetPoint"/></mxGeometry>
         </mxCell>
         <mxCell id="m16" value="Update report, notify student" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="910" as="sourcePoint"/><mxPoint x="660" y="910" as="targetPoint"/></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint x="490" y="1030" as="sourcePoint"/><mxPoint x="660" y="1030" as="targetPoint"/></mxGeometry>
         </mxCell>
 
         <!-- Title -->
