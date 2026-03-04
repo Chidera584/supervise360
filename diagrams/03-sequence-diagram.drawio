@@ -1,0 +1,179 @@
+<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" version="22.0.0" etag="sequence-diagram" type="device">
+  <diagram id="sequence-diagram" name="Sequence Diagram - Key Flows">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- FLOW 1: User Login -->
+        <mxCell id="flow1-title" value="Flow 1: User Login / Authentication" style="text;html=1;strokeColor=none;fillColor=#dae8fc;align=left;verticalAlign=middle;spacingLeft=8;fontStyle=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="20" width="400" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="f1-user" value="User&#xa;(Browser)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="60" y="60" width="80" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="f1-frontend" value="Frontend&#xa;(React)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="180" y="60" width="80" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="f1-api" value="API&#xa;(Express)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="300" y="60" width="80" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="f1-auth" value="AuthService" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="420" y="60" width="80" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="f1-db" value="MySQL&#xa;DB" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#f5f5f5;strokeColor=#666666;" parent="1" vertex="1">
+          <mxGeometry x="540" y="60" width="80" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="f1-user" target="f1-frontend" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-1-label" value="1. signIn(email, password)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="140" y="75" width="140" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;" parent="1" source="f1-frontend" target="f1-api" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-2-label" value="2. POST /api/auth/login" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="260" y="95" width="140" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;" parent="1" source="f1-api" target="f1-auth" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-3-label" value="3. AuthService.login()" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="380" y="115" width="130" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;" parent="1" source="f1-auth" target="f1-db" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-4-label" value="4. SELECT user by email" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="500" y="135" width="130" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;" parent="1" source="f1-db" target="f1-auth" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-5-label" value="5. user record" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="500" y="155" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;" parent="1" source="f1-auth" target="f1-api" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-6-label" value="6. JWT + user" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="380" y="175" width="80" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;" parent="1" source="f1-api" target="f1-frontend" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-7-label" value="7. { user, token }" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="260" y="195" width="90" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;" parent="1" source="f1-frontend" target="f1-user" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq1-8-label" value="8. setToken, redirect /dashboard" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="140" y="215" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- FLOW 2: Report Submission -->
+        <mxCell id="flow2-title" value="Flow 2: Student Report Submission" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=left;verticalAlign=middle;spacingLeft=8;fontStyle=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="220" width="400" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="f2-student" value="Student" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="60" y="260" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f2-reports" value="Reports&#xa;Page" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="160" y="260" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f2-api" value="Reports&#xa;API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="260" y="260" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f2-reportsvc" value="ReportService" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="360" y="260" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f2-email" value="EmailService" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="460" y="260" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq2-1" value="1. Upload file (FormData)" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="115" y="275" width="120" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq2-2" value="2. POST /api/reports/upload" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="215" y="295" width="160" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq2-3" value="3. Get project, save report" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="315" y="315" width="140" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq2-4" value="4. Notify student + supervisor" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="415" y="335" width="160" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- FLOW 3: Group Formation -->
+        <mxCell id="flow3-title" value="Flow 3: Group Formation (Admin)" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=middle;spacingLeft=8;fontStyle=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="390" width="400" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="f3-admin" value="Admin" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="60" y="430" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f3-groups" value="Groups&#xa;Page" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="160" y="430" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f3-api" value="Groups&#xa;API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="260" y="430" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f3-gfsvc" value="GroupFormation&#xa;Service" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="360" y="430" width="90" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f3-db" value="MySQL" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#f5f5f5;strokeColor=#666666;" parent="1" vertex="1">
+          <mxGeometry x="480" y="430" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq3-1" value="1. Upload CSV (students)" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="115" y="445" width="130" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq3-2" value="2. POST /api/groups/form" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="215" y="465" width="150" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq3-3" value="3. processStudentData, formGroups (1H+1M+1L)" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="315" y="485" width="220" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq3-4" value="4. INSERT project_groups, group_members, projects" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="415" y="505" width="250" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- FLOW 4: Supervisor Assignment -->
+        <mxCell id="flow4-title" value="Flow 4: Supervisor Auto-Assignment" style="text;html=1;strokeColor=none;fillColor=#e1d5e7;align=left;verticalAlign=middle;spacingLeft=8;fontStyle=1;fontSize=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="560" width="400" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="f4-admin" value="Admin" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="60" y="600" width="70" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f4-supervisor" value="Supervisor&#xa;Assignment" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="160" y="600" width="90" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f4-api" value="Supervisors&#xa;API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="280" y="600" width="80" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f4-sasvc" value="SupervisorAssignment&#xa;Service" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="390" y="600" width="110" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="f4-notify" value="EmailService" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="530" y="600" width="80" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq4-1" value="1. Click Auto-Assign" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="115" y="615" width="120" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq4-2" value="2. POST /api/supervisors/auto-assign" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="215" y="635" width="200" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq4-3" value="3. computeOptimalAssignment (even load)" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="315" y="655" width="220" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="seq4-4" value="4. UPDATE project_groups, notify students &amp; supervisors" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="415" y="675" width="280" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Overall title -->
+        <mxCell id="main-title" value="Supervise360 - Sequence Diagrams (Key System Flows)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="500" y="-10" width="450" height="30" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
