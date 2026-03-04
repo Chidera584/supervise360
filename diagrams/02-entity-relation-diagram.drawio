@@ -1,90 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="er-003" version="22.0.0" type="device">
+<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="er-004" version="22.0.0" type="device">
   <diagram name="Entity-Relation Diagram - Supervise360" id="er-supervise360">
-    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
 
-        <!-- Users (base) -->
-        <mxCell id="ent-users" value="Users&#xa;──────────────────&#xa;PK id: INT&#xa;first_name: VARCHAR(100)&#xa;last_name: VARCHAR(100)&#xa;email: VARCHAR(255)&#xa;role: ENUM&#xa;department: VARCHAR(100)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="80" width="160" height="120" as="geometry"/>
-        </mxCell>
-
-        <!-- Group (project_groups) - central entity -->
-        <mxCell id="ent-group" value="Group&#xa;(project_groups)&#xa;──────────────────&#xa;PK id: INT&#xa;name: VARCHAR(100)&#xa;department: VARCHAR(100)&#xa;avg_gpa: DECIMAL(3,2)&#xa;supervisor_name: VARCHAR(255)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="280" y="280" width="180" height="120" as="geometry"/>
-        </mxCell>
-
-        <!-- GroupMembers -->
-        <mxCell id="ent-members" value="Group Members&#xa;──────────────────&#xa;PK id: INT&#xa;FK group_id: INT&#xa;student_name: VARCHAR(255)&#xa;matric_number: VARCHAR(50)&#xa;student_gpa: DECIMAL(3,2)&#xa;gpa_tier: ENUM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="280" width="180" height="130" as="geometry"/>
-        </mxCell>
-
-        <!-- Project -->
-        <mxCell id="ent-project" value="Project&#xa;──────────────────&#xa;PK id: INT&#xa;FK group_id: INT&#xa;title: VARCHAR(255)&#xa;status: VARCHAR(20)&#xa;progress_percentage: DECIMAL(5,2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="280" y="480" width="180" height="120" as="geometry"/>
-        </mxCell>
-
-        <!-- Reports -->
-        <mxCell id="ent-reports" value="Reports&#xa;──────────────────&#xa;PK id: INT&#xa;FK project_id: INT&#xa;FK group_id: INT&#xa;report_type: VARCHAR(20)&#xa;file_path: VARCHAR(500)&#xa;FK submitted_by: INT&#xa;reviewed: BOOLEAN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="280" y="680" width="180" height="140" as="geometry"/>
-        </mxCell>
-
-        <!-- Supervisor -->
-        <mxCell id="ent-supervisor" value="Supervisor&#xa;──────────────────&#xa;PK id: INT&#xa;FK user_id: INT&#xa;department: VARCHAR(100)&#xa;max_capacity: INT&#xa;current_load: INT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="560" y="280" width="170" height="110" as="geometry"/>
-        </mxCell>
-
-        <!-- Evaluations -->
-        <mxCell id="ent-evaluation" value="Evaluation&#xa;──────────────────&#xa;PK id: INT&#xa;FK project_id: INT&#xa;FK supervisor_id: INT&#xa;evaluation_type: ENUM&#xa;total_score: DECIMAL(5,2)&#xa;grade: CHAR(2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="560" y="480" width="170" height="130" as="geometry"/>
-        </mxCell>
-
-        <!-- Messages -->
-        <mxCell id="ent-messages" value="Messages&#xa;──────────────────&#xa;PK id: INT&#xa;FK sender_id: INT&#xa;FK recipient_id: INT&#xa;FK group_id: INT (optional)&#xa;subject: VARCHAR(255)&#xa;content: TEXT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="560" y="680" width="170" height="130" as="geometry"/>
-        </mxCell>
-
-        <!-- Defense Allocation -->
-        <mxCell id="ent-defense" value="Defense Allocation&#xa;──────────────────&#xa;PK id: INT&#xa;venue_name: VARCHAR(255)&#xa;department: VARCHAR(100)&#xa;group_start: INT&#xa;group_end: INT&#xa;assessors: JSON" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="800" y="480" width="180" height="120" as="geometry"/>
-        </mxCell>
-
-        <!-- Departments -->
-        <mxCell id="ent-depts" value="Departments&#xa;──────────────────&#xa;PK id: INT&#xa;name: VARCHAR(100)&#xa;code: VARCHAR(50)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="800" y="280" width="150" height="90" as="geometry"/>
-        </mxCell>
-
-        <!-- Relationships -->
-        <mxCell id="rel1" value="contains" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="345" as="sourcePoint"/><mxPoint x="280" y="340" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="rel2" value="has" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="370" y="400" as="sourcePoint"/><mxPoint x="370" y="480" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="rel3" value="submits" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="370" y="600" as="sourcePoint"/><mxPoint x="370" y="680" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="rel4" value="supervised by" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="340" as="sourcePoint"/><mxPoint x="560" y="335" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="rel5" value="evaluates" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="545" as="sourcePoint"/><mxPoint x="560" y="545" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="rel6" value="evaluated" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="370" y="600" as="sourcePoint"/><mxPoint x="560" y="545" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="rel7" value="context" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="460" y="400" as="sourcePoint"/><mxPoint x="560" y="745" as="targetPoint"/></mxGeometry>
-        </mxCell>
-        <mxCell id="rel8" value="submitted by" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="200" y="140" as="sourcePoint"/><mxPoint x="280" y="750" as="targetPoint"/></mxGeometry>
-        </mxCell>
-
         <!-- Title -->
         <mxCell id="title" value="Supervise360 - Entity Relationship Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="450" y="20" width="500" height="30" as="geometry"/>
+          <mxGeometry x="400" y="20" width="400" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Row 1: users (center), departments (right) -->
+        <mxCell id="ent-users" value="users&#xa;────────────────&#xa;PK id: INT&#xa;first_name, last_name&#xa;email: VARCHAR(255)&#xa;role: ENUM&#xa;department: VARCHAR(100)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="80" width="160" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="ent-depts" value="departments&#xa;────────────────&#xa;PK id: INT&#xa;name: VARCHAR(100)&#xa;code: VARCHAR(50)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="680" y="80" width="140" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Row 2: students (left), student_groups (center), supervisors (right) -->
+        <mxCell id="ent-students" value="students&#xa;────────────────&#xa;PK id: INT&#xa;FK user_id: INT&#xa;matric_number: VARCHAR(50)&#xa;gpa: DECIMAL(3,2)&#xa;gpa_tier: ENUM&#xa;FK group_id: INT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="240" width="160" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="ent-groups" value="student_groups&#xa;────────────────&#xa;PK id: INT&#xa;group_number: INT&#xa;department: VARCHAR(100)&#xa;FK supervisor_id: INT&#xa;max_members, current_members" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="240" width="180" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="ent-supervisors" value="supervisors&#xa;────────────────&#xa;PK id: INT&#xa;FK user_id: INT&#xa;department: VARCHAR(100)&#xa;max_capacity: INT&#xa;current_load: INT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="240" width="160" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Row 3: reports (left), evaluations (center), messages (right) -->
+        <mxCell id="ent-reports" value="reports&#xa;────────────────&#xa;PK id: INT&#xa;FK project_id: INT&#xa;FK group_id: INT&#xa;report_type: ENUM&#xa;file_path: VARCHAR(500)&#xa;FK submitted_by: INT&#xa;reviewed: BOOLEAN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="420" width="170" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="ent-evaluations" value="evaluations&#xa;────────────────&#xa;PK id: INT&#xa;FK project_id: INT&#xa;FK supervisor_id: INT&#xa;evaluation_type: ENUM&#xa;total_score: DECIMAL(5,2)&#xa;grade: CHAR(2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="420" width="180" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="ent-messages" value="messages&#xa;────────────────&#xa;PK id: INT&#xa;FK sender_id: INT&#xa;FK recipient_id: INT&#xa;FK group_id: INT (opt)&#xa;subject: VARCHAR(255)&#xa;content: TEXT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="420" width="160" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Row 4: notifications (left), defense_allocations (right) -->
+        <mxCell id="ent-notifications" value="notifications&#xa;────────────────&#xa;PK id: INT&#xa;FK user_id: INT&#xa;title: VARCHAR(255)&#xa;message: TEXT&#xa;type: ENUM&#xa;read_status: BOOLEAN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="600" width="170" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="ent-defense" value="defense_allocations&#xa;────────────────&#xa;PK id: INT&#xa;venue_name: VARCHAR(255)&#xa;department: VARCHAR(100)&#xa;group_start: INT&#xa;group_end: INT&#xa;assessors: JSON" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="600" width="180" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Projects (needed for reports/evaluations - center row 4) -->
+        <mxCell id="ent-projects" value="projects&#xa;────────────────&#xa;PK id: INT&#xa;FK group_id: INT&#xa;title: VARCHAR(255)&#xa;status: ENUM&#xa;progress_percentage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="600" width="180" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships - clean layout -->
+        <mxCell id="rel1" value="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-users" target="ent-students">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="190" as="sourcePoint"/><mxPoint x="160" y="300" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel2" value="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-users" target="ent-supervisors">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="580" y="190" as="sourcePoint"/><mxPoint x="720" y="300" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel3" value="belongs to" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-students" target="ent-groups">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="300" as="sourcePoint"/><mxPoint x="420" y="295" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel4" value="supervises" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-supervisors" target="ent-groups">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="720" y="295" as="sourcePoint"/><mxPoint x="600" y="295" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel5" value="has" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-groups" target="ent-projects">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="510" y="350" as="sourcePoint"/><mxPoint x="510" y="600" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel6" value="submits" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-groups" target="ent-reports">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="350" as="sourcePoint"/><mxPoint x="250" y="485" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel7" value="submitted by" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-users" target="ent-reports">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="190" as="sourcePoint"/><mxPoint x="165" y="420" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel8" value="evaluates" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-projects" target="ent-evaluations">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="510" y="600" as="sourcePoint"/><mxPoint x="510" y="420" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel9" value="by" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-supervisors" target="ent-evaluations">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="720" y="350" as="sourcePoint"/><mxPoint x="600" y="480" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel10" value="context" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-groups" target="ent-messages">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="600" y="350" as="sourcePoint"/><mxPoint x="720" y="480" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel11" value="sender/recipient" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-users" target="ent-messages">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="500" y="190" as="sourcePoint"/><mxPoint x="720" y="480" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel12" value="receives" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-users" target="ent-notifications">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="190" as="sourcePoint"/><mxPoint x="165" y="660" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="rel13" value="has" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;fontSize=9;" edge="1" parent="1" source="ent-projects" target="ent-reports">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="600" as="sourcePoint"/><mxPoint x="250" y="485" as="targetPoint"/></mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
