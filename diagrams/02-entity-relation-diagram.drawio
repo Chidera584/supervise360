@@ -1,118 +1,165 @@
-<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" version="22.0.0" etag="er-diagram" type="device">
-  <diagram id="er-diagram" name="Entity-Relation Diagram">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" math="0" shadow="0">
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="er-001" version="22.0.0" type="device">
+  <diagram name="Entity-Relation Diagram - Supervise360" id="er-supervise360">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
 
         <!-- users -->
-        <mxCell id="users" value="users&#xa;─────────────&#xa;PK id&#xa;first_name&#xa;last_name&#xa;email (unique)&#xa;password_hash&#xa;role (admin|supervisor|student|external_supervisor)&#xa;department&#xa;is_active&#xa;email_verified&#xa;last_login&#xa;created_at&#xa;updated_at" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="40" y="80" width="180" height="220" as="geometry"/>
+        <mxCell id="ent-users" value="users&#xa;─────────────&#xa;id (PK)&#xa;first_name&#xa;last_name&#xa;email&#xa;password_hash&#xa;role&#xa;department&#xa;is_active" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="140" height="180" as="geometry"/>
         </mxCell>
 
         <!-- students -->
-        <mxCell id="students" value="students&#xa;─────────────&#xa;PK id&#xa;FK user_id → users&#xa;matric_number (unique)&#xa;gpa&#xa;gpa_tier (HIGH|MEDIUM|LOW)&#xa;group_id&#xa;academic_year&#xa;program" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="40" y="360" width="180" height="160" as="geometry"/>
+        <mxCell id="ent-students" value="students&#xa;─────────────&#xa;id (PK)&#xa;user_id (FK)&#xa;matric_number&#xa;gpa&#xa;gpa_tier&#xa;group_id" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="140" height="140" as="geometry"/>
         </mxCell>
 
         <!-- supervisors -->
-        <mxCell id="supervisors" value="supervisors&#xa;─────────────&#xa;PK id&#xa;FK user_id → users&#xa;department&#xa;current_load&#xa;is_available&#xa;specialization&#xa;office_location&#xa;phone" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="40" y="580" width="180" height="160" as="geometry"/>
-        </mxCell>
-
-        <!-- project_groups -->
-        <mxCell id="project_groups" value="project_groups&#xa;─────────────&#xa;PK id&#xa;name&#xa;avg_gpa&#xa;status&#xa;department&#xa;supervisor_name&#xa;supervisor_id&#xa;formation_method&#xa;formation_date" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="320" y="80" width="180" height="180" as="geometry"/>
-        </mxCell>
-
-        <!-- group_members -->
-        <mxCell id="group_members" value="group_members&#xa;─────────────&#xa;PK id&#xa;FK group_id → project_groups&#xa;student_name&#xa;student_gpa&#xa;gpa_tier&#xa;member_order&#xa;matric_number" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="320" y="320" width="180" height="140" as="geometry"/>
-        </mxCell>
-
-        <!-- projects -->
-        <mxCell id="projects" value="projects&#xa;─────────────&#xa;PK id&#xa;FK group_id → project_groups&#xa;title&#xa;description&#xa;objectives&#xa;methodology&#xa;status&#xa;progress_percentage&#xa;submitted_at" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="580" y="80" width="200" height="200" as="geometry"/>
-        </mxCell>
-
-        <!-- reports -->
-        <mxCell id="reports" value="reports&#xa;─────────────&#xa;PK id&#xa;FK project_id → projects&#xa;FK group_id → project_groups&#xa;report_type (proposal|progress|final|other)&#xa;title&#xa;file_name&#xa;file_path&#xa;submitted_by&#xa;reviewed&#xa;reviewed_by" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="580" y="340" width="200" height="200" as="geometry"/>
-        </mxCell>
-
-        <!-- evaluations -->
-        <mxCell id="evaluations" value="evaluations&#xa;─────────────&#xa;PK id&#xa;FK project_id → projects&#xa;FK supervisor_id → supervisors&#xa;evaluation_type&#xa;documentation_score&#xa;implementation_score&#xa;presentation_score&#xa;total_score&#xa;grade&#xa;feedback" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="580" y="600" width="220" height="200" as="geometry"/>
-        </mxCell>
-
-        <!-- defense_panels -->
-        <mxCell id="defense_panels" value="defense_panels&#xa;─────────────&#xa;PK id&#xa;group_number&#xa;FK project_id → projects&#xa;internal_supervisor_id&#xa;external_supervisor_id&#xa;defense_date&#xa;location&#xa;status&#xa;final_grade" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="860" y="80" width="200" height="200" as="geometry"/>
-        </mxCell>
-
-        <!-- messages -->
-        <mxCell id="messages" value="messages&#xa;─────────────&#xa;PK id&#xa;FK sender_id → users&#xa;FK recipient_id → users&#xa;FK group_id → project_groups&#xa;subject&#xa;content&#xa;message_type&#xa;read_status" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="860" y="340" width="200" height="180" as="geometry"/>
-        </mxCell>
-
-        <!-- notifications -->
-        <mxCell id="notifications" value="notifications&#xa;─────────────&#xa;PK id&#xa;FK user_id → users&#xa;title&#xa;message&#xa;type&#xa;priority&#xa;read_status&#xa;related_id&#xa;action_url" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="860" y="580" width="200" height="180" as="geometry"/>
+        <mxCell id="ent-supervisors" value="supervisors&#xa;─────────────&#xa;id (PK)&#xa;user_id (FK)&#xa;department&#xa;max_capacity&#xa;current_load&#xa;is_available" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="140" height="150" as="geometry"/>
         </mxCell>
 
         <!-- departments -->
-        <mxCell id="departments" value="departments&#xa;─────────────&#xa;PK id&#xa;name&#xa;code" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="1120" y="80" width="140" height="80" as="geometry"/>
+        <mxCell id="ent-departments" value="departments&#xa;─────────────&#xa;id (PK)&#xa;name&#xa;code" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="120" height="100" as="geometry"/>
         </mxCell>
 
         <!-- admin_departments -->
-        <mxCell id="admin_departments" value="admin_departments&#xa;─────────────&#xa;PK id&#xa;FK user_id → users&#xa;FK department_id → departments" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="1120" y="200" width="200" height="100" as="geometry"/>
+        <mxCell id="ent-admin-depts" value="admin_departments&#xa;─────────────&#xa;id (PK)&#xa;user_id (FK)&#xa;department_id (FK)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="220" y="80" width="140" height="100" as="geometry"/>
         </mxCell>
 
-        <!-- system_settings -->
-        <mxCell id="system_settings" value="system_settings&#xa;─────────────&#xa;PK id&#xa;setting_key&#xa;setting_value&#xa;setting_type&#xa;description&#xa;is_public" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=4;fontStyle=1;" parent="1" vertex="1">
-          <mxGeometry x="1120" y="340" width="160" height="120" as="geometry"/>
+        <!-- project_groups -->
+        <mxCell id="ent-project-groups" value="project_groups&#xa;─────────────&#xa;id (PK)&#xa;name&#xa;avg_gpa&#xa;status&#xa;department&#xa;supervisor_name&#xa;supervisor_id (FK)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="480" y="200" width="160" height="180" as="geometry"/>
         </mxCell>
 
-        <!-- Relationships (lines) -->
-        <mxCell id="rel1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="users" target="students" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="users" target="supervisors" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="project_groups" target="group_members" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="project_groups" target="projects" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="projects" target="reports" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="projects" target="evaluations" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="projects" target="defense_panels" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="supervisors" target="evaluations" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="users" target="notifications" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="departments" target="admin_departments" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="rel11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;" parent="1" source="users" target="admin_departments" edge="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- group_members -->
+        <mxCell id="ent-group-members" value="group_members&#xa;─────────────&#xa;id (PK)&#xa;group_id (FK)&#xa;student_name&#xa;student_gpa&#xa;gpa_tier&#xa;matric_number" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="480" y="440" width="160" height="140" as="geometry"/>
         </mxCell>
 
-        <!-- Title -->
-        <mxCell id="title" value="Supervise360 - Entity-Relation Diagram (Database Schema)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14;" parent="1" vertex="1">
-          <mxGeometry x="400" y="20" width="500" height="30" as="geometry"/>
+        <!-- projects -->
+        <mxCell id="ent-projects" value="projects&#xa;─────────────&#xa;id (PK)&#xa;group_id (FK)&#xa;title&#xa;status&#xa;progress_percentage" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="480" y="640" width="160" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- reports -->
+        <mxCell id="ent-reports" value="reports&#xa;─────────────&#xa;id (PK)&#xa;project_id (FK)&#xa;group_id (FK)&#xa;report_type&#xa;title&#xa;file_path&#xa;submitted_by (FK)&#xa;reviewed&#xa;reviewed_by (FK)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="200" width="160" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- evaluations -->
+        <mxCell id="ent-evaluations" value="evaluations&#xa;─────────────&#xa;id (PK)&#xa;project_id (FK)&#xa;supervisor_id (FK)&#xa;evaluation_type&#xa;total_score&#xa;grade" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="480" width="160" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- messages -->
+        <mxCell id="ent-messages" value="messages&#xa;─────────────&#xa;id (PK)&#xa;sender_id (FK)&#xa;recipient_id (FK)&#xa;group_id (FK)&#xa;subject&#xa;content&#xa;message_type" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="960" y="200" width="160" height="170" as="geometry"/>
+        </mxCell>
+
+        <!-- notifications -->
+        <mxCell id="ent-notifications" value="notifications&#xa;─────────────&#xa;id (PK)&#xa;user_id (FK)&#xa;title&#xa;message&#xa;read_status" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="960" y="440" width="160" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- supervisor_workload -->
+        <mxCell id="ent-workload" value="supervisor_workload&#xa;─────────────&#xa;id (PK)&#xa;supervisor_name&#xa;department&#xa;current_groups&#xa;is_available" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="960" y="640" width="160" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- defense_allocations -->
+        <mxCell id="ent-defense" value="defense_allocations&#xa;─────────────&#xa;id (PK)&#xa;venue&#xa;group_range&#xa;assessors" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="680" width="160" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships -->
+        <mxCell id="rel-users-students" value="1:1" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="380" as="sourcePoint"/>
+            <mxPoint x="110" y="480" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-users-supervisors" value="1:1" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="380" as="sourcePoint"/>
+            <mxPoint x="110" y="680" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-users-admin-depts" value="N:M" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="245" as="sourcePoint"/>
+            <mxPoint x="220" y="130" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-depts-admin-depts" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="90" as="sourcePoint"/>
+            <mxPoint x="220" y="130" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-groups-members" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="380" as="sourcePoint"/>
+            <mxPoint x="560" y="440" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-groups-projects" value="1:1" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="380" as="sourcePoint"/>
+            <mxPoint x="560" y="640" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-supervisors-groups" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="755" as="sourcePoint"/>
+            <mxPoint x="480" y="290" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-projects-reports" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="640" y="705" as="sourcePoint"/>
+            <mxPoint x="720" y="300" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-users-reports" value="N:1" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="290" as="sourcePoint"/>
+            <mxPoint x="720" y="250" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-projects-evaluations" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="640" y="705" as="sourcePoint"/>
+            <mxPoint x="720" y="550" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-supervisors-evaluations" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="755" as="sourcePoint"/>
+            <mxPoint x="720" y="550" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-users-messages" value="N:1" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="290" as="sourcePoint"/>
+            <mxPoint x="960" y="285" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-users-notifications" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="290" as="sourcePoint"/>
+            <mxPoint x="960" y="505" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-groups-messages" value="0..1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="640" y="290" as="sourcePoint"/>
+            <mxPoint x="960" y="328" as="targetPoint"/>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

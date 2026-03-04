@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="seq-002" version="22.0.0" type="device">
+  <diagram name="Sequence Diagram - Group Formation Flow" id="seq-group-formation">
+    <mxGraphModel dx="1200" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="lane-admin" value="Admin" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="180" height="600" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-api" value="API (Groups Router)" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="40" width="180" height="600" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-formation" value="GroupFormationService" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="40" width="200" height="600" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-db" value="MySQL" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="660" y="40" width="180" height="600" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane-notify" value="Notification Service" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="860" y="40" width="180" height="600" as="geometry"/>
+        </mxCell>
+        <mxCell id="m1" value="1. Upload CSV (students, department)" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="100" as="sourcePoint"/><mxPoint x="240" y="100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m2" value="2. POST /api/groups/form" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="160" as="sourcePoint"/><mxPoint x="440" y="160" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m3" value="3. processStudentData() - GPA tiers" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="640" y="220" as="sourcePoint"/><mxPoint x="660" y="220" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m4" value="4. formGroupsUsingASP() (1H+1M+1L)" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="660" y="280" as="sourcePoint"/><mxPoint x="640" y="280" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m5" value="5. saveGroupsToDatabase()" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="640" y="340" as="sourcePoint"/><mxPoint x="660" y="340" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m6" value="6. INSERT project_groups, group_members" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="660" y="400" as="sourcePoint"/><mxPoint x="640" y="400" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m7" value="7. Notify students" style="endArrow=block;html=1;rounded=0;strokeWidth=2;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="640" y="460" as="sourcePoint"/><mxPoint x="860" y="460" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="m8" value="8. Return groups + stats" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#82b366;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="240" y="520" as="sourcePoint"/><mxPoint x="220" y="520" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="title" value="Group Formation (ASP Algorithm) Sequence" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="400" height="25" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

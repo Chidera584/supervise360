@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="uc-001" version="22.0.0" type="device">
+  <diagram name="Use Case Diagram - Supervise360" id="use-case-supervise360">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- System Boundary -->
+        <mxCell id="sys-boundary" value="Supervise360 System" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=40;horizontalStack=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="280" y="80" width="840" height="840" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin Use Cases -->
+        <mxCell id="uc-admin-login" value="Login (Admin Portal)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="60" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-dashboard" value="View Dashboard" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="140" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-departments" value="Manage Departments" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="220" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-users" value="Manage Users" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="300" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-groups" value="Form Groups (ASP)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="380" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-supervisor" value="Assign Supervisors" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="460" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-settings" value="System Settings" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="540" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-defense" value="Schedule Defense" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="620" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-reports" value="View Reports Analytics" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="40" y="700" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Student Use Cases -->
+        <mxCell id="uc-student-login" value="Login / Register" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="340" y="60" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-student-dashboard" value="View Dashboard" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="340" y="140" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-student-group" value="View My Group" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="340" y="220" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-student-reports" value="Upload Reports" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="340" y="300" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-student-messages" value="Send/Receive Messages" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="340" y="380" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-student-profile" value="Manage Profile" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="340" y="460" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-student-defense" value="View Defense Schedule" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="340" y="540" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Supervisor Use Cases -->
+        <mxCell id="uc-supervisor-login" value="Login / Register" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="640" y="60" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-supervisor-dashboard" value="View Dashboard" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="640" y="140" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-supervisor-groups" value="View Assigned Groups" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="640" y="220" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-supervisor-review" value="Review Reports" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="640" y="300" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-supervisor-eval" value="Submit Evaluations" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="640" y="380" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-supervisor-messages" value="Send/Receive Messages" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="640" y="460" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-supervisor-profile" value="Manage Profile" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="sys-boundary">
+          <mxGeometry x="640" y="540" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Actor: Admin -->
+        <mxCell id="actor-admin" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="80" y="360" width="40" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Actor: Student -->
+        <mxCell id="actor-student" value="Student" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="380" y="360" width="40" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Actor: Supervisor -->
+        <mxCell id="actor-supervisor" value="Supervisor" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="680" y="360" width="40" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Associations: Admin -->
+        <mxCell id="assoc-admin-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-login">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-dashboard">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-departments">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-users">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-groups">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-supervisor">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-settings">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-defense">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-admin-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-reports">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Associations: Student -->
+        <mxCell id="assoc-student-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-login">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-student-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-dashboard">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-student-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-group">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-student-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-reports">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-student-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-messages">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-student-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-profile">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-student-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-defense">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Associations: Supervisor -->
+        <mxCell id="assoc-supervisor-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-login">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-supervisor-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-dashboard">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-supervisor-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-groups">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-supervisor-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-review">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-supervisor-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-eval">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-supervisor-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-messages">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="assoc-supervisor-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-profile">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
