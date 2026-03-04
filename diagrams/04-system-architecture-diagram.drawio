@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="arch-002" version="22.0.0" type="device">
+<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="arch-003" version="22.0.0" type="device">
   <diagram name="System Architecture - Supervise360" id="arch-supervise360">
     <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
       <root>
@@ -11,21 +11,21 @@
           <mxGeometry x="400" y="20" width="400" height="35" as="geometry"/>
         </mxCell>
 
-        <!-- Presentation Layer (Blue) -->
+        <!-- Presentation Layer (Blue) - User Interfaces -->
         <mxCell id="pres-layer" value="Presentation Layer" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="80" y="80" width="1040" height="140" as="geometry"/>
         </mxCell>
-        <mxCell id="student-ui" value="Student Interface" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pres-layer">
-          <mxGeometry x="40" y="50" width="180" height="60" as="geometry"/>
+        <mxCell id="student-ui" value="Student Interface&#xa;(Dashboard, My Group, Reports,&#xa;Messages, Defense Schedule)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pres-layer">
+          <mxGeometry x="40" y="50" width="200" height="70" as="geometry"/>
         </mxCell>
-        <mxCell id="admin-ui" value="Administrator Interface" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pres-layer">
-          <mxGeometry x="260" y="50" width="180" height="60" as="geometry"/>
+        <mxCell id="admin-ui" value="Administrator Interface&#xa;(Users, Groups, Departments,&#xa;Supervisor Assignment, Settings,&#xa;Defense Scheduling)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pres-layer">
+          <mxGeometry x="280" y="50" width="220" height="70" as="geometry"/>
         </mxCell>
-        <mxCell id="supervisor-ui" value="Supervisor Interface" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pres-layer">
-          <mxGeometry x="480" y="50" width="180" height="60" as="geometry"/>
+        <mxCell id="supervisor-ui" value="Supervisor Interface&#xa;(My Groups, Report Reviews,&#xa;Evaluations, Messages)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pres-layer">
+          <mxGeometry x="540" y="50" width="200" height="70" as="geometry"/>
         </mxCell>
 
-        <!-- Arrow: User Requests / Commands (Presentation to Application) -->
+        <!-- Arrow: User Requests / Commands -->
         <mxCell id="arrow-req" value="User Requests / Commands" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="600" y="220" as="sourcePoint"/>
@@ -33,27 +33,30 @@
           </mxGeometry>
         </mxCell>
 
-        <!-- Application Layer (Green) -->
+        <!-- Application Layer (Green) - Business Logic -->
         <mxCell id="app-layer" value="Application Layer" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="80" y="280" width="1040" height="200" as="geometry"/>
         </mxCell>
-        <mxCell id="auth-mod" value="Authentication Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
-          <mxGeometry x="40" y="50" width="160" height="50" as="geometry"/>
+        <mxCell id="auth-mod" value="Authentication&#xa;(Login, Register, JWT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
+          <mxGeometry x="40" y="50" width="140" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="grouping" value="Grouping Engine (ASP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
-          <mxGeometry x="230" y="50" width="160" height="50" as="geometry"/>
+        <mxCell id="grouping" value="Grouping Engine (ASP)&#xa;(Form groups by GPA tier)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
+          <mxGeometry x="210" y="50" width="160" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="alloc" value="Supervisor Allocation (ASP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
-          <mxGeometry x="420" y="50" width="160" height="50" as="geometry"/>
+        <mxCell id="alloc" value="Supervisor Allocation&#xa;(Assign to groups)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
+          <mxGeometry x="400" y="50" width="150" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="eval-mgr" value="Evaluation &amp; Feedback Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
-          <mxGeometry x="610" y="50" width="180" height="50" as="geometry"/>
+        <mxCell id="eval-mgr" value="Evaluation &amp; Feedback&#xa;(Review reports, scores)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
+          <mxGeometry x="580" y="50" width="160" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="notif-svc" value="Notification Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
-          <mxGeometry x="820" y="50" width="160" height="50" as="geometry"/>
+        <mxCell id="notif-svc" value="Notification Service&#xa;(In-app + Email)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
+          <mxGeometry x="770" y="50" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="defense-svc" value="Defense Scheduling&#xa;(Venue, Assessors)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="app-layer">
+          <mxGeometry x="950" y="50" width="150" height="50" as="geometry"/>
         </mxCell>
 
-        <!-- Arrow: Processed Output / Feedback (Application to Presentation) -->
+        <!-- Arrow: Processed Output / Feedback -->
         <mxCell id="arrow-feedback" value="Processed Output / Feedback" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#82b366;fontStyle=1;fontSize=11;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="600" y="280" as="sourcePoint"/>
@@ -61,7 +64,7 @@
           </mxGeometry>
         </mxCell>
 
-        <!-- Arrow: Data Queries / Updates (Application to Data) -->
+        <!-- Arrow: Data Queries / Updates -->
         <mxCell id="arrow-queries" value="Data Queries / Updates" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#d6b656;fontStyle=1;fontSize=11;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="600" y="480" as="sourcePoint"/>
@@ -73,14 +76,14 @@
         <mxCell id="data-layer" value="Data Layer" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=30;horizontalStack=0;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="80" y="540" width="1040" height="200" as="geometry"/>
         </mxCell>
-        <mxCell id="db-cyl" value="Centralized Database" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="data-layer">
+        <mxCell id="db-cyl" value="MySQL Database&#xa;(supervise360)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="data-layer">
           <mxGeometry x="40" y="50" width="180" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="tables-list" value="Students, Supervisors, Groups, Projects,&#xa;Evaluations, Reports, Messages,&#xa;Defense Panel, Departments" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=15;fontSize=11;" vertex="1" parent="data-layer">
-          <mxGeometry x="260" y="70" width="220" height="80" as="geometry"/>
+        <mxCell id="tables-list" value="users, students, supervisors&#xa;project_groups, group_members&#xa;projects, reports, evaluations&#xa;messages, notifications&#xa;departments, admin_departments&#xa;defense_allocations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=15;fontSize=11;" vertex="1" parent="data-layer">
+          <mxGeometry x="260" y="60" width="240" height="90" as="geometry"/>
         </mxCell>
 
-        <!-- Arrow: Results / Records (Data to Application) -->
+        <!-- Arrow: Results / Records -->
         <mxCell id="arrow-results" value="Results / Records" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#d6b656;fontStyle=1;fontSize=11;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="600" y="540" as="sourcePoint"/>

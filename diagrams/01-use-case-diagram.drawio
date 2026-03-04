@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="uc-002" version="22.0.0" type="device">
+<mxfile host="app.diagrams.net" modified="2025-03-04T00:00:00.000Z" agent="Supervise360" etag="uc-003" version="22.0.0" type="device">
   <diagram name="Use Case Diagram - Supervise360" id="use-case-supervise360">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
       <root>
@@ -11,54 +11,57 @@
           <mxGeometry x="200" y="40" width="1000" height="900" as="geometry"/>
         </mxCell>
 
-        <!-- Student Use Cases (inside boundary, left) -->
+        <!-- Student Use Cases -->
         <mxCell id="uc-student-login" value="Register &amp; Login" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="260" y="80" width="120" height="50" as="geometry"/>
         </mxCell>
         <mxCell id="uc-student-group" value="View Group Details" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="260" y="150" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-student-defense" value="View Defense Panel" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="uc-student-defense" value="View Defense Schedule" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="260" y="220" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-student-topic" value="Submit Project Topic" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="uc-student-reports" value="Upload Reports" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="260" y="290" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-student-reports" value="Upload Project Report" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="uc-student-track" value="Track Progress &amp; Feedback" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="260" y="360" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-student-track" value="Track Progress &amp; Feedback" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="uc-student-notify" value="Receive Notifications" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="260" y="430" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-student-notify" value="Receive Notifications" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="uc-student-comm" value="Communicate with Supervisor" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="260" y="500" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-student-comm" value="Communicate with Supervisor" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="260" y="570" width="120" height="50" as="geometry"/>
-        </mxCell>
 
-        <!-- Administrator Use Cases (inside boundary, center) -->
-        <mxCell id="uc-admin-users" value="Manage User Accounts" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="500" y="120" width="120" height="50" as="geometry"/>
+        <!-- Administrator Use Cases -->
+        <mxCell id="uc-admin-users" value="Manage Users" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="100" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-depts" value="Manage Departments" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="180" width="120" height="50" as="geometry"/>
         </mxCell>
         <mxCell id="uc-admin-gpa" value="Set GPA &amp; Capacity Rules" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="500" y="200" width="120" height="50" as="geometry"/>
+          <mxGeometry x="500" y="260" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-admin-groups" value="Form Student Groups (ASP)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="500" y="280" width="120" height="50" as="geometry"/>
+        <mxCell id="uc-admin-groups" value="Form Groups (ASP)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="340" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-admin-monitor" value="Monitor Allocations" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="500" y="360" width="120" height="50" as="geometry"/>
+        <mxCell id="uc-admin-supervisor" value="Assign Supervisors" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="420" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-admin-settings" value="Manage System Settings" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="500" y="440" width="120" height="50" as="geometry"/>
+        <mxCell id="uc-admin-defense" value="Schedule Defense" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="500" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-settings" value="System Settings" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="580" width="120" height="50" as="geometry"/>
         </mxCell>
 
-        <!-- Supervisor Use Cases (inside boundary, right) -->
+        <!-- Supervisor Use Cases -->
         <mxCell id="uc-supervisor-groups" value="View Assigned Groups" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
           <mxGeometry x="860" y="120" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-supervisor-review" value="Review &amp; Approve Topics" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+        <mxCell id="uc-supervisor-review" value="Review Reports" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
           <mxGeometry x="860" y="200" width="120" height="50" as="geometry"/>
         </mxCell>
         <mxCell id="uc-supervisor-comm" value="Communicate with Students" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
@@ -67,48 +70,45 @@
         <mxCell id="uc-supervisor-track" value="Track Project Progress" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
           <mxGeometry x="860" y="360" width="120" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="uc-supervisor-eval" value="Evaluate Reports" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+        <mxCell id="uc-supervisor-eval" value="Submit Evaluations" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
           <mxGeometry x="860" y="440" width="120" height="50" as="geometry"/>
         </mxCell>
 
-        <!-- Actor: Student (left, outside boundary) -->
+        <!-- Actors -->
         <mxCell id="actor-student" value="Student" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="100" y="280" width="40" height="80" as="geometry"/>
+          <mxGeometry x="100" y="260" width="40" height="80" as="geometry"/>
         </mxCell>
-
-        <!-- Actor: Administrator (left, below Student) -->
         <mxCell id="actor-admin" value="Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="100" y="480" width="40" height="80" as="geometry"/>
+          <mxGeometry x="100" y="440" width="40" height="80" as="geometry"/>
         </mxCell>
-
-        <!-- Actor: Supervisor (right, outside boundary) -->
         <mxCell id="actor-supervisor" value="Supervisor" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="1260" y="280" width="40" height="80" as="geometry"/>
+          <mxGeometry x="1260" y="260" width="40" height="80" as="geometry"/>
         </mxCell>
 
         <!-- Associations: Student -->
-        <mxCell id="assoc-s1" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-login"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-s2" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-group"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-s3" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-defense"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-s4" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-topic"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-s5" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-reports"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-s6" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-track"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-s7" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-notify"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-s8" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-student" target="uc-student-comm"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-s1" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-student" target="uc-student-login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-s2" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-student" target="uc-student-group"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-s3" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-student" target="uc-student-defense"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-s4" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-student" target="uc-student-reports"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-s5" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-student" target="uc-student-track"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-s6" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-student" target="uc-student-notify"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-s7" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-student" target="uc-student-comm"><mxGeometry relative="1" as="geometry"/></mxCell>
 
         <!-- Associations: Administrator -->
-        <mxCell id="assoc-a1" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-users"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-a2" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-gpa"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-a3" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-groups"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-a4" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-monitor"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-a5" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-settings"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-a1" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-users"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-a2" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-depts"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-a3" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-gpa"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-a4" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-groups"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-a5" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-supervisor"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-a6" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-defense"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-a7" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-admin" target="uc-admin-settings"><mxGeometry relative="1" as="geometry"/></mxCell>
 
         <!-- Associations: Supervisor -->
-        <mxCell id="assoc-sp1" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-groups"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-sp2" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-review"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-sp3" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-comm"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-sp4" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-track"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="assoc-sp5" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-eval"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-sp1" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-groups"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-sp2" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-review"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-sp3" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-comm"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-sp4" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-track"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="assoc-sp5" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="actor-supervisor" target="uc-supervisor-eval"><mxGeometry relative="1" as="geometry"/></mxCell>
       </root>
     </mxGraphModel>
   </diagram>
