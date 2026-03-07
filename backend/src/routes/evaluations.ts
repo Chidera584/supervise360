@@ -9,6 +9,18 @@ const router = Router();
 export function createEvaluationsRouter(db: Pool) {
   const evaluationService = new EvaluationService(db);
 
+  router.get('/groups-with-projects', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      const data = await evaluationService.getGroupsWithProjects(userId);
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('Groups with projects error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch groups' });
+    }
+  });
+
   router.get('/pending', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;

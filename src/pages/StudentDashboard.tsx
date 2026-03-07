@@ -61,9 +61,9 @@ export function StudentDashboard() {
 
   return (
     <MainLayout title="Student Dashboard">
-      <div className="-m-6">
+      <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-m-6">
         {/* Hero Section - Full-width blue header */}
-        <div className="relative bg-[#022B3A] px-6 pt-8 pb-24 text-white">
+        <div className="relative bg-[#022B3A] px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
           <h1 className="text-2xl md:text-3xl font-bold">
             Welcome, {user?.first_name}
           </h1>
@@ -73,8 +73,8 @@ export function StudentDashboard() {
         </div>
 
         {/* Floating Cards - Overlap hero with soft shadow */}
-        <div className="relative -mt-16 px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+        <div className="relative -mt-12 sm:-mt-16 px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 w-full">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
@@ -123,20 +123,20 @@ export function StudentDashboard() {
         </div>
 
         {/* Main Content - Light background */}
-        <div className="mt-6 px-6 pb-8 bg-gradient-to-b from-slate-50 to-white min-h-[50vh]">
+        <div className="mt-6 px-4 sm:px-6 pb-8 sm:pb-12 bg-gradient-to-b from-slate-50 to-white min-h-[40vh]">
           <div className="w-full space-y-6">
             {/* Group Information */}
             <Card className="rounded-2xl shadow-sm border-slate-100">
               <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Group Information</h2>
               {studentGroup ? (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-[#E1E5F2]/50 border border-[#BFDBF7]/50 rounded-xl">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-[#E1E5F2]/50 border border-[#BFDBF7]/50 rounded-xl">
+                    <div className="min-w-0">
                       <p className="font-medium text-[#022B3A]">You are assigned to {studentGroup.name}</p>
                       <p className="text-sm text-slate-600">Status: {studentGroup.status}</p>
                     </div>
-                    <Link to="/my-group">
-                      <Button>View Group Details</Button>
+                    <Link to="/my-group" className="shrink-0">
+                      <Button className="w-full sm:w-auto">View Group Details</Button>
                     </Link>
                   </div>
 

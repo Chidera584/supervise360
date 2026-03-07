@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import type { AuthenticatedRequest } from '../types';
 import { AdminService } from '../services/adminService';
+import { DepartmentService } from '../services/departmentService';
 import { DefensePanelService } from '../services/defensePanelService';
 import { DefenseAllocationService } from '../services/defenseAllocationService';
 import { ProjectService } from '../services/projectService';
@@ -13,6 +15,7 @@ const router = Router();
 
 export function createAdminRouter(db: Pool) {
   const adminService = new AdminService(db);
+  const departmentService = new DepartmentService(db);
   const defenseService = new DefensePanelService(db);
   const defenseAllocService = new DefenseAllocationService(db);
   const projectService = new ProjectService(db);
@@ -24,6 +27,94 @@ export function createAdminRouter(db: Pool) {
     } catch (error) {
       console.error('Admin dashboard error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch admin dashboard' });
+    }
+  });
+
+  // Departments - list all
+  router.get('/departments', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const departments = await departmentService.listDepartments();
+      res.json({ success: true, data: departments });
+    } catch (error) {
+      console.error('Departments list error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch departments' });
+    }
+  });
+
+  // Departments - create
+  router.post('/departments', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const { name, code } = req.body;
+      if (!name || typeof name !== 'string') {
+        return res.status(400).json({ success: false, message: 'Department name is required' });
+      }
+      const dept = await departmentService.createDepartment(name, code);
+      res.json({ success: true, data: dept });
+    } catch (error: any) {
+      const msg = error?.message || 'Failed to create department';
+      if (msg.includes('Duplicate')) {
+        return res.status(400).json({ success: false, message: 'A department with this name or code already exists' });
+      }
+      console.error('Create department error:', error);
+      res.status(500).json({ success: false, message: msg });
+    }
+  });
+
+  // Departments - delete
+  router.delete('/departments/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
+      const result = await departmentService.deleteDepartment(id);
+      if (!result.ok) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      res.json({ success: true, message: 'Department deleted' });
+    } catch (error) {
+      console.error('Delete department error:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete department' });
+    }
+  });
+
+  // Departments - stats (filtered by admin's departments if assigned)
+  // Includes system-wide totals (totalStudents, totalSupervisors) matching Admin Dashboard
+  router.get('/departments/stats', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const authUser = (req as AuthenticatedRequest).user;
+      const deptNames = await departmentService.getAdminDepartmentNames(authUser!.id);
+      const stats = await departmentService.getDepartmentStats(deptNames);
+      const totals = await departmentService.getSystemWideTotals();
+      res.json({ success: true, data: stats, totals });
+    } catch (error) {
+      console.error('Department stats error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch department stats' });
+    }
+  });
+
+  // Admin's assigned departments (null = manages all)
+  router.get('/departments/me', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const authUser = (req as AuthenticatedRequest).user;
+      const names = await departmentService.getAdminDepartmentNames(authUser!.id);
+      const ids = await departmentService.getAdminDepartmentIds(authUser!.id);
+      res.json({ success: true, data: { names, ids, managesAll: ids === null } });
+    } catch (error) {
+      console.error('Admin departments error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch admin departments' });
+    }
+  });
+
+  // Assign admin to departments (body: { departmentIds: number[] } - empty = super admin)
+  router.put('/departments/me', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const authUser = (req as AuthenticatedRequest).user;
+      const { departmentIds } = req.body;
+      const ids = Array.isArray(departmentIds) ? departmentIds.map(Number).filter((n) => !isNaN(n)) : [];
+      await departmentService.setAdminDepartments(authUser!.id, ids);
+      res.json({ success: true, message: 'Departments updated' });
+    } catch (error) {
+      console.error('Set admin departments error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update departments' });
     }
   });
 

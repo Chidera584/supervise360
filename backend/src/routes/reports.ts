@@ -11,6 +11,7 @@ import {
   notifySupervisorFeedback,
   notifyStudentSubmission,
 } from '../services/notificationEmailService';
+import { backfillProjectsForGroups } from '../services/schemaFixService';
 
 const router = Router();
 
@@ -52,7 +53,11 @@ export function createReportsRouter(db: Pool) {
       const groupId = await reportService.getGroupIdByMatric(matric);
       if (!groupId) return res.status(400).json({ success: false, message: 'Group not found' });
 
-      const projectId = await reportService.getProjectIdByGroup(groupId);
+      let projectId = await reportService.getProjectIdByGroup(groupId);
+      if (!projectId) {
+        await backfillProjectsForGroups(db);
+        projectId = await reportService.getProjectIdByGroup(groupId);
+      }
       if (!projectId) return res.status(400).json({ success: false, message: 'Project not found for group' });
 
       const [result] = await db.execute(

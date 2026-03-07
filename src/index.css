@@ -2,9 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Prevent horizontal overflow on mobile */
+/* Mobile: prevent overflow, full viewport, safe area */
 html, body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  height: 100%;
+}
+#root {
+  height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 

@@ -248,6 +248,36 @@ class ApiClient {
     return this.request('/admin/dashboard');
   }
 
+  async getDepartments(): Promise<ApiResponse> {
+    return this.request('/admin/departments');
+  }
+
+  async createDepartment(name: string, code?: string): Promise<ApiResponse> {
+    return this.request('/admin/departments', {
+      method: 'POST',
+      body: JSON.stringify({ name, code }),
+    });
+  }
+
+  async deleteDepartment(id: number): Promise<ApiResponse> {
+    return this.request(`/admin/departments/${id}`, { method: 'DELETE' });
+  }
+
+  async getDepartmentStats(): Promise<ApiResponse> {
+    return this.request('/admin/departments/stats');
+  }
+
+  async getAdminDepartments(): Promise<ApiResponse> {
+    return this.request('/admin/departments/me');
+  }
+
+  async setAdminDepartments(departmentIds: number[]): Promise<ApiResponse> {
+    return this.request('/admin/departments/me', {
+      method: 'PUT',
+      body: JSON.stringify({ departmentIds }),
+    });
+  }
+
   async getAdminStats(): Promise<ApiResponse> {
     return this.request('/admin/stats');
   }
@@ -422,6 +452,10 @@ class ApiClient {
   }
 
   // Evaluations endpoints
+  async getGroupsWithProjects(): Promise<ApiResponse> {
+    return this.request('/evaluations/groups-with-projects');
+  }
+
   async getPendingEvaluations(): Promise<ApiResponse> {
     return this.request('/evaluations/pending');
   }

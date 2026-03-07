@@ -119,14 +119,15 @@ export function createSupervisorsRouter(db: Pool) {
         ORDER BY department, supervisor_name
       `);
       
-      // Group supervisors by department (no max capacity - workload spread evenly)
+      // Group supervisors by department (normalize key by trim so all departments aggregate correctly)
       const supervisorsByDepartment: any = {};
       let totalAssigned = 0;
       
       (supervisors as any[]).forEach(sup => {
-        if (!supervisorsByDepartment[sup.department]) {
-          supervisorsByDepartment[sup.department] = {
-            department: sup.department,
+        const deptKey = (sup.department || '').trim() || '(Unassigned)';
+        if (!supervisorsByDepartment[deptKey]) {
+          supervisorsByDepartment[deptKey] = {
+            department: deptKey === '(Unassigned)' ? '' : deptKey,
             supervisors: [],
             departmentStats: {
               count: 0,
@@ -135,9 +136,9 @@ export function createSupervisorsRouter(db: Pool) {
           };
         }
         
-        supervisorsByDepartment[sup.department].supervisors.push(sup);
-        supervisorsByDepartment[sup.department].departmentStats.count++;
-        supervisorsByDepartment[sup.department].departmentStats.totalAssigned += sup.current_groups || 0;
+        supervisorsByDepartment[deptKey].supervisors.push(sup);
+        supervisorsByDepartment[deptKey].departmentStats.count++;
+        supervisorsByDepartment[deptKey].departmentStats.totalAssigned += sup.current_groups || 0;
         
         totalAssigned += sup.current_groups || 0;
       });
@@ -181,28 +182,56 @@ export function createSupervisorsRouter(db: Pool) {
       try {
         await connection.beginTransaction();
 
-        // Clear existing supervisors to avoid duplicates
-        await connection.execute('DELETE FROM supervisor_workload');
-        console.log('🗑️  Cleared existing supervisors');
+        // Get unique departments in this upload - only replace supervisors from THESE departments
+        const departmentsInUpload = [...new Set(
+          supervisors
+            .map((s: any) => (s.department || '').trim())
+            .filter((d: string) => d.length > 0)
+        )];
+        
+        if (departmentsInUpload.length === 0) {
+          await connection.rollback();
+          return res.status(400).json({ error: 'No valid department found in upload. Ensure CSV has a Department column with values.' });
+        }
+
+        // Delete only supervisors from departments in this upload (keeps other departments intact)
+        // Also clear supervisor assignments from groups in those departments (avoid orphaned refs)
+        for (const dept of departmentsInUpload) {
+          await connection.execute(
+            'UPDATE project_groups SET supervisor_name = NULL WHERE department = ?',
+            [dept]
+          );
+          const [delResult] = await connection.execute(
+            'DELETE FROM supervisor_workload WHERE department = ?',
+            [dept]
+          );
+          const deleted = (delResult as any).affectedRows || 0;
+          console.log(`🗑️  Cleared ${deleted} existing supervisors for department: ${dept}`);
+        }
 
         // Insert new supervisors
         let insertedCount = 0;
         for (const supervisor of supervisors) {
-          console.log('📝 Inserting supervisor:', supervisor);
+          const name = (supervisor.name || '').trim();
+          const department = (supervisor.department || '').trim();
+          if (!name || !department) {
+            console.warn('⚠️  Skipping row with missing name or department:', supervisor);
+            continue;
+          }
           await connection.execute(
             `INSERT INTO supervisor_workload (supervisor_name, department, current_groups, is_available) 
              VALUES (?, ?, 0, TRUE)`,
-            [supervisor.name, supervisor.department]
+            [name, department]
           );
           insertedCount++;
         }
 
         await connection.commit();
-        console.log('✅ Successfully uploaded', insertedCount, 'supervisors');
+        console.log('✅ Successfully uploaded', insertedCount, 'supervisors for departments:', departmentsInUpload.join(', '));
         
         res.json({ 
           success: true, 
-          message: `${supervisors.length} supervisors uploaded successfully` 
+          message: `${insertedCount} supervisors uploaded successfully (${departmentsInUpload.length} department(s))` 
         });
       } catch (error) {
         await connection.rollback();

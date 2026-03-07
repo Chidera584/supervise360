@@ -71,7 +71,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
       setLoading(false);
       return;
     }
-    const result = await signIn(email, password);
+    const result = await signIn(email, password, selectedRole);
     if (!result.success) setError(result.error || 'Login failed. Please try again.');
     setLoading(false);
   };

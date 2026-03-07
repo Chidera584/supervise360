@@ -3,13 +3,20 @@ import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { apiClient } from '../../lib/api';
+import { useDepartment } from '../../contexts/DepartmentContext';
+import { useSearchParams } from 'react-router-dom';
 import { Users as UsersIcon, UserPlus, Search, Edit, Trash2, Mail, Phone, MoreVertical } from 'lucide-react';
 
 export function Users() {
+  const [searchParams] = useSearchParams();
+  const deptFromUrl = searchParams.get('department') || '';
+  const { filterByDepartment } = useDepartment();
   const [users, setUsers] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [studentDetails, setStudentDetails] = useState<Record<string, any>>({});
   const [supervisorDetails, setSupervisorDetails] = useState<Record<string, any>>({});
   const [filter, setFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState(deptFromUrl);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,16 +28,21 @@ export function Users() {
     setLoading(true);
     setError(null);
     try {
-      const [usersRes, studentsRes, supervisorsRes] = await Promise.all([
+      const [usersRes, studentsRes, supervisorsRes, deptRes] = await Promise.all([
         apiClient.getUsers(),
         apiClient.getStudents(),
-        apiClient.getSupervisors()
+        apiClient.getSupervisors(),
+        apiClient.getDepartments().catch(() => ({ success: false, data: [] }))
       ]);
 
       if (usersRes.success && usersRes.data) {
         setUsers(usersRes.data);
       } else {
         setError(usersRes.message || 'Failed to load users');
+      }
+      if (deptRes.success && Array.isArray(deptRes.data)) {
+        const names = (deptRes.data as { name: string }[]).map((d) => d.name).sort();
+        setDepartments(names);
       }
       if (studentsRes.success && studentsRes.data) {
         const map: Record<string, any> = {};
@@ -58,13 +70,19 @@ export function Users() {
     fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter((user) => {
+  useEffect(() => {
+    setDepartmentFilter(deptFromUrl);
+  }, [deptFromUrl]);
+
+  const scopeFiltered = filterByDepartment(users);
+  const filteredUsers = scopeFiltered.filter((user) => {
     const name = `${user.first_name} ${user.last_name}`.trim();
     const matchesFilter = filter === 'all' || user.role === filter ||
       (filter === 'supervisor' && user.role === 'external_supervisor');
+    const matchesDept = !departmentFilter || (user.department || '') === departmentFilter;
     const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesDept && matchesSearch;
   });
 
   const getRoleColor = (role: string) => {
@@ -173,6 +191,16 @@ export function Users() {
               <option value="student">Students</option>
               <option value="supervisor">Supervisors</option>
               <option value="admin">Admins</option>
+            </select>
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Departments</option>
+              {departments.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
           </div>
         </Card>
@@ -283,12 +311,16 @@ export function Users() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <input
-                    type="text"
+                  <select
                     value={editUser.department || ''}
                     onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  >
+                    <option value="">Select department</option>
+                    {departments.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
                 {(editUser.role === 'supervisor' || editUser.role === 'external_supervisor') && (
                   <>

@@ -83,19 +83,91 @@ export function DefenseEvaluation() {
         <Card>
           <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Evaluation Results</h2>
           {evaluations.length > 0 ? (
-            <div className="space-y-3">
-              {evaluations.map((evalItem) => (
-                <div key={evalItem.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="text-sm text-gray-600">Type: {evalItem.evaluation_type}</div>
-                  <div className="text-sm text-gray-600">Total: {evalItem.total_score}</div>
+            <div className="space-y-4">
+              {evaluations.map((evalItem: any) => (
+                <div key={evalItem.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                    <div>
+                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C] capitalize">
+                        {evalItem.evaluation_type || 'Evaluation'}
+                      </span>
+                      {evalItem.evaluated_at && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          {new Date(evalItem.evaluated_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-[#022B3A]">{evalItem.total_score ?? '—'}</p>
+                      <p className="text-sm text-slate-600">Total score</p>
+                      {evalItem.grade && (
+                        <p className="text-lg font-semibold text-slate-800 mt-1">Grade: {evalItem.grade}</p>
+                      )}
+                    </div>
+                  </div>
+                  {(evalItem.documentation_score != null || evalItem.implementation_score != null || evalItem.presentation_score != null || evalItem.innovation_score != null) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 pt-3 border-t border-slate-200">
+                      {evalItem.documentation_score != null && (
+                        <div>
+                          <p className="text-xs text-slate-500">Documentation</p>
+                          <p className="font-medium text-slate-900">{evalItem.documentation_score}</p>
+                        </div>
+                      )}
+                      {evalItem.implementation_score != null && (
+                        <div>
+                          <p className="text-xs text-slate-500">Implementation</p>
+                          <p className="font-medium text-slate-900">{evalItem.implementation_score}</p>
+                        </div>
+                      )}
+                      {evalItem.presentation_score != null && (
+                        <div>
+                          <p className="text-xs text-slate-500">Presentation</p>
+                          <p className="font-medium text-slate-900">{evalItem.presentation_score}</p>
+                        </div>
+                      )}
+                      {evalItem.innovation_score != null && (
+                        <div>
+                          <p className="text-xs text-slate-500">Innovation</p>
+                          <p className="font-medium text-slate-900">{evalItem.innovation_score}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {evalItem.feedback && (
-                    <div className="text-sm text-gray-700 mt-2">{evalItem.feedback}</div>
+                    <div className="pt-3 border-t border-slate-200">
+                      <p className="text-xs font-medium text-slate-500 mb-1">Feedback</p>
+                      <p className="text-sm text-slate-800">{evalItem.feedback}</p>
+                    </div>
+                  )}
+                  {(evalItem.strengths || evalItem.weaknesses || evalItem.recommendations) && (
+                    <div className="pt-3 mt-3 border-t border-slate-200 space-y-2 text-sm">
+                      {evalItem.strengths && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-500">Strengths</p>
+                          <p className="text-slate-700">{evalItem.strengths}</p>
+                        </div>
+                      )}
+                      {evalItem.weaknesses && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-500">Areas for improvement</p>
+                          <p className="text-slate-700">{evalItem.weaknesses}</p>
+                        </div>
+                      )}
+                      {evalItem.recommendations && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-500">Recommendations</p>
+                          <p className="text-slate-700">{evalItem.recommendations}</p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-gray-500 text-sm">No evaluations yet.</div>
+            <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-xl border border-slate-100">
+              <p>No evaluation results yet. Scores and feedback will appear here after your supervisor completes the assessment.</p>
+            </div>
           )}
         </Card>
       </div>

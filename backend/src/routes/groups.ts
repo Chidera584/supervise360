@@ -113,6 +113,13 @@ export function createGroupsRouter(db: Pool) {
         });
       }
 
+      // Clear existing groups for this department so we get a clean formation (no duplicates)
+      const deptToClear = department || students[0]?.department;
+      if (deptToClear) {
+        await groupService.clearGroupsForDepartment(deptToClear);
+        console.log('🧹 [GROUPS/FORM] Cleared existing groups for department:', deptToClear);
+      }
+
       // Process student data with department for threshold lookup
       // This will fetch fresh thresholds from database
       console.log('🔄 [GROUPS/FORM] Processing students with department:', department);
@@ -151,11 +158,12 @@ export function createGroupsRouter(db: Pool) {
         message: `Successfully formed ${groupsWithIds.length} groups`
       });
     } catch (error) {
-      console.error('Error forming groups:', error);
+      const err = error as Error;
+      console.error('Error forming groups:', err);
       res.status(500).json({ 
         success: false,
-        error: 'Failed to form groups',
-        message: 'Failed to form groups'
+        error: err.message || 'Failed to form groups',
+        message: err.message || 'Failed to form groups'
       });
     }
   });

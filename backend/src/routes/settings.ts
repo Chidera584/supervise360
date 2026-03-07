@@ -95,6 +95,60 @@ export function createSettingsRouter(db: Pool) {
     }
   });
 
+  // Get global + all department thresholds (for Settings page)
+  router.get('/gpa-thresholds/all', async (_req, res) => {
+    try {
+      const [globalRows] = await db.execute(
+        'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?)',
+        ['gpa_tier_high_min', 'gpa_tier_medium_min', 'gpa_tier_low_min']
+      );
+      const global: { high?: number; medium?: number; low?: number } = {};
+      (globalRows as any[]).forEach((row) => {
+        const key = row.setting_key.replace('gpa_tier_', '').replace('_min', '');
+        const value = parseFloat(row.setting_value);
+        if (!isNaN(value)) global[key as 'high' | 'medium' | 'low'] = value;
+      });
+      const defaultThresholds = { high: global.high ?? 3.8, medium: global.medium ?? 3.3, low: global.low ?? 0 };
+
+      let departments: { id: number; name: string; code?: string }[] = [];
+      try {
+        const [deptRows] = await db.execute('SELECT id, name, code FROM departments ORDER BY name');
+        departments = (deptRows as any[]).map((d) => ({ id: d.id, name: d.name, code: d.code }));
+      } catch {
+        const [altRows] = await db.execute('SELECT DISTINCT department as name FROM project_groups WHERE department IS NOT NULL ORDER BY department');
+        departments = (altRows as any[]).map((d, i) => ({ id: i + 1, name: d.name, code: '' }));
+      }
+
+      const [settingsRows] = await db.execute(
+        `SELECT department, use_custom_thresholds, gpa_tier_high_min, gpa_tier_medium_min, gpa_tier_low_min 
+         FROM department_settings`
+      );
+      const settingsByDept: Record<string, { useCustomThresholds: boolean; thresholds: { high: number; medium: number; low: number } }> = {};
+      (settingsRows as any[]).forEach((row) => {
+        const useCustom = row.use_custom_thresholds === 1 || row.use_custom_thresholds === true;
+        settingsByDept[row.department] = {
+          useCustomThresholds: useCustom,
+          thresholds: useCustom && row.gpa_tier_high_min != null
+            ? { high: parseFloat(row.gpa_tier_high_min), medium: parseFloat(row.gpa_tier_medium_min), low: parseFloat(row.gpa_tier_low_min) }
+            : defaultThresholds
+        };
+      });
+
+      const departmentData = departments.map((d) => ({
+        id: d.id,
+        name: d.name,
+        code: d.code,
+        useCustomThresholds: settingsByDept[d.name]?.useCustomThresholds ?? false,
+        thresholds: settingsByDept[d.name]?.thresholds ?? defaultThresholds
+      }));
+
+      res.json({ success: true, data: { global: defaultThresholds, departments: departmentData } });
+    } catch (error) {
+      console.error('Error fetching all thresholds:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch thresholds' });
+    }
+  });
+
   // Get department-specific thresholds
   router.get('/gpa-thresholds/department/:department', async (req, res) => {
     try {

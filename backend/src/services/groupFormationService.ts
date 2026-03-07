@@ -6,6 +6,8 @@ export interface StudentData {
   tier: 'HIGH' | 'MEDIUM' | 'LOW';
   department?: string;
   student_id?: string;
+  /** Unique key for tracking used students (avoids losing students with duplicate names) */
+  _key?: string;
 }
 
 export interface GroupData {
@@ -171,8 +173,8 @@ export class GroupFormationService {
       
       // Extract student ID (matric number) - support various CSV column names
       studentId = student.matricNumber || student.matric_number || student.MatricNumber ||
-                  student.Matric_Number || student.student_id || student.StudentId ||
-                  student.ID || student.id;
+                  student.Matric_Number || student['Matric Number'] || student['matric_number'] ||
+                  student.student_id || student.StudentId || student.ID || student.id;
       
       // Extract department from student data, fallback to function parameter, then default
       studentDepartment = student.department || student.Department || student.DEPARTMENT || departmentParam || 'Computer Science';
@@ -189,7 +191,8 @@ export class GroupFormationService {
         gpa,
         tier,
         department: studentDepartment,
-        student_id: studentId
+        student_id: studentId,
+        _key: (studentId && String(studentId).trim()) ? String(studentId).trim() : `_row_${index}`
       };
     });
   }
@@ -224,7 +227,8 @@ export class GroupFormationService {
     console.log('👥 LOW tier students:', lowTier.map(s => `${s.name} (${s.gpa})`));
 
     const groups: GroupData[] = [];
-    let groupCounter = 1; // Changed from 0 to 1 for numbering
+    let groupCounter = 1;
+    const namePrefix = department ? `${department} - ` : '';
 
     // Sort students by GPA within each tier for optimal distribution
     highTier.sort((a, b) => b.gpa - a.gpa);
@@ -232,7 +236,9 @@ export class GroupFormationService {
     lowTier.sort((a, b) => b.gpa - a.gpa);
 
     // Create a pool of all students for flexible assignment
+    // Use _key (matric/student_id or row index) to avoid losing students with duplicate names
     const usedStudents = new Set<string>();
+    const studentKey = (s: StudentData) => s._key || s.student_id || s.name;
 
     // STRATEGY 1: Form ideal groups (1 HIGH + 1 MEDIUM + 1 LOW) when possible
     const idealGroups = Math.min(highTier.length, mediumTier.length, lowTier.length);
@@ -242,8 +248,8 @@ export class GroupFormationService {
     for (let i = 0; i < idealGroups; i++) {
       const groupMembers = [highTier[i], mediumTier[i], lowTier[i]];
       
-      // Mark students as used
-      groupMembers.forEach(student => usedStudents.add(student.name));
+      // Mark students as used (use _key to avoid losing students with duplicate names)
+      groupMembers.forEach(student => usedStudents.add(studentKey(student)));
       
       console.log(`🏗️  Forming Group ${groupCounter}:`);
       console.log(`   👑 LEADER (HIGH): ${groupMembers[0].name} (${groupMembers[0].gpa})`);
@@ -255,7 +261,7 @@ export class GroupFormationService {
       );
 
       groups.push({
-        name: `Group ${groupCounter}`, // Changed from letter to number
+        name: `${namePrefix}Group ${groupCounter}`, // Changed from letter to number
         members: groupMembers, // Keep tier order: HIGH, MEDIUM, LOW
         avg_gpa: avgGpa,
         status: 'formed'
@@ -265,9 +271,9 @@ export class GroupFormationService {
     }
 
     // STRATEGY 2: Handle remaining students with BALANCED tier distribution
-    const remainingHigh = highTier.filter(s => !usedStudents.has(s.name));
-    const remainingMedium = mediumTier.filter(s => !usedStudents.has(s.name));
-    const remainingLow = lowTier.filter(s => !usedStudents.has(s.name));
+    const remainingHigh = highTier.filter(s => !usedStudents.has(studentKey(s)));
+    const remainingMedium = mediumTier.filter(s => !usedStudents.has(studentKey(s)));
+    const remainingLow = lowTier.filter(s => !usedStudents.has(studentKey(s)));
     
     console.log(`🔄 Strategy 2: Remaining students - HIGH: ${remainingHigh.length}, MEDIUM: ${remainingMedium.length}, LOW: ${remainingLow.length}`);
 
@@ -276,18 +282,18 @@ export class GroupFormationService {
     if (totalRemaining >= 4 && totalRemaining % 3 !== 0 && remainingHigh.length >= 2) {
       if (remainingMedium.length >= 1) {
         const groupMembers = [remainingHigh.shift()!, remainingHigh.shift()!, remainingMedium.shift()!];
-        groupMembers.forEach(s => usedStudents.add(s.name));
+        groupMembers.forEach(s => usedStudents.add(studentKey(s)));
         groupMembers.sort((a, b) => b.gpa - a.gpa);
         const avgGpa = parseFloat((groupMembers.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
-        groups.push({ name: `Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
         console.log(`   📋 Pre-formed H+H+M (donor for possible solo remainder)`);
         groupCounter++;
       } else if (remainingLow.length >= 1) {
         const groupMembers = [remainingHigh.shift()!, remainingHigh.shift()!, remainingLow.shift()!];
-        groupMembers.forEach(s => usedStudents.add(s.name));
+        groupMembers.forEach(s => usedStudents.add(studentKey(s)));
         groupMembers.sort((a, b) => b.gpa - a.gpa);
         const avgGpa = parseFloat((groupMembers.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
-        groups.push({ name: `Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
         console.log(`   📋 Pre-formed H+H+L (donor for possible solo remainder)`);
         groupCounter++;
       }
@@ -379,7 +385,7 @@ export class GroupFormationService {
         );
 
         groups.push({
-          name: `Group ${groupCounter}`,
+          name: `${namePrefix}Group ${groupCounter}`,
           members: groupMembers,
           avg_gpa: avgGpa,
           status: 'formed'
@@ -400,7 +406,7 @@ export class GroupFormationService {
       if (validPairs.includes(tiers)) {
         const pair = remainder.sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
         const avgGpa = parseFloat(((pair[0].gpa + pair[1].gpa) / 2).toFixed(2));
-        groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
         console.log(`🏗️  Forming Group ${groupCounter} (2-member H+M): ${pair[0].name} (${pair[0].tier}) + ${pair[1].name} (${pair[1].tier})`);
         groupCounter++;
       } else {
@@ -419,7 +425,7 @@ export class GroupFormationService {
           const ourL = remainder.find(r => r.tier === 'LOW')!;
           const pair = [ourH, borrowedM].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
           const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
-          groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+          groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
           groupCounter++;
           donorMembers.push(ourL);
           donorGroup.members = donorMembers.sort((x, y) => (y.gpa >= x.gpa ? 1 : -1));
@@ -434,28 +440,34 @@ export class GroupFormationService {
             if (isLL) {
               const trio = [borrowedH, ...remainder].sort((x, y) => (y.gpa >= x.gpa ? 1 : -1));
               const avgGpa = parseFloat((trio.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
-              groups.push({ name: `Group ${groupCounter}`, members: trio, avg_gpa: avgGpa, status: 'formed' });
+              groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: trio, avg_gpa: avgGpa, status: 'formed' });
               groupCounter++;
               console.log(`🏗️  Rebalanced L+L: borrowed H, formed H+L+L (3-member)`);
             } else {
               const pair = [borrowedH, ...remainder].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
               const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
-              groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+              groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
               groupCounter++;
               console.log(`🏗️  Rebalanced M+L: formed H+M, donor now has 2`);
             }
             donorGroup.members = donorMembers;
             donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
           } else {
-            throw new Error(`Cannot form valid 2-member group: remainder ${a.tier}+${b.tier}. Only H+M allowed. No suitable donor group to rebalance.`);
+            // Fallback: form 2-member group anyway (e.g. M+L, H+L) when no donor available
+            const pair = remainder.sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
+            const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
+            groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+            groupCounter++;
+            console.log(`   ⚠️ Fallback 2-member group (${tiers}): ${pair[0].name} + ${pair[1].name}`);
           }
         }
       }
     } else if (remainder.length === 1) {
       const solo = remainder[0];
       if (solo.tier === 'HIGH') {
+        if (!solo.department && department) (solo as StudentData).department = department;
         groups.push({
-          name: `Group ${groupCounter}`,
+          name: `${namePrefix}Group ${groupCounter}`,
           members: [solo],
           avg_gpa: solo.gpa,
           status: 'formed'
@@ -463,21 +475,43 @@ export class GroupFormationService {
         console.log(`🏗️  Forming Group ${groupCounter} (1-member HIGH): ${solo.name} (${solo.gpa})`);
         groupCounter++;
       } else {
-        // M or L alone: NOT allowed. Rebalance - borrow H from a group with 2+ HIGH.
-        const donorGroup = groups.find(g => g.members.filter(m => m.tier === 'HIGH').length >= 2);
+        // M or L alone: NOT allowed. 1-member groups must be HIGH tier only.
+        // Try 1: Borrow H from a group with 2+ HIGH → form H+solo pair
+        let donorGroup = groups.find(g => g.members.filter(m => m.tier === 'HIGH').length >= 2);
         if (donorGroup) {
           const donorMembers = [...donorGroup.members];
           const hIdx = donorMembers.findIndex(m => m.tier === 'HIGH');
           const borrowedH = donorMembers.splice(hIdx, 1)[0];
           const pair = [borrowedH, solo].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
           const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
-          groups.push({ name: `Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
+          groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
           groupCounter++;
           donorGroup.members = donorMembers;
           donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
           console.log(`🏗️  Rebalanced: solo ${solo.tier} paired with H from donor. Group ${groupCounter - 1} (2-member).`);
         } else {
-          throw new Error(`Cannot form valid group: 1 remaining student (${solo.name}) is ${solo.tier} tier. Only HIGH tier may be in a 1-member group. No group with 2+ HIGH to rebalance.`);
+          // Try 2: Swap solo M/L with any H from any group → group keeps 3 members, we get solo H
+          donorGroup = groups.find(g => g.members.some(m => m.tier === 'HIGH'));
+          if (donorGroup) {
+            const donorMembers = [...donorGroup.members];
+            const hIdx = donorMembers.findIndex(m => m.tier === 'HIGH');
+            const swappedH = donorMembers[hIdx];
+            donorMembers[hIdx] = solo; // Put our solo into the group
+            donorGroup.members = donorMembers.sort((a, b) => (b.gpa >= a.gpa ? 1 : -1));
+            donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
+            const dept = department || swappedH.department || solo.department;
+            if (swappedH && !swappedH.department && dept) (swappedH as StudentData).department = dept;
+            groups.push({
+              name: `${namePrefix}Group ${groupCounter}`,
+              members: [swappedH],
+              avg_gpa: swappedH.gpa,
+              status: 'formed'
+            });
+            groupCounter++;
+            console.log(`🏗️  Swapped solo ${solo.tier} with H from group → 1-member group now has HIGH tier`);
+          } else {
+            throw new Error(`Cannot form groups: 1 leftover student (${solo.name}) is ${solo.tier} tier but 1-member groups require HIGH tier only. Add or remove students so the leftover is HIGH tier, or ensure at least one HIGH tier student exists.`);
+          }
         }
       }
     }
@@ -493,6 +527,21 @@ export class GroupFormationService {
     }
 
     return groups;
+  }
+
+  // Clear groups for a department before forming new ones (avoids duplicates, ensures clean formation)
+  async clearGroupsForDepartment(department: string): Promise<void> {
+    const connection = await this.db.getConnection();
+    try {
+      await connection.execute(
+        'DELETE gm FROM group_members gm INNER JOIN project_groups pg ON gm.group_id = pg.id WHERE pg.department = ?',
+        [department]
+      );
+      await connection.execute('DELETE p FROM projects p INNER JOIN project_groups pg ON p.group_id = pg.id WHERE pg.department = ?', [department]);
+      await connection.execute('DELETE FROM project_groups WHERE department = ?', [department]);
+    } finally {
+      connection.release();
+    }
   }
 
   // Save groups to database
@@ -516,6 +565,17 @@ export class GroupFormationService {
 
         const groupId = (groupResult as any).insertId;
         groupIds.push(groupId);
+
+        // Create a project record so students can submit reports without a project proposal
+        try {
+          await connection.execute(
+            `INSERT INTO projects (group_id, title, description, status, submitted_at)
+             VALUES (?, ?, ?, 'pending', NOW())`,
+            [groupId, `Project for ${group.name}`, 'Auto-created for report submission.']
+          );
+        } catch (e) {
+          console.warn('Could not create project for group', groupId, (e as Error).message);
+        }
 
         // Insert group members in TIER ORDER (HIGH, MEDIUM, LOW) - NOT by GPA
         // This ensures the HIGH tier student is always first (leader)
@@ -636,7 +696,19 @@ export class GroupFormationService {
         }
       }
 
-      console.log('✅ getAllGroups completed, returning', groups.length, 'groups');
+      // Sort groups: by department, then by group number (1, 2, 3... n) within each department
+      const extractGroupNum = (name: string): number => {
+        const m = name.match(/Group\s+(\d+)$/i) || name.match(/(\d+)$/);
+        return m ? parseInt(m[1], 10) : 999999;
+      };
+      groups.sort((a, b) => {
+        const deptA = a.department || '';
+        const deptB = b.department || '';
+        if (deptA !== deptB) return deptA.localeCompare(deptB);
+        return extractGroupNum(a.name) - extractGroupNum(b.name);
+      });
+
+      console.log('✅ getAllGroups completed, returning', groups.length, 'groups (sorted 1,2,3...n)');
       return groups;
     } catch (error) {
       console.error('❌ Error in getAllGroups:', error);
@@ -673,7 +745,7 @@ export class GroupFormationService {
         }
       }
 
-      // 1-member groups: only HIGH tier allowed
+      // 1-member groups: only HIGH tier allowed (algorithm ensures this via swap when needed)
       if (n === 1 && tiers[0] !== 'HIGH') {
         violations.push(`Group ${group.name}: 1-member groups must have HIGH tier student only`);
       }

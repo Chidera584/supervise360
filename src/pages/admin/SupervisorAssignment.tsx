@@ -9,15 +9,19 @@ import {
 } from 'lucide-react';
 import { parseCSV, readFileAsText } from '../../lib/csv-parser';
 import { downloadAssignmentsAsCSV, downloadAssignmentsAsPDF, downloadAssignmentsAsWord } from '../../lib/export-utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGroups } from '../../contexts/GroupsContext';
 import { useDepartment } from '../../contexts/DepartmentContext';
 import { apiClient } from '../../lib/api';
 
 export function SupervisorAssignment() {
   const navigate = useNavigate();
-  const { groups, updateGroup, syncWithDatabase } = useGroups();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deptFromUrl = searchParams.get('department') || '';
+  const { groups, syncWithDatabase } = useGroups();
   const { userDepartment, isSystemAdmin, filterByDepartment } = useDepartment();
+  const [departments, setDepartments] = useState<{ id: number; name: string; code: string }[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(deptFromUrl || '');
   const [supervisors, setSupervisors] = useState([]);
   const [supervisorsByDepartment, setSupervisorsByDepartment] = useState({});
   const [totalStats, setTotalStats] = useState({
@@ -55,6 +59,20 @@ export function SupervisorAssignment() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Fetch departments
+  useEffect(() => {
+    const load = async () => {
+      const res = await apiClient.getDepartments().catch(() => ({ success: false, data: [] }));
+      if (res.success && Array.isArray(res.data)) {
+        setDepartments(res.data as { id: number; name: string; code: string }[]);
+        if (deptFromUrl && (res.data as any[]).some((d: any) => d.name === deptFromUrl)) {
+          setSelectedDepartment(deptFromUrl);
+        }
+      }
+    };
+    load();
+  }, [deptFromUrl]);
+
   // Sync groups and load supervisor workload - groups precede supervisors, keep in sync
   useEffect(() => {
     const load = async () => {
@@ -65,6 +83,11 @@ export function SupervisorAssignment() {
     };
     load();
   }, []);
+
+  const handleDepartmentChange = (dept: string) => {
+    setSelectedDepartment(dept);
+    setSearchParams(dept ? { department: dept } : {}, { replace: true });
+  };
 
   const loadSupervisorWorkload = async () => {
     try {
@@ -87,8 +110,18 @@ export function SupervisorAssignment() {
     }
   };
 
-  // Filter groups by department
-  const departmentGroups = filterByDepartment(groups);
+  // Filter groups by selected department (each department has its own lecturers - no cross-department)
+  // When no department selected, show nothing - user must pick a department first
+  const departmentGroups = selectedDepartment
+    ? filterByDepartment(groups).filter((g) => (g.department || '') === selectedDepartment)
+    : [];
+
+  // Supervisors in the selected department only (for group assignment context)
+  const departmentSupervisors = selectedDepartment
+    ? (supervisors as any[]).filter((s) => (s.department || '').trim() === selectedDepartment.trim())
+    : (supervisors as any[]);
+  // Always show ALL departments with their counts (18 SE + 7 CS = 25 total), not just selected
+  const departmentSupervisorsByDept = supervisorsByDepartment;
 
   // Convert groups to the format expected by this component
   const convertedGroups = departmentGroups.map(group => ({
@@ -136,15 +169,24 @@ export function SupervisorAssignment() {
       }
       
       const processedSupervisors = parsedData.rows.map(row => {
-        const nameKey = Object.keys(row).find(key => key.toLowerCase().includes('name'));
-        const deptKey = Object.keys(row).find(key => 
-          key.toLowerCase().includes('department') || key.toLowerCase().includes('dept')
-        );
-        return {
-          name: nameKey ? row[nameKey] : row.name || row.Name,
-          department: deptKey ? row[deptKey] : row.department || row.Department || userDepartment
-        };
-      });
+        // Name: key with 'name' but NOT 'department' (avoid "Department Name" as name)
+        const nameKey = Object.keys(row).find(key => {
+          const k = key.toLowerCase();
+          return k.includes('name') && !k.includes('department');
+        }) || Object.keys(row).find(key => key.toLowerCase() === 'name');
+        // Department: use ONLY the value from CSV so we never overwrite another department
+        const deptKey = Object.keys(row).find(key => {
+          const k = key.toLowerCase();
+          return k.includes('department') || k.includes('dept');
+        });
+        const name = (nameKey ? row[nameKey] : row.name || row.Name || '').toString().trim();
+        const department = (deptKey ? (row[deptKey] ?? '') : (row.department ?? row.Department ?? '')).toString().trim();
+        return { name: name || 'Unknown', department };
+      }).filter(s => s.name && s.name !== 'Unknown' && s.department);
+      
+      if (processedSupervisors.length === 0) {
+        throw new Error('No valid supervisor rows found. Ensure CSV has Name and Department columns with non-empty values. Department must match exactly (e.g. "Computer Science").');
+      }
       
       setUploadedSupervisors(processedSupervisors);
       setUploading(false);
@@ -328,6 +370,38 @@ export function SupervisorAssignment() {
   return (
     <MainLayout title="Supervisor Assignment">
       <div className="flex flex-col gap-4 flex-1 min-h-0">
+        {/* Department selector - each department has its own lecturers, no cross-department assignment */}
+        <Card className="border-2 border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-6">
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-2 flex items-center gap-2">
+            <Building className="w-5 h-5 text-[#1F7A8C]" />
+            Select Department
+          </h2>
+          <p className="text-sm text-slate-600 mb-4">
+            Each department has its own lecturers. Supervisors can only be assigned to groups within their department. Select the department you want to work with.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px]">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
+              >
+                <option value="">Select department...</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+            </div>
+            {selectedDepartment && (
+              <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Working on: {selectedDepartment}
+              </span>
+            )}
+          </div>
+        </Card>
+
         {/* Header */}
         <Card className="border border-slate-200 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -335,17 +409,17 @@ export function SupervisorAssignment() {
               <h2 className="text-2xl font-bold text-slate-900">Supervisor Assignment</h2>
               <p className="text-sm text-slate-600 flex items-center gap-1 mt-0.5">
                 <Building size={14} />
-                {isSystemAdmin ? 'All Departments' : userDepartment}
+                {selectedDepartment || (isSystemAdmin ? 'Select a department above' : userDepartment)}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {convertedGroups.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => setClearAllModal(true)} className="text-red-600 hover:text-red-700 hover:border-red-300" title="Clear all supervisor assignments from groups">
+              {convertedGroups.length > 0 && selectedDepartment && (
+                <Button variant="outline" onClick={() => setClearAllModal(true)} className="text-red-600 hover:text-red-700 hover:border-red-300" title="Clear all supervisor assignments (system-wide)">
                   <Trash2 size={14} className="mr-1.5" />
                   Clear All
                 </Button>
               )}
-              {convertedGroups.length > 0 && (
+              {convertedGroups.length > 0 && selectedDepartment && (
                 <div className="relative" ref={exportDropdownRef}>
                   <Button
                     variant="outline"
@@ -383,7 +457,7 @@ export function SupervisorAssignment() {
                   )}
                 </div>
               )}
-              <Button variant="outline" size="sm" onClick={() => setEditSwapModal(true)}>
+              <Button variant="outline" onClick={() => setEditSwapModal(true)} disabled={!selectedDepartment}>
                 <Edit size={14} className="mr-1.5" />
                 Swap Students
               </Button>
@@ -392,7 +466,7 @@ export function SupervisorAssignment() {
           <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
         </Card>
 
-        {/* Stats */}
+        {/* Stats - total supervisors always; groups/assigned/awaiting when department selected */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
@@ -401,7 +475,7 @@ export function SupervisorAssignment() {
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{convertedGroups.length}</p>
-                <p className="text-sm text-slate-500">Total Groups</p>
+                <p className="text-sm text-slate-500">Total Groups{selectedDepartment ? ` (${selectedDepartment})` : ''}</p>
               </div>
             </div>
           </Card>
@@ -434,7 +508,7 @@ export function SupervisorAssignment() {
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{totalStats.totalSupervisors}</p>
-                <p className="text-sm text-slate-500">Supervisors</p>
+                <p className="text-sm text-slate-500">Total Supervisors (all departments)</p>
               </div>
             </div>
           </Card>
@@ -463,14 +537,22 @@ export function SupervisorAssignment() {
         {/* Tab: Supervisor Workload (Default) - only show when groups exist (groups precede supervisors) */}
         {activeTab === 'workload' && (
         <Card className="border border-slate-200 p-6 flex-1 min-h-0 flex flex-col">
+          {!selectedDepartment ? (
+            <div className="text-center py-12 text-slate-500">
+              <Building className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+              <p className="font-medium">Select a department above</p>
+              <p className="text-sm mt-1">Each department has its own lecturers. Pick a department to view and assign supervisors.</p>
+            </div>
+          ) : (
+          <>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-slate-900">Supervisor Workload</h3>
-              {totalStats.totalSupervisors > 0 && (
-                <span className="text-sm text-slate-500">{totalStats.totalSupervisors} supervisors</span>
+              <h3 className="text-lg font-semibold text-slate-900">Supervisor Workload – {selectedDepartment}</h3>
+              {departmentSupervisors.length > 0 && (
+                <span className="text-sm text-slate-500">{departmentSupervisors.length} supervisors in this department</span>
               )}
             </div>
-            {supervisors.length > 0 && unassignedGroups.length > 0 && (
+            {departmentSupervisors.length > 0 && unassignedGroups.length > 0 && (
               <Button onClick={handleAutoAssignFromExisting} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
                 {assigning ? (
                   <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
@@ -480,17 +562,20 @@ export function SupervisorAssignment() {
               </Button>
             )}
           </div>
-          {supervisors.length === 0 ? (
+          {departmentSupervisors.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <Users className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-              <p className="font-medium">No supervisors in the system</p>
-              <p className="text-sm mt-1">Upload supervisor CSV in the Upload & Assign tab to add supervisors</p>
+              <p className="font-medium">No supervisors in {selectedDepartment}</p>
+              <p className="text-sm mt-1">Upload supervisor CSV in the Upload & Assign tab (include Department column matching &quot;{selectedDepartment}&quot;)</p>
               <Button variant="outline" className="mt-4" onClick={() => setActiveTab('upload')}>Go to Upload</Button>
             </div>
           ) : (
             <>
             <div className="space-y-5 flex-1 min-h-0 overflow-y-auto">
-              {Object.values(supervisorsByDepartment).map((dept: any) => (
+              {(selectedDepartment && departmentSupervisorsByDept[selectedDepartment]
+                ? [departmentSupervisorsByDept[selectedDepartment]]
+                : Object.values(departmentSupervisorsByDept)
+              ).map((dept: any) => (
                 <div key={dept.department} className="border border-slate-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -540,12 +625,22 @@ export function SupervisorAssignment() {
             </div>
             </>
           )}
+          </>
+          )}
         </Card>
         )}
 
         {/* Tab: Groups */}
         {activeTab === 'groups' && (
         <div className="space-y-4">
+          {!selectedDepartment ? (
+            <Card className="border border-slate-200 p-12 text-center">
+              <Building className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+              <p className="font-medium text-slate-600">Select a department above</p>
+              <p className="text-sm text-slate-500 mt-1">Groups and assignments are shown per department.</p>
+            </Card>
+          ) : (
+          <>
           <Card className="border border-slate-200 p-4">
             <div className="flex flex-col sm:flex-row gap-2">
               <input
@@ -612,6 +707,8 @@ export function SupervisorAssignment() {
               </div>
             </Card>
           </div>
+          </>
+          )}
         </div>
         )}
 

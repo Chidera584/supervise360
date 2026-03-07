@@ -11,12 +11,35 @@ export class ReportService {
     return (rows as any[])[0]?.group_id || null;
   }
 
-  async getProjectIdByGroup(groupId: number) {
+  /**
+   * Get project ID for a group. If no project exists, auto-create one so students can submit reports
+   * without having to submit a project proposal first.
+   */
+  async getProjectIdByGroup(groupId: number): Promise<number | null> {
     const [rows] = await this.db.execute(
       'SELECT id FROM projects WHERE group_id = ? LIMIT 1',
       [groupId]
     );
-    return (rows as any[])[0]?.id || null;
+    const existing = (rows as any[])[0]?.id;
+    if (existing) return existing;
+
+    // Auto-create project so report submission works (group has supervisor but no project yet)
+    const [pgRows] = await this.db.execute(
+      'SELECT name FROM project_groups WHERE id = ? LIMIT 1',
+      [groupId]
+    );
+    const groupName = (pgRows as any[])[0]?.name || `Group ${groupId}`;
+    try {
+      const [result] = await this.db.execute(
+        `INSERT INTO projects (group_id, title, description, status, submitted_at)
+         VALUES (?, ?, ?, 'pending', NOW())`,
+        [groupId, `Project for ${groupName}`, 'Auto-created for report submission.']
+      );
+      return (result as any).insertId ?? null;
+    } catch (err) {
+      console.error('Auto-create project failed for group', groupId, (err as Error).message);
+      return null;
+    }
   }
 
   async listMyReports(userId: number) {

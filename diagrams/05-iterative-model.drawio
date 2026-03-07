@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2025-02-20T00:00:00.000Z" agent="Supervise360" etag="iterative-005" version="22.0.0" type="device">
+  <diagram name="Iterative Development Model - Supervise360" id="iterative-supervise360">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="Iterative Development Model - Supervise360" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Phase 1: Requirements & Constraint Specification -->
+        <mxCell id="phase1" value="Phase 1: Requirements &amp; Constraint Specification&#xa;&#xa;• Gather requirements&#xa;• Define constraints&#xa;• Document rules" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="80" width="350" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 1 to 2 -->
+        <mxCell id="arrow1-2" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="525" y="170" as="sourcePoint"/><mxPoint x="525" y="200" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 2: System Design & ASP Encoding -->
+        <mxCell id="phase2" value="Phase 2: System Design &amp; ASP Encoding&#xa;&#xa;• Design UML&#xa;• Encode ASP-style rules&#xa;• Design DB schema" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="200" width="350" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 2 to 3 -->
+        <mxCell id="arrow2-3" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="525" y="290" as="sourcePoint"/><mxPoint x="525" y="320" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 3: Implementation -->
+        <mxCell id="phase3" value="Phase 3: Implementation&#xa;&#xa;• Backend (Express/Node.js)&#xa;• ASP-style grouping &amp; allocation logic&#xa;• Frontend (React)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="320" width="350" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 3 to 4 -->
+        <mxCell id="arrow3-4" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="525" y="410" as="sourcePoint"/><mxPoint x="525" y="440" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 4: Testing & Verification -->
+        <mxCell id="phase4" value="Phase 4: Testing &amp; Verification&#xa;&#xa;• Unit test ASP-style logic&#xa;• Integration test&#xa;• Verify constraints" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="440" width="350" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 4 to Decision -->
+        <mxCell id="arrow4-dec" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="525" y="530" as="sourcePoint"/><mxPoint x="525" y="560" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Decision: All Constraints Satisfied? -->
+        <mxCell id="decision" value="All Constraints&#xa;Satisfied?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="425" y="560" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow Decision to No (5b Iteration) -->
+        <mxCell id="arrow-dec-no" value="No" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontStyle=1;fontColor=#ff0000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="425" y="610" as="sourcePoint"/><mxPoint x="250" y="610" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 5b: Iteration -->
+        <mxCell id="phase5b" value="Phase 5b: Iteration&#xa;&#xa;• Analyze failure&#xa;• Revise ASP-style rules&#xa;• Loop back" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="580" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Dashed arrow: 5b Iteration loop back to Phase 3 (Implementation) -->
+        <mxCell id="arrow5b-loop" value="Loop back" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#b85450;dashed=1;dashPattern=8 8;fontSize=10;fontColor=#b85450;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="630" as="sourcePoint"/><mxPoint x="250" y="365" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="arrow5b-loop2" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#b85450;dashed=1;dashPattern=8 8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="365" as="sourcePoint"/><mxPoint x="350" y="365" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Arrow Decision to Yes (5a Refinement) -->
+        <mxCell id="arrow-dec-yes" value="Yes" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontStyle=1;fontColor=#008000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="625" y="610" as="sourcePoint"/><mxPoint x="800" y="610" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 5a: Refinement -->
+        <mxCell id="phase5a" value="Phase 5a: Refinement&#xa;&#xa;• Optimize performance&#xa;• Add features&#xa;• User Acceptance Testing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="580" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 5a to 6 -->
+        <mxCell id="arrow5a-6" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="900" y="680" as="sourcePoint"/><mxPoint x="900" y="720" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Connector from Phase 5a down to center for Phase 6 -->
+        <mxCell id="conn5a" value="" style="endArrow=none;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="900" y="680" as="sourcePoint"/><mxPoint x="525" y="680" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="conn5a2" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="525" y="680" as="sourcePoint"/><mxPoint x="525" y="720" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 6: Deployment & Monitoring -->
+        <mxCell id="phase6" value="Phase 6: Deployment &amp; Monitoring" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="350" y="720" width="350" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow 6 to 7 -->
+        <mxCell id="arrow6-7" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="525" y="780" as="sourcePoint"/><mxPoint x="525" y="820" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Phase 7: Continuous Improvement -->
+        <mxCell id="phase7" value="Phase 7: Continuous Improvement" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="350" y="820" width="350" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Dashed arrow: Phase 7 loop back to Phase 1 -->
+        <mxCell id="arrow7-loop" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#666666;dashed=1;dashPattern=8 8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="350" y="850" as="sourcePoint"/><mxPoint x="350" y="125" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="arrow7-loop2" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#666666;dashed=1;dashPattern=8 8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="350" y="125" as="sourcePoint"/><mxPoint x="525" y="125" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="arrow7-loop3" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;strokeColor=#666666;dashed=1;dashPattern=8 8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="525" y="125" as="sourcePoint"/><mxPoint x="525" y="170" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- Label for loop back -->
+        <mxCell id="label-loop" value="New requirements / updates" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="200" y="480" width="150" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Label for iteration loop -->
+        <mxCell id="label-iter" value="Revise &amp; re-implement" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;fontColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="50" y="700" width="120" height="30" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

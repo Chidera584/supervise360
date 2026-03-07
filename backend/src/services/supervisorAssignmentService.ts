@@ -162,10 +162,12 @@ export class SupervisorAssignmentService {
     const sortedGroups = [...groups].sort((a, b) => a.id - b.id);
 
     for (const group of sortedGroups) {
-      // Use any supervisor - no department or availability restriction (spread evenly)
-      const eligibleSupervisors = supervisorPool;
+      // Only supervisors from the SAME department can be assigned to this group
+      const eligibleSupervisors = supervisorPool.filter(
+        s => (s.department || '').trim() === (group.department || '').trim()
+      );
       if (eligibleSupervisors.length === 0) {
-        console.warn(`⚠️  No available supervisor for ${group.name}`);
+        console.warn(`⚠️  No supervisor in department "${group.department}" for ${group.name}`);
         continue;
       }
 

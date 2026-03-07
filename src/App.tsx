@@ -35,6 +35,7 @@ import { Settings } from './pages/admin/Settings';
 import { AdminProfile } from './pages/admin/AdminProfile';
 import { DefenseScheduling } from './pages/admin/DefenseScheduling';
 import { ReportsAnalytics } from './pages/admin/ReportsAnalytics';
+import { Departments } from './pages/admin/Departments';
 
 function App() {
   const { user, loading } = useAuth();
@@ -155,6 +156,7 @@ function App() {
             {user.role === 'admin' && (
               <>
                 <Route path="/dashboard" element={<AdminDashboard />} />
+                <Route path="/departments" element={<Departments />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/groups" element={<Groups />} />
                 <Route path="/supervisor-assignment" element={<SupervisorAssignment />} />

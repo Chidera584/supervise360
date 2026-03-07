@@ -1,8 +1,44 @@
 import nodemailer from 'nodemailer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@supervise360.com';
 const FROM_NAME = process.env.FROM_NAME || 'Supervise360';
+
+/** Path to logo file for email embedding */
+function getLogoPath(): string | null {
+  const candidates = [
+    path.join(process.cwd(), 'assets', 'logo-email.png'),
+    path.join(__dirname, '..', '..', 'assets', 'logo-email.png'),
+    path.join(process.cwd(), '..', 'public', 'logo-email.png'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+if (getLogoPath()) {
+  console.log('📧 Email logo ready: backend/assets/logo-email.png');
+} else {
+  console.warn('📧 Email logo NOT found - add backend/assets/logo-email.png for logo in emails');
+}
+
+/** Logo attachment for nodemailer (CID embedding - works in all email clients) */
+function getLogoAttachment(): { filename: string; content: Buffer; cid: string } | null {
+  const logoPath = getLogoPath();
+  if (!logoPath) {
+    console.warn('📧 Email logo not found at backend/assets/logo-email.png - logo will not appear in emails');
+    return null;
+  }
+  try {
+    const content = fs.readFileSync(logoPath);
+    return { filename: 'logo.png', content, cid: 'supervise360-logo' };
+  } catch (_) {
+    return null;
+  }
+}
 
 /** Shared email layout: branded header, content block, CTA, footer */
 function emailLayout(options: {
@@ -32,9 +68,8 @@ function emailLayout(options: {
           <!-- Brand Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 24px 32px;">
-              <img src="${FRONTEND_URL}/logo-email.png" alt="Supervise360" width="32" height="32" style="vertical-align:middle; margin-right:10px; filter:invert(1); border-radius:8px;" />
+              <img src="cid:supervise360-logo" alt="Supervise360" width="32" height="32" style="vertical-align:middle; margin-right:10px; filter:invert(1); border-radius:8px;" />
               <span style="font-size:22px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">Supervise360</span>
-              <span style="font-size:12px; color:rgba(255,255,255,0.85); margin-left:8px; font-weight:400;">Student Project Management</span>
             </td>
           </tr>
           <!-- Content -->
@@ -62,7 +97,7 @@ function emailLayout(options: {
           <tr>
             <td style="padding: 20px 32px; background:#f8fafc; border-top:1px solid #e2e8f0;">
               <p style="margin:0; font-size:12px; color:#94a3b8;">
-                Supervise360 · Student Project Management System<br>
+                Supervise360<br>
                 For support, contact your department administrator.
               </p>
             </td>
@@ -123,12 +158,15 @@ export async function sendEmailWithError(
   if (!trans) return { ok: false, error: 'SMTP not configured (SMTP_HOST, SMTP_USER, SMTP_PASS required)' };
   try {
     const fromAddr = process.env.FROM_EMAIL || process.env.SMTP_USER || FROM_EMAIL;
+    const logoAtt = html.includes('cid:supervise360-logo') ? getLogoAttachment() : null;
+    const attachments = logoAtt ? [logoAtt] : [];
     await trans.sendMail({
       from: `"${FROM_NAME}" <${fromAddr}>`,
       to,
       subject,
       html,
       text: text || html.replace(/<[^>]*>/g, ''),
+      attachments,
     });
     return { ok: true };
   } catch (err: any) {

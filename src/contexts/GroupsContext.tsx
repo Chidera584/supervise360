@@ -136,20 +136,17 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
           console.log('📊 Sample group:', dbGroups[0]);
         }
         
-        // CLIENT-SIDE SORTING: Ensure proper numerical order as backup
+        // CLIENT-SIDE SORTING: By department, then group number (1, 2, 3... n)
+        // Handles "Group 1" and "Department - Group 1" formats
+        const extractGroupNum = (name: string): number => {
+          const m = name.match(/Group\s+(\d+)$/i) || name.match(/(\d+)$/);
+          return m ? parseInt(m[1], 10) : 999999;
+        };
         const sortedGroups = dbGroups.sort((a: Group, b: Group) => {
-          // Extract numbers from group names for proper sorting
-          const aMatch = a.name.match(/^Group (\d+)$/);
-          const bMatch = b.name.match(/^Group (\d+)$/);
-          
-          if (aMatch && bMatch) {
-            const aNum = parseInt(aMatch[1]);
-            const bNum = parseInt(bMatch[1]);
-            return aNum - bNum; // Numerical sort: 1, 2, 3, ..., 29, 30, 31
-          }
-          
-          // Fallback to alphabetical sort for non-standard names
-          return a.name.localeCompare(b.name);
+          const deptA = a.department || '';
+          const deptB = b.department || '';
+          if (deptA !== deptB) return deptA.localeCompare(deptB);
+          return extractGroupNum(a.name) - extractGroupNum(b.name);
         });
         
         console.log('🔄 Applied client-side sorting for group order');

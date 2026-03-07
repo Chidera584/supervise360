@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import { Users, FileText, MessageSquare, CheckCircle, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { stripGroupName, stripProjectTitle, sortGroupsByNumber } from '../utils/supervisorDisplay';
 
 interface SupervisorGroup {
   id: number;
@@ -41,7 +42,7 @@ export function SupervisorDashboard() {
         apiClient.getInbox(),
       ]);
       if (myGroupsRes.success && Array.isArray(myGroupsRes.data)) {
-        const groups = myGroupsRes.data as SupervisorGroup[];
+        const groups = sortGroupsByNumber(myGroupsRes.data as SupervisorGroup[]);
         setSupervisorGroups(groups);
         setPendingReviewsCount(groups.reduce((s, g) => s + (g.reportsPending ?? 0), 0));
         setReportsReviewedCount(groups.reduce((s, g) => s + (g.reportsReviewed ?? 0), 0));
@@ -80,7 +81,7 @@ export function SupervisorDashboard() {
             Welcome, {user?.first_name}
           </h1>
           <p className="text-[#BFDBF7] mt-1">
-            {user?.department || 'Supervisor'} • {supervisorGroups.length} groups assigned
+            {supervisorGroups.length} group{supervisorGroups.length !== 1 ? 's' : ''} assigned
           </p>
         </div>
 
@@ -149,7 +150,7 @@ export function SupervisorDashboard() {
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-slate-900">{group.name}</h3>
+                            <h3 className="text-lg font-semibold text-slate-900">{stripGroupName(group.name)}</h3>
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                               group.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                             }`}>
@@ -157,7 +158,7 @@ export function SupervisorDashboard() {
                             </span>
                           </div>
                           <p className="text-sm text-slate-600">
-                            {group.members.length} members • {group.project?.title || 'No project yet'}
+                            {group.members.length} members • {group.project ? stripProjectTitle(group.project.title, group.name) : 'No project yet'}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -175,7 +176,7 @@ export function SupervisorDashboard() {
                             <FileText className="mr-2" size={14} />
                             Reports {group.reportsPending > 0 && `(${group.reportsPending})`}
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => navigate('/evaluations', { state: { groupId: group.id } })}>
+                          <Button variant="outline" size="sm" onClick={() => navigate('/evaluations', { state: { groupId: group.id, groupName: group.name } })}>
                             <CheckCircle className="mr-2" size={14} />
                             Grade
                           </Button>

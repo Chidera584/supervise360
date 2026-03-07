@@ -2,12 +2,14 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { apiClient } from '../lib/api';
 import type { User, Student, Supervisor, RegisterRequest } from '../types/database';
 
+export type LoginRole = 'admin' | 'supervisor' | 'student';
+
 interface AuthContextType {
   user: User | null;
   student: Student | null;
   supervisor: Supervisor | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string, requiredRole?: LoginRole) => Promise<{ success: boolean; error?: string }>;
   signUp: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
   isAuthenticated: boolean;
@@ -52,12 +54,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkExistingSession();
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signIn = async (email: string, password: string, requiredRole?: LoginRole): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.login({ email, password });
 
       if (response.success && response.data) {
-        setUser(response.data.user);
+        const userData = response.data.user;
+        if (requiredRole) {
+          const roleMatches =
+            requiredRole === 'admin' ? userData.role === 'admin' :
+            requiredRole === 'supervisor' ? (userData.role === 'supervisor' || userData.role === 'external_supervisor') :
+            requiredRole === 'student' ? userData.role === 'student' : true;
+          if (!roleMatches) {
+            const portalHint =
+              requiredRole === 'admin' ? 'Administrator' :
+              requiredRole === 'supervisor' ? 'Supervisor' : 'Student';
+            return { success: false, error: `This portal is for ${portalHint} accounts only. Please use the correct portal for your role.` };
+          }
+        }
+        setUser(userData);
         setStudent(response.data.student || null);
         setSupervisor(response.data.supervisor || null);
         return { success: true };

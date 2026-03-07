@@ -52,22 +52,22 @@ export function Reports() {
 
   return (
     <MainLayout title="Reports">
-      <div className="space-y-6">
-        <Card>
-          <h2 className="text-xl font-semibold text-[#022B3A] mb-4">Upload New Report</h2>
+      <div className="space-y-6 min-w-0">
+        <Card className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-[#022B3A] mb-4">Upload New Report</h2>
           <p className="text-sm text-gray-600 mb-4">
             Submit your project proposal and reports here. Select the report type (Proposal, Progress, Final) and choose a file (PDF, Word, etc.).
           </p>
           {message && (
-            <div className={`p-3 rounded-lg mb-4 ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+            <div className={`p-3 rounded-lg mb-4 text-sm ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
               {message.text}
             </div>
           )}
-          <div className="flex flex-col md:flex-row gap-4 items-start">
+          <div className="flex flex-col gap-4">
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full sm:w-auto px-3 py-2.5 border border-gray-300 rounded-lg"
             >
               <option value="proposal">Proposal</option>
               <option value="progress">Progress Report</option>
@@ -78,25 +78,25 @@ export function Reports() {
               ref={fileInputRef}
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full sm:max-w-xs px-3 py-2 border border-gray-300 rounded-lg"
             />
-            <Button onClick={uploadReport} disabled={uploading || !file}>
+            <Button onClick={uploadReport} disabled={uploading || !file} className="w-full sm:w-auto">
               {uploading ? 'Uploading...' : 'Upload Report'}
             </Button>
           </div>
-          {file && <p className="text-sm text-gray-600 mt-2">Selected: {file.name}</p>}
+          {file && <p className="text-sm text-gray-600 mt-2 truncate">Selected: {file.name}</p>}
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <h3 className="text-lg font-semibold text-[#022B3A] mb-4">Submitted Reports</h3>
           {loading ? (
             <div className="text-gray-500">Loading reports...</div>
           ) : (
             <div className="space-y-3">
               {reports.map((report) => (
-                <div key={report.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                <div key={report.id} className="border border-gray-200 rounded-lg p-4 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900">{report.title}</p>
                       <p className="text-sm text-gray-600">
                         {report.report_type} • {report.submitted_at?.split('T')[0]}

@@ -31,11 +31,16 @@ export function ReportReviews() {
     try {
       const blob = await apiClient.fetchReportFile(report.id);
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      // Revoke after a delay so the new tab can load it
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const a = document.createElement('a');
+      a.href = url;
+      const ext = report.file_name?.match(/\.[a-z0-9]+$/i)?.[0] || (report.mime_type?.includes('pdf') ? '.pdf' : '.docx');
+      a.download = report.file_name || `report-${report.id}${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (e) {
-      setMessage({ type: 'error', text: 'Failed to open document. It may have been deleted or the file is missing.' });
+      setMessage({ type: 'error', text: 'Failed to download document. It may have been deleted or the file is missing.' });
     } finally {
       setLoadingDocId(null);
     }
@@ -80,7 +85,7 @@ export function ReportReviews() {
         <Card>
           <h2 className="text-xl font-semibold text-[#022B3A]">Pending Report Reviews</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Open each report document to review it, then add your comments and approve or reject.
+            Download each report to review it, then add your comments and approve or reject.
           </p>
         </Card>
 
@@ -115,7 +120,7 @@ export function ReportReviews() {
                         disabled={loadingDocId === report.id}
                       >
                         <ExternalLink size={14} className="mr-1" />
-                        {loadingDocId === report.id ? 'Opening...' : 'View Document'}
+                        {loadingDocId === report.id ? 'Downloading...' : 'Download Document'}
                       </Button>
                       <Button
                         size="sm"
@@ -129,7 +134,7 @@ export function ReportReviews() {
                   {expandedId === report.id && (
                     <div className="border-t border-gray-200 p-4 bg-gray-50 space-y-4">
                       <p className="text-sm text-gray-600">
-                        Open the document above to review it, then add your comments below.
+                        Download the document above to review it, then add your comments below.
                       </p>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Review Comments</label>

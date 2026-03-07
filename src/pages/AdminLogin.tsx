@@ -20,7 +20,7 @@ export function AdminLogin() {
       setLoading(false);
       return;
     }
-    const result = await signIn(email, password);
+    const result = await signIn(email, password, 'admin');
     if (!result.success) setError(result.error || 'Login failed. Please try again.');
     setLoading(false);
   };

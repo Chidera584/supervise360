@@ -3,16 +3,26 @@ import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
-import { Users, Upload, RefreshCw, AlertCircle, Trash2, Building, Settings, Search } from 'lucide-react';
+import { Users, Upload, RefreshCw, AlertCircle, Trash2, Building, Settings, Search, ChevronDown, UserCheck } from 'lucide-react';
 import { parseCSV, readFileAsText } from '../../lib/csv-parser';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useGroups } from '../../contexts/GroupsContext';
 import { useDepartment } from '../../contexts/DepartmentContext';
 import { useGpaThresholds } from '../../hooks/useGpaThresholds';
+import { apiClient } from '../../lib/api';
 
 export function Groups() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deptFromUrl = searchParams.get('department') || '';
   const { groups, syncWithDatabase, clearGroups, forceRefresh, formGroupsFromStudents } = useGroups();
-  const { userDepartment } = useDepartment();
-  const { thresholds, loading: thresholdsLoading, refetch: refetchThresholds } = useGpaThresholds(userDepartment);
+  const { filterByDepartment } = useDepartment();
+  const [departments, setDepartments] = useState<{ id: number; name: string; code: string }[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(deptFromUrl || '');
+  const departmentGroups = filterByDepartment(groups).filter(
+    (g) => !selectedDepartment || (g.department || '') === selectedDepartment
+  );
+  const { thresholds, loading: thresholdsLoading, refetch: refetchThresholds } = useGpaThresholds(selectedDepartment || 'Software Engineering');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -27,7 +37,7 @@ export function Groups() {
     medium: thresholds.medium,
     low: thresholds.low,
     loading: thresholdsLoading,
-    department: userDepartment
+    department: selectedDepartment
   });
 
   // Check if thresholds have changed and listen for updates
@@ -75,6 +85,45 @@ export function Groups() {
     setShowThresholdNotice(false);
   };
 
+  // Fetch departments from API
+  useEffect(() => {
+    const loadDepartments = async () => {
+      const res = await apiClient.getDepartments().catch(() => ({ success: false, data: [] }));
+      if (res.success && Array.isArray(res.data)) {
+        const deptList = res.data as { id: number; name: string; code: string }[];
+        setDepartments(deptList);
+        // Only auto-select if coming from URL (e.g. Departments page link)
+        if (deptFromUrl && deptList.some((d) => d.name === deptFromUrl)) {
+          setSelectedDepartment(deptFromUrl);
+        }
+      }
+    };
+    loadDepartments();
+  }, [deptFromUrl]);
+
+  // Sync selectedDepartment with URL
+  useEffect(() => {
+    if (deptFromUrl && deptFromUrl !== selectedDepartment) {
+      setSelectedDepartment(deptFromUrl);
+    }
+  }, [deptFromUrl]);
+
+  // When we have groups but no selected department, infer from first group (e.g. after refresh or direct nav)
+  useEffect(() => {
+    if (!selectedDepartment && departmentGroups.length > 0) {
+      const dept = departmentGroups[0]?.department;
+      if (dept) {
+        setSelectedDepartment(dept);
+        setSearchParams({ department: dept }, { replace: true });
+      }
+    }
+  }, [departmentGroups, selectedDepartment]);
+
+  const handleDepartmentChange = (dept: string) => {
+    setSelectedDepartment(dept);
+    setSearchParams(dept ? { department: dept } : {}, { replace: true });
+  };
+
   // Load groups on component mount
   useEffect(() => {
     const loadGroups = async () => {
@@ -98,14 +147,14 @@ export function Groups() {
   // Debug: Log groups data structure
   useEffect(() => {
     console.log('📊 Current groups data:', groups);
-    if (groups.length > 0) {
+    if (departmentGroups.length > 0) {
       console.log('📋 Sample group structure:', groups[0]);
       console.log('👥 Sample group members:', groups[0].members);
     }
   }, [groups]);
 
   const filteredGroups = searchQuery.trim()
-    ? groups.filter((group) => {
+    ? departmentGroups.filter((group) => {
         const q = searchQuery.toLowerCase();
         const nameMatch = (group.name || '').toLowerCase().includes(q);
         const supervisorMatch = (group.supervisor || '').toLowerCase().includes(q);
@@ -114,12 +163,21 @@ export function Groups() {
           : false;
         return nameMatch || supervisorMatch || memberMatch;
       })
-    : groups;
+    : departmentGroups;
 
-  const totalStudents = groups.reduce((sum, group) => {
+  const totalStudents = departmentGroups.reduce((sum, group) => {
     const members = Array.isArray(group.members) ? group.members : [];
     return sum + members.length;
   }, 0);
+
+  // Derive displayed department: selectedDepartment, or from first group, or from group name (e.g. "Software Engineering - Group 1")
+  const displayDepartment = (() => {
+    if (selectedDepartment) return selectedDepartment;
+    const first = departmentGroups[0];
+    if (first?.department) return first.department;
+    const match = first?.name?.match(/^(.+?)\s*-\s*Group\s+\d+/i);
+    return match ? match[1].trim() : '—';
+  })();
 
   return (
     <MainLayout title="Groups">
@@ -151,22 +209,70 @@ export function Groups() {
           </Card>
         )}
 
+        {/* Step 1: Select Department - Required before upload */}
+        <Card className="border-2 border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-6">
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-2 flex items-center gap-2">
+            <Building className="w-5 h-5 text-[#1F7A8C]" />
+            Select Department
+          </h2>
+          <p className="text-sm text-slate-600 mb-4">
+            Choose the department you want to form groups and assign supervisors for. All uploaded students will be grouped under this department.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px]">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
+              >
+                <option value="">Select department...</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+            </div>
+            {selectedDepartment && (
+              <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Working on: {selectedDepartment}
+              </span>
+            )}
+          </div>
+        </Card>
+
         {/* Header */}
         <Card className="border border-slate-200 p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Group Management</h1>
               <p className="text-sm text-slate-600 mt-1">
-                Department: {userDepartment} • {groups.length} groups formed
+                {departmentGroups.length > 0 ? (
+                  <>Department: {displayDepartment} • {departmentGroups.length} groups formed</>
+                ) : selectedDepartment ? (
+                  <>Working on: {selectedDepartment} • Upload students to form groups</>
+                ) : (
+                  'Select a department above to get started'
+                )}
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-[#022B3A] hover:bg-[#1F7A8C]"
+                onClick={() => selectedDepartment && fileInputRef.current?.click()}
+                disabled={!selectedDepartment}
+                className="bg-[#022B3A] hover:bg-[#1F7A8C] disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!selectedDepartment ? 'Select a department first' : 'Upload students for ' + selectedDepartment}
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Students
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate(selectedDepartment ? `/supervisor-assignment?department=${encodeURIComponent(selectedDepartment)}` : '/supervisor-assignment')}
+                title="Assign supervisors to groups"
+              >
+                <UserCheck className="w-4 h-4 mr-2" />
+                Assign Supervisors
               </Button>
               <Button
                 onClick={() => forceRefresh()}
@@ -205,7 +311,7 @@ export function Groups() {
         )}
 
         {/* Groups Statistics */}
-        {!isLoading && groups.length > 0 && (
+        {!isLoading && departmentGroups.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="border border-slate-200 p-4">
               <div className="flex items-center gap-3">
@@ -213,7 +319,7 @@ export function Groups() {
                   <Users className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-slate-900">{groups.length}</p>
+                  <p className="text-xl font-bold text-slate-900">{departmentGroups.length}</p>
                   <p className="text-sm text-slate-500">Total Groups</p>
                 </div>
               </div>
@@ -234,10 +340,12 @@ export function Groups() {
             <Card className="border border-slate-200 p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 text-slate-600" />
+                  <Building className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-slate-900">{userDepartment}</p>
+                  <p className="text-xl font-bold text-slate-900 truncate max-w-[140px]" title={displayDepartment}>
+                    {displayDepartment}
+                  </p>
                   <p className="text-sm text-slate-500">Department</p>
                 </div>
               </div>
@@ -266,7 +374,7 @@ export function Groups() {
         )}
 
         {/* Groups List */}
-        {!isLoading && groups.length > 0 && (
+        {!isLoading && departmentGroups.length > 0 && (
           <Card className="border border-slate-200 p-6">
             <div>
               <div className="flex justify-between items-center mb-4">
@@ -346,17 +454,22 @@ export function Groups() {
         )}
 
         {/* Empty State */}
-        {!isLoading && groups.length === 0 && (
+        {!isLoading && departmentGroups.length === 0 && (
           <Card>
             <div className="p-12 text-center">
               <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Groups Found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {selectedDepartment ? 'No Groups Found' : 'Select a Department First'}
+              </h3>
               <p className="text-gray-600 mb-6">
-                Upload student data to automatically form groups.
+                {selectedDepartment
+                  ? `Upload student data for ${selectedDepartment} to automatically form groups.`
+                  : 'Choose a department above, then upload student data to form groups.'}
               </p>
               <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-[#022B3A] hover:bg-[#1F7A8C]"
+                onClick={() => selectedDepartment && fileInputRef.current?.click()}
+                disabled={!selectedDepartment}
+                className="bg-[#022B3A] hover:bg-[#1F7A8C] disabled:opacity-50"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Students
@@ -388,10 +501,15 @@ export function Groups() {
                 return;
               }
 
-              // Process student data with department
+              if (!selectedDepartment) {
+                setError('Please select a department first');
+                return;
+              }
+
+              // Process student data with selected department (all students go to this department)
               const studentsWithDepartment = parsedData.rows.map((student: any) => ({
                 ...student,
-                department: userDepartment
+                department: selectedDepartment
               }));
 
               // Form groups using ASP algorithm
@@ -457,9 +575,10 @@ export function Groups() {
             }
           }}
           title="Clear All Groups"
-          message="Are you sure you want to clear all groups? This action cannot be undone."
-          confirmText="Clear Groups"
+          message="Are you sure you want to clear ALL groups across ALL departments? This action cannot be undone."
+          confirmText="Clear All Groups"
           cancelText="Cancel"
+          type="danger"
         />
       </div>
     </MainLayout>

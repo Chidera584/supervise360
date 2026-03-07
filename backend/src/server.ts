@@ -26,6 +26,7 @@ import { authenticateToken, requireAdmin, requireSupervisor } from './middleware
 import type { AuthenticatedRequest } from './types';
 import { computeAllocation } from './services/defenseSchedulingService';
 import { DefenseAllocationService } from './services/defenseAllocationService';
+import { ensureProjectGroupsSchema, backfillProjectsForGroups, ensureDepartmentsTables } from './services/schemaFixService';
 
 // Load environment variables
 dotenv.config();
@@ -92,7 +93,15 @@ async function startServer() {
   try {
     // Initialize database connection
     const db = await initializeDatabase();
-    
+
+    // Fix schema (projects/reports FKs) and backfill projects so report submission works
+    await ensureProjectGroupsSchema(db);
+    const backfilled = await backfillProjectsForGroups(db);
+    if (backfilled > 0) {
+      console.log(`✅ Backfilled ${backfilled} project(s) for groups`);
+    }
+    await ensureDepartmentsTables(db);
+
     // Create and register routes that need database connection
     const groupsRouter = createGroupsRouter(db);
     const supervisorsRouter = createSupervisorsRouter(db);

@@ -3,33 +3,23 @@ import { Pool } from 'mysql2/promise';
 export class AdminService {
   constructor(private db: Pool) {}
 
+  /** Dashboard stats use institutional data (uploaded CSV) - group_members, supervisor_workload.
+   * Does NOT use users/students/supervisors - those are for registered accounts (Users page only). */
   async getDashboardStats() {
     const [studentRows] = await this.db.execute(
       'SELECT COUNT(*) as count FROM group_members'
     ) as any;
-    const gmCount = Number(studentRows[0]?.count ?? 0);
-    const [legacyRows] = await this.db.execute(
-      'SELECT COUNT(*) as count FROM students'
-    ) as any;
-    const legacyCount = Number(legacyRows[0]?.count ?? 0);
-    const totalStudents = gmCount > 0 ? gmCount : legacyCount;
+    const totalStudents = Number(studentRows[0]?.count ?? 0);
 
     const [groupRows] = await this.db.execute(
       'SELECT COUNT(*) as count FROM project_groups'
     ) as any;
     const totalGroups = groupRows[0]?.count ?? 0;
 
-    const [supervisorRows] = await this.db.execute(
-      'SELECT COUNT(*) as count FROM supervisors'
-    ) as any;
-    const supervisorsCount = supervisorRows[0]?.count ?? 0;
-
     const [workloadRows] = await this.db.execute(
       'SELECT COUNT(*) as count FROM supervisor_workload'
     ) as any;
-    const workloadCount = Number(workloadRows?.[0]?.count ?? 0);
-    // Prefer supervisor_workload (matches Supervisor Assignment page); fallback to supervisors table
-    const totalSupervisors = workloadCount > 0 ? workloadCount : supervisorsCount;
+    const totalSupervisors = Number(workloadRows?.[0]?.count ?? 0);
 
     const [projectRows] = await this.db.execute(
       'SELECT COUNT(*) as count FROM projects'

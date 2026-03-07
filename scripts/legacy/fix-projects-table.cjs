@@ -1,10 +1,10 @@
 /**
  * Fix projects table to work with project_groups
- * Run: node backend/fix-projects-table.cjs
+ * Run: node scripts/legacy/fix-projects-table.cjs
  */
 const mysql = require('mysql2/promise');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const dbConfig = {

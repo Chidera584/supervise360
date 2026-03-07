@@ -5,12 +5,15 @@ import { Button } from './Button';
 interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
   type?: 'danger' | 'warning' | 'info';
+  loading?: boolean;
+  loadingText?: string;
+  error?: string;
 }
 
 export function ConfirmationModal({
@@ -21,13 +24,20 @@ export function ConfirmationModal({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  type = 'warning'
+  type = 'warning',
+  loading = false,
+  loadingText = 'Processing...',
+  error
 }: ConfirmationModalProps) {
   if (!isOpen) return null;
 
-  const handleConfirm = () => {
-    onConfirm();
-    onClose();
+  const handleConfirm = async () => {
+    try {
+      await onConfirm();
+      onClose();
+    } catch {
+      // Keep modal open on error so user can retry or cancel
+    }
   };
 
   const getIconColor = () => {
@@ -66,17 +76,19 @@ export function ConfirmationModal({
         
         <div className="p-6">
           <p className="text-gray-600">{message}</p>
+          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
         
         <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
           <Button 
             onClick={handleConfirm}
             className={`text-white ${getConfirmButtonStyle()}`}
+            disabled={loading}
           >
-            {confirmText}
+            {loading ? loadingText : confirmText}
           </Button>
         </div>
       </div>
