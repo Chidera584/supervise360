@@ -17,7 +17,7 @@ interface Notification {
   created_at?: string;
 }
 
-export function Header({ title }: HeaderProps) {
+export function Header({ title, onToggleSidebar }: HeaderProps) {
   const { user, signOut } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
