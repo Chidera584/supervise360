@@ -71,8 +71,8 @@ export function Profile() {
 
   return (
     <MainLayout title="Profile">
-      <div className="space-y-6">
-        <Card>
+      <div className="space-y-6 min-w-0 max-w-full overflow-x-hidden pb-8">
+        <Card className="min-w-0 overflow-visible">
           <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Profile</h2>
           <div className="flex flex-col sm:flex-row gap-6">
             <div className="w-16 h-16 bg-[#1F7A8C] rounded-full flex items-center justify-center shrink-0">
@@ -100,8 +100,8 @@ export function Profile() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+          <Card className="min-w-0">
             <p className="text-sm text-gray-600 mb-1">Group Status</p>
             <p className="text-xl font-bold text-[#022B3A]">
               {studentGroup ? studentGroup.name : 'Not Assigned'}
@@ -110,11 +110,11 @@ export function Profile() {
               <p className="text-xs text-gray-500">Assigned</p>
             )}
           </Card>
-          <Card>
+          <Card className="min-w-0">
             <p className="text-sm text-gray-600 mb-1">Reports</p>
             <p className="text-xl font-bold text-[#022B3A]">{reportsCount}</p>
           </Card>
-          <Card>
+          <Card className="min-w-0">
             <p className="text-sm text-gray-600 mb-1">Messages</p>
             <p className="text-xl font-bold text-[#022B3A]">{inboxCount}</p>
           </Card>

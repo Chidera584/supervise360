@@ -1,7 +1,12 @@
-import { Home, Users, FileText, MessageSquare, Settings, User, LogOut, Menu, X } from 'lucide-react';
+import { Home, Users, FileText, MessageSquare, Settings, User, LogOut, X, Building2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+
+interface SidebarProps {
+  mobileOpen: boolean;
+  setMobileOpen(open: boolean): void;
+}
 
 interface MenuItem {
   icon: React.ReactNode;
@@ -9,11 +14,10 @@ interface MenuItem {
   path: string;
 }
 
-export function Sidebar() {
+export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   // Close mobile menu on route change or resize to desktop
   useEffect(() => {
@@ -45,6 +49,7 @@ export function Sidebar() {
 
   const adminMenuItems: MenuItem[] = [
     { icon: <Home size={20} />, label: 'Dashboard', path: '/dashboard' },
+    { icon: <Building2 size={20} />, label: 'Departments', path: '/departments' },
     { icon: <Users size={20} />, label: 'Users', path: '/users' },
     { icon: <Users size={20} />, label: 'Groups', path: '/groups' },
     { icon: <Users size={20} />, label: 'Supervisors', path: '/supervisor-assignment' },
@@ -104,34 +109,27 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button - visible on lg and below */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-[#022B3A] text-white rounded-lg shadow-lg hover:bg-[#1F7A8C] transition-colors"
-        aria-label="Open menu"
-      >
-        <Menu size={24} />
-      </button>
-      {/* Mobile overlay */}
+      {/* Mobile overlay - blocks scroll when open */}
       {mobileOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
+          style={{ touchAction: 'none' }}
         />
       )}
-      {/* Mobile drawer */}
-      <div className={`lg:hidden fixed top-0 left-0 h-full w-72 max-w-[85vw] bg-[#022B3A] flex flex-col text-white z-50 transform transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-600">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl" />
-            <h1 className="text-xl font-bold">Supervise360</h1>
+      {/* Mobile drawer - fixed, scrollable nav */}
+      <div className={`lg:hidden fixed top-0 left-0 h-full min-h-[100dvh] w-72 max-w-[85vw] bg-[#022B3A] flex flex-col text-white z-50 transform transition-transform duration-300 ease-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-600 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl shrink-0" />
+            <h1 className="text-xl font-bold truncate">Supervise360</h1>
           </div>
-          <button onClick={() => setMobileOpen(false)} className="p-2 hover:bg-gray-700 rounded-lg" aria-label="Close menu">
+          <button onClick={() => setMobileOpen(false)} className="p-2 hover:bg-gray-700 rounded-lg shrink-0" aria-label="Close menu">
             <X size={24} />
           </button>
         </div>
-        <nav className="flex-1 p-4 overflow-y-auto">
+        <nav className="flex-1 min-h-0 p-4 overflow-y-auto overscroll-contain">
           {menuItems.map((item, idx) => (
             <div
               key={idx}

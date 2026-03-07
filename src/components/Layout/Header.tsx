@@ -1,10 +1,11 @@
-import { Bell, User, LogOut, Trash2, X } from 'lucide-react';
+import { Bell, User, LogOut, Trash2, X, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../lib/api';
 
 interface HeaderProps {
   title: string;
+  onToggleSidebar?: () => void;
 }
 
 interface Notification {
@@ -137,8 +138,19 @@ export function Header({ title }: HeaderProps) {
   };
 
   return (
-    <header className="bg-[#022B3A] text-white px-4 sm:px-6 py-4 pl-14 lg:pl-6 flex items-center justify-between shadow-md">
-      <h1 className="text-lg sm:text-xl font-semibold truncate">{title}</h1>
+    <header className="sticky top-0 z-30 shrink-0 bg-[#022B3A] text-white px-4 sm:px-6 py-3 flex items-center justify-between shadow-md">
+      <div className="flex items-center gap-3 min-w-0">
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-[#1F7A8C]/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+            aria-label="Open navigation menu"
+          >
+            <Menu size={20} />
+          </button>
+        )}
+        <h1 className="text-lg sm:text-xl font-semibold truncate">{title}</h1>
+      </div>
 
       <div className="flex items-center gap-4">
         <div className="relative" ref={dropdownRef}>
@@ -156,7 +168,7 @@ export function Header({ title }: HeaderProps) {
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-80 max-h-96 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] max-h-96 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
               <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 gap-2">
                 <h3 className="font-semibold text-slate-800">Notifications</h3>
                 <div className="flex items-center gap-2">
