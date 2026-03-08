@@ -9,6 +9,19 @@ const router = Router();
 export function createEvaluationsRouter(db: Pool) {
   const evaluationService = new EvaluationService(db);
 
+  // For supervisors: list all their students with evaluation status
+  router.get('/students', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      const data = await evaluationService.getStudentsForSupervisor(userId);
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('Students evaluations overview error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch students for evaluation' });
+    }
+  });
+
   router.get('/groups-with-projects', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
@@ -63,32 +76,27 @@ export function createEvaluationsRouter(db: Pool) {
     }
   });
 
+  // For supervisors: submit an individual student's evaluation (out of 60)
+  router.post('/student-submit', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      const supervisorId = await evaluationService.getSupervisorId(userId);
+      if (!supervisorId) return res.status(400).json({ success: false, message: 'Supervisor profile not found' });
+      const result = await evaluationService.submitStudentEvaluation(supervisorId, req.body);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('Submit student evaluation error:', error);
+      res.status(500).json({ success: false, message: 'Failed to submit student evaluation' });
+    }
+  });
+
   router.get('/my-evaluation', authenticateToken, requireStudent, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      const [studentRows] = await db.execute(
-        'SELECT matric_number FROM students WHERE user_id = ?',
-        [userId]
-      );
-      const matric = (studentRows as any[])[0]?.matric_number;
-      if (!matric) return res.json({ success: true, data: [] });
-
-      const [groupRows] = await db.execute(
-        'SELECT group_id FROM group_members WHERE matric_number = ? LIMIT 1',
-        [matric]
-      );
-      const groupId = (groupRows as any[])[0]?.group_id;
-      if (!groupId) return res.json({ success: true, data: [] });
-
-      const [projectRows] = await db.execute(
-        'SELECT id FROM projects WHERE group_id = ? LIMIT 1',
-        [groupId]
-      );
-      const projectId = (projectRows as any[])[0]?.id;
-      if (!projectId) return res.json({ success: true, data: [] });
-
-      const data = await evaluationService.getStudentEvaluation(projectId);
+      const row = await evaluationService.getStudentSelfEvaluation(userId);
+      const data = row ? [row] : [];
       res.json({ success: true, data });
     } catch (error) {
       console.error('Student evaluation error:', error);

@@ -81,7 +81,7 @@ export function DefenseEvaluation() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Evaluation Results</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Supervisor Evaluation (out of 60)</h2>
           {evaluations.length > 0 ? (
             <div className="space-y-4">
               {evaluations.map((evalItem: any) => (
@@ -98,36 +98,35 @@ export function DefenseEvaluation() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-[#022B3A]">{evalItem.total_score ?? '—'}</p>
+                      <p className="text-2xl font-bold text-[#022B3A]">
+                        {evalItem.total_score != null ? `${evalItem.total_score} / 60` : '—'}
+                      </p>
                       <p className="text-sm text-slate-600">Total score</p>
-                      {evalItem.grade && (
-                        <p className="text-lg font-semibold text-slate-800 mt-1">Grade: {evalItem.grade}</p>
-                      )}
                     </div>
                   </div>
                   {(evalItem.documentation_score != null || evalItem.implementation_score != null || evalItem.presentation_score != null || evalItem.innovation_score != null) && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 pt-3 border-t border-slate-200">
                       {evalItem.documentation_score != null && (
                         <div>
-                          <p className="text-xs text-slate-500">Documentation</p>
+                          <p className="text-xs text-slate-500">Project quality</p>
                           <p className="font-medium text-slate-900">{evalItem.documentation_score}</p>
                         </div>
                       )}
                       {evalItem.implementation_score != null && (
                         <div>
-                          <p className="text-xs text-slate-500">Implementation</p>
+                          <p className="text-xs text-slate-500">Individual contribution</p>
                           <p className="font-medium text-slate-900">{evalItem.implementation_score}</p>
                         </div>
                       )}
                       {evalItem.presentation_score != null && (
                         <div>
-                          <p className="text-xs text-slate-500">Presentation</p>
+                          <p className="text-xs text-slate-500">Overall performance</p>
                           <p className="font-medium text-slate-900">{evalItem.presentation_score}</p>
                         </div>
                       )}
                       {evalItem.innovation_score != null && (
                         <div>
-                          <p className="text-xs text-slate-500">Innovation</p>
+                          <p className="text-xs text-slate-500">Participation</p>
                           <p className="font-medium text-slate-900">{evalItem.innovation_score}</p>
                         </div>
                       )}

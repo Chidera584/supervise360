@@ -14,23 +14,22 @@ import {
   Award,
   MessageSquare,
 } from 'lucide-react';
-import { stripGroupName, stripProjectTitle, getGroupNumber } from '../../utils/supervisorDisplay';
+import { stripGroupName, getGroupNumber } from '../../utils/supervisorDisplay';
 
 interface PendingItem {
-  project_id: number;
-  title: string;
+  student_user_id: number;
+  student_name: string;
+  matric_number?: string;
   group_name: string;
   group_id?: number;
 }
 
 interface CompletedItem {
   id: number;
-  project_id: number;
-  project_title: string;
+  student_user_id: number;
+  student_name: string;
   group_name: string;
   total_score: number;
-  grade?: string;
-  feedback?: string;
   evaluated_at?: string;
 }
 
@@ -42,11 +41,11 @@ export function Evaluations() {
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [evalModalOpen, setEvalModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<PendingItem | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<PendingItem | null>(null);
   const [scores, setScores] = useState({
     documentation_score: 20,
-    implementation_score: 30,
-    presentation_score: 15,
+    implementation_score: 20,
+    presentation_score: 10,
     innovation_score: 10,
     feedback: '',
     strengths: '',
@@ -57,35 +56,48 @@ export function Evaluations() {
 
   const loadEvaluations = async () => {
     setLoading(true);
-    // Use groups-with-projects (matches by supervisor_name like my-groups) for reliable data
-    const groupsRes = await apiClient.getGroupsWithProjects();
-    if (groupsRes.success && Array.isArray(groupsRes.data)) {
-      const items = groupsRes.data as { group_id: number; group_name: string; project_id: number; project_title: string; has_evaluation: boolean; evaluation?: { id: number; total_score: number; grade?: string; feedback?: string; evaluated_at?: string } }[];
+    const res = await apiClient.getEvaluationStudents();
+    if (res.success && Array.isArray(res.data)) {
+      const items = res.data as {
+        student_user_id: number;
+        student_name: string;
+        matric_number?: string;
+        group_id?: number;
+        group_name: string;
+        project_id?: number;
+        evaluation_id?: number;
+        total_score?: number;
+        evaluated_at?: string;
+      }[];
       const pendingItems: PendingItem[] = items
-        .filter((i) => !i.has_evaluation)
-        .map((i) => ({ project_id: i.project_id, title: i.project_title, group_name: i.group_name, group_id: i.group_id }));
-      const completedItems: CompletedItem[] = items
-        .filter((i) => i.has_evaluation && i.evaluation)
+        .filter((i) => !i.evaluation_id)
         .map((i) => ({
-          id: i.evaluation!.id,
-          project_id: i.project_id,
-          project_title: i.project_title,
+          student_user_id: i.student_user_id,
+          student_name: i.student_name,
+          matric_number: i.matric_number,
           group_name: i.group_name,
-          total_score: i.evaluation!.total_score,
-          grade: i.evaluation!.grade,
-          feedback: i.evaluation!.feedback,
-          evaluated_at: i.evaluation!.evaluated_at,
+          group_id: i.group_id,
         }));
-      setPending(pendingItems.sort((a, b) => getGroupNumber(a.group_name) - getGroupNumber(b.group_name)));
-      setCompleted(completedItems.sort((a, b) => getGroupNumber(a.group_name) - getGroupNumber(b.group_name)));
+      const completedItems: CompletedItem[] = items
+        .filter((i) => !!i.evaluation_id)
+        .map((i) => ({
+          id: i.evaluation_id!,
+          student_user_id: i.student_user_id,
+          student_name: i.student_name,
+          group_name: i.group_name,
+          total_score: i.total_score ?? 0,
+          evaluated_at: i.evaluated_at,
+        }));
+      const sortByGroupThenName = <T extends { group_name: string; student_name: string }>(a: T, b: T) => {
+        const gDiff = getGroupNumber(a.group_name) - getGroupNumber(b.group_name);
+        if (gDiff !== 0) return gDiff;
+        return a.student_name.localeCompare(b.student_name);
+      };
+      setPending(pendingItems.sort(sortByGroupThenName));
+      setCompleted(completedItems.sort(sortByGroupThenName));
     } else {
-      // Fallback to legacy endpoints
-      const [pendingRes, completedRes] = await Promise.all([
-        apiClient.getPendingEvaluations(),
-        apiClient.getCompletedEvaluations(),
-      ]);
-      if (pendingRes.success) setPending(pendingRes.data || []);
-      if (completedRes.success) setCompleted(completedRes.data || []);
+      setPending([]);
+      setCompleted([]);
     }
     setLoading(false);
   };
@@ -106,11 +118,11 @@ export function Evaluations() {
         : pending[0];
     if (match) {
       hasAutoOpenedRef.current = true;
-      setSelectedProject(match);
+      setSelectedStudent(match);
       setScores({
         documentation_score: 20,
-        implementation_score: 30,
-        presentation_score: 15,
+        implementation_score: 20,
+        presentation_score: 10,
         innovation_score: 10,
         feedback: '',
         strengths: '',
@@ -122,11 +134,11 @@ export function Evaluations() {
   }, [loading, pending, navState?.groupId, (navState as any)?.groupName]);
 
   const openEvalModal = (item: PendingItem) => {
-    setSelectedProject(item);
+    setSelectedStudent(item);
     setScores({
       documentation_score: 20,
-      implementation_score: 30,
-      presentation_score: 15,
+      implementation_score: 20,
+      presentation_score: 10,
       innovation_score: 10,
       feedback: '',
       strengths: '',
@@ -138,16 +150,16 @@ export function Evaluations() {
 
   const closeEvalModal = () => {
     setEvalModalOpen(false);
-    setSelectedProject(null);
+    setSelectedStudent(null);
   };
 
   const submitEvaluation = async () => {
-    if (!selectedProject) return;
+    if (!selectedStudent) return;
     setSubmitLoading(true);
     try {
-      const res = await apiClient.submitEvaluation({
-        project_id: selectedProject.project_id,
-        evaluation_type: 'internal',
+      const res = await apiClient.submitStudentEvaluation({
+        student_user_id: selectedStudent.student_user_id,
+        group_id: selectedStudent.group_id,
         documentation_score: scores.documentation_score,
         implementation_score: scores.implementation_score,
         presentation_score: scores.presentation_score,
@@ -170,7 +182,7 @@ export function Evaluations() {
     }
   };
 
-  const totalMax = 20 + 30 + 15 + 10; // 75
+  const totalMax = 20 + 20 + 10 + 10; // 60
   const totalScore = scores.documentation_score + scores.implementation_score + scores.presentation_score + scores.innovation_score;
 
   return (
@@ -184,9 +196,9 @@ export function Evaluations() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900">Evaluations</h2>
-              <p className="text-sm text-slate-600">Review and score your assigned groups’ project work</p>
+              <p className="text-sm text-slate-600">Review and score each individual student under your supervision.</p>
               <p className="text-xs text-slate-500 mt-1.5">
-                Groups appear here when they have a project. Use <strong>Start evaluation</strong> to grade a group, or go to <strong>My Groups</strong> → pick a group → <strong>Grade Work</strong>.
+                This list shows your students grouped by project group. Use <strong>Start evaluation</strong> to grade each student, or go to <strong>My Groups</strong> → pick a group → <strong>Grade Work</strong>.
               </p>
             </div>
           </div>
@@ -205,7 +217,7 @@ export function Evaluations() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{pending.length}</p>
-                <p className="text-sm text-slate-600">Pending evaluations</p>
+                <p className="text-sm text-slate-600">Students not yet evaluated</p>
               </div>
             </div>
             <div className="flex items-center gap-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
@@ -214,7 +226,7 @@ export function Evaluations() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{completed.length}</p>
-                <p className="text-sm text-slate-600">Completed evaluations</p>
+                <p className="text-sm text-slate-600">Students evaluated</p>
               </div>
             </div>
           </div>
@@ -224,15 +236,14 @@ export function Evaluations() {
         <Card className="border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <Clock className="text-amber-600" size={20} />
-            Pending evaluations
+            Students still to evaluate
           </h3>
           {loading ? (
             <p className="text-slate-500">Loading...</p>
           ) : pending.length === 0 ? (
             <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-xl border border-slate-100">
               <FileCheck className="mx-auto h-12 w-12 text-slate-300 mb-2" />
-              <p>No pending evaluations. All assigned groups with projects have been evaluated.</p>
-              <p className="text-sm mt-1">Groups need a project before they can be evaluated. Check <strong>My Groups</strong> for your assigned groups.</p>
+              <p>No pending evaluations. All your students have been evaluated.</p>
             </div>
           ) : (
             <ul className="space-y-3">
@@ -242,8 +253,11 @@ export function Evaluations() {
                   className="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 bg-white hover:border-[#1F7A8C]/30 hover:bg-slate-50/50 transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{stripGroupName(item.group_name)}</p>
-                    <p className="text-sm text-slate-500">{stripProjectTitle(item.title, item.group_name)}</p>
+                    <p className="font-medium text-slate-900 truncate">{item.student_name}</p>
+                    <p className="text-sm text-slate-500">
+                      {stripGroupName(item.group_name)}
+                      {item.matric_number && ` · ${item.matric_number}`}
+                    </p>
                   </div>
                   <Button size="sm" onClick={() => openEvalModal(item)} className="shrink-0">
                     <span className="flex items-center gap-2">
@@ -261,7 +275,7 @@ export function Evaluations() {
         <Card className="border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <CheckCircle className="text-emerald-600" size={20} />
-            Completed evaluations
+            Students already evaluated
           </h3>
           {loading ? null : completed.length === 0 ? (
             <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-xl border border-slate-100">
@@ -277,17 +291,11 @@ export function Evaluations() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-900 truncate">{stripGroupName(item.group_name)}</p>
-                      <p className="text-sm text-slate-500">{stripProjectTitle(item.project_title, item.group_name)}</p>
-                      {item.feedback && (
-                        <p className="text-sm text-slate-600 mt-2">{item.feedback}</p>
-                      )}
+                      <p className="font-medium text-slate-900 truncate">{item.student_name}</p>
+                      <p className="text-sm text-slate-500">{stripGroupName(item.group_name)}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-lg font-bold text-[#022B3A]">{item.total_score} / 75</p>
-                      {item.grade && (
-                        <p className="text-sm font-medium text-slate-600">Grade: {item.grade}</p>
-                      )}
+                      <p className="text-lg font-bold text-[#022B3A]">{item.total_score} / 60</p>
                       {item.evaluated_at && (
                         <p className="text-xs text-slate-400 mt-1">
                           {new Date(item.evaluated_at).toLocaleDateString()}
@@ -303,13 +311,15 @@ export function Evaluations() {
       </div>
 
       {/* Evaluation form modal */}
-      {evalModalOpen && selectedProject && (
+      {evalModalOpen && selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Submit evaluation</h3>
-                <p className="text-sm text-slate-500">{stripGroupName(selectedProject.group_name)} · {stripProjectTitle(selectedProject.title, selectedProject.group_name)}</p>
+                <p className="text-sm text-slate-500">
+                  {selectedStudent.student_name} · {stripGroupName(selectedStudent.group_name)}
+                </p>
               </div>
               <button onClick={closeEvalModal} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
                 <X size={20} />
@@ -317,7 +327,7 @@ export function Evaluations() {
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Documentation (0–20)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Project quality (0–20)</label>
                 <input
                   type="number"
                   min={0}
@@ -328,7 +338,7 @@ export function Evaluations() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Implementation (0–30)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Individual contribution (0–20)</label>
                 <input
                   type="number"
                   min={0}
@@ -339,7 +349,7 @@ export function Evaluations() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Presentation (0–15)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Overall performance (0–10)</label>
                 <input
                   type="number"
                   min={0}
@@ -350,7 +360,7 @@ export function Evaluations() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Innovation (0–10)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Participation (0–10)</label>
                 <input
                   type="number"
                   min={0}

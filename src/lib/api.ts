@@ -465,6 +465,10 @@ class ApiClient {
     return this.request('/evaluations/groups-with-projects');
   }
 
+  async getEvaluationStudents(): Promise<ApiResponse> {
+    return this.request('/evaluations/students');
+  }
+
   async getPendingEvaluations(): Promise<ApiResponse> {
     return this.request('/evaluations/pending');
   }
@@ -482,6 +486,13 @@ class ApiClient {
 
   async getMyEvaluation(): Promise<ApiResponse> {
     return this.request('/evaluations/my-evaluation');
+  }
+
+  async submitStudentEvaluation(payload: any): Promise<ApiResponse> {
+    return this.request('/evaluations/student-submit', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
   // Messages endpoints
