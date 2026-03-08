@@ -198,7 +198,7 @@ export async function sendGroupingAndSupervisorEmail(
       </div>
     `,
     ctaLabel: 'View my group',
-    ctaUrl: `${FRONTEND_URL}/student/my-group`,
+    ctaUrl: `${FRONTEND_URL}/my-group`,
     metadata: `Posted ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
   });
   return sendEmail(to, subject, html);
@@ -257,7 +257,7 @@ export async function sendSubmissionConfirmationEmail(
       </div>
     `,
     ctaLabel: 'View my reports',
-    ctaUrl: `${FRONTEND_URL}/student/reports`,
+    ctaUrl: `${FRONTEND_URL}/reports`,
     accentColor: '#22c55e',
     metadata: `Submitted ${timestamp}`,
   });
@@ -284,7 +284,7 @@ export async function sendSupervisorMessageEmail(
       </div>
     `,
     ctaLabel: 'Reply',
-    ctaUrl: `${FRONTEND_URL}/student/messages`,
+    ctaUrl: `${FRONTEND_URL}/messages`,
     metadata: `From ${supervisorName}`,
   });
   return sendEmail(to, emailSubject, html);
@@ -308,7 +308,7 @@ export async function sendNewStudentAssignmentEmail(
       <p style="margin:12px 0 0; font-size:14px; color:#64748b;">View your groups and details on the website.</p>
     `,
     ctaLabel: 'View my groups',
-    ctaUrl: `${FRONTEND_URL}/supervisor/my-groups`,
+    ctaUrl: `${FRONTEND_URL}/my-groups`,
     metadata: `${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
   });
   return sendEmail(to, subject, html);
@@ -334,7 +334,7 @@ export async function sendStudentSubmissionEmail(
       </div>
     `,
     ctaLabel: 'Review submission',
-    ctaUrl: `${FRONTEND_URL}/supervisor/report-reviews`,
+    ctaUrl: `${FRONTEND_URL}/report-reviews`,
     accentColor: '#d97706',
     metadata: `Submitted by ${studentName} · ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
   });
@@ -361,7 +361,7 @@ export async function sendStudentMessageEmail(
       </div>
     `,
     ctaLabel: 'Reply',
-    ctaUrl: `${FRONTEND_URL}/supervisor/messages`,
+    ctaUrl: `${FRONTEND_URL}/messages`,
     metadata: `From ${studentName}`,
   });
   return sendEmail(to, emailSubject, html);
@@ -389,7 +389,7 @@ export async function sendUnassignedStudentsAlertEmail(
       </div>
     `,
     ctaLabel: 'Assign supervisors',
-    ctaUrl: `${FRONTEND_URL}/admin/supervisor-assignment`,
+    ctaUrl: `${FRONTEND_URL}/supervisor-assignment`,
     accentColor: '#dc2626',
     metadata: `${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
   });
@@ -504,7 +504,7 @@ export async function sendDefenseScheduledEmail(
       <p style="margin:16px 0 0; font-size:14px;">Log in to view full details and any updates.</p>
     `,
     ctaLabel: 'View my defense schedule',
-    ctaUrl: `${FRONTEND_URL}/dashboard`,
+    ctaUrl: `${FRONTEND_URL}/defense-evaluation`,
     accentColor: '#22c55e',
     metadata: `Published ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
   });

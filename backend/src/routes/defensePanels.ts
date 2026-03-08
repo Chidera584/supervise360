@@ -148,6 +148,27 @@ export function createDefensePanelsRouter(db: Pool) {
     }
   });
 
+  // Admin: get and clear persisted allocations
+  router.get('/allocations', authenticateToken, requireAdmin, async (_req, res) => {
+    try {
+      const data = await defenseAllocService.listAllocations();
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('Get allocations error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch allocations' });
+    }
+  });
+
+  router.delete('/allocations', authenticateToken, requireAdmin, async (_req, res) => {
+    try {
+      await defenseAllocService.saveAllocations([]);
+      res.json({ success: true, message: 'Defense allocations cleared' });
+    } catch (error) {
+      console.error('Clear allocations error:', error);
+      res.status(500).json({ success: false, message: 'Failed to clear allocations' });
+    }
+  });
+
   router.get('/my-panels', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;

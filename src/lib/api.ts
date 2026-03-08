@@ -361,6 +361,15 @@ class ApiClient {
     });
   }
 
+  // Admin: get and clear persisted defense allocations
+  async getDefenseAllocations(): Promise<ApiResponse> {
+    return this.request('/defense-panels/allocations');
+  }
+
+  async clearDefenseAllocations(): Promise<ApiResponse> {
+    return this.request('/defense-panels/allocations', { method: 'DELETE' });
+  }
+
   // Projects endpoints
   async getMyProject(): Promise<ApiResponse> {
     return this.request('/projects/my-project');

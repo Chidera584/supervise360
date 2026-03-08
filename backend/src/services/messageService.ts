@@ -1,5 +1,30 @@
 import { Pool } from 'mysql2/promise';
 
+const CREATE_MESSAGES_SQL = `
+CREATE TABLE IF NOT EXISTS messages (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  sender_id INT NOT NULL,
+  recipient_id INT NOT NULL,
+  group_id INT NULL,
+  parent_id INT NULL,
+  subject VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  message_type ENUM('direct', 'group', 'announcement', 'student', 'broadcast') DEFAULT 'direct',
+  priority ENUM('low', 'normal', 'high', 'urgent') DEFAULT 'normal',
+  read_status BOOLEAN DEFAULT FALSE,
+  archived BOOLEAN DEFAULT FALSE,
+  sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  read_at TIMESTAMP NULL,
+  INDEX idx_sender (sender_id),
+  INDEX idx_recipient (recipient_id),
+  INDEX idx_messages_group (group_id),
+  INDEX idx_messages_parent (parent_id),
+  INDEX idx_read_status (read_status),
+  INDEX idx_sent_at (sent_at),
+  INDEX idx_type (message_type),
+  INDEX idx_priority (priority)
+) ENGINE=InnoDB`;
+
 export type Contact = {
   id: number;
   name: string;
@@ -10,6 +35,15 @@ export type Contact = {
 
 export class MessageService {
   constructor(private db: Pool) {}
+
+  private async ensureTable() {
+    try {
+      await this.db.execute(CREATE_MESSAGES_SQL);
+    } catch (e) {
+      // Ignore if table already exists or cannot be created in this environment
+      console.warn('Messages ensureTable warning:', (e as Error).message);
+    }
+  }
 
   /** Get user IDs for all members of a group (students with user accounts) */
   async getGroupMemberUserIds(groupId: number): Promise<number[]> {
@@ -218,6 +252,7 @@ export class MessageService {
   }
 
   async getInbox(userId: number) {
+    await this.ensureTable();
     const [rows] = await this.db.execute(
       `SELECT m.*, u.first_name, u.last_name, u.email as sender_email,
               COALESCE(
@@ -242,6 +277,7 @@ export class MessageService {
   }
 
   async getSent(userId: number) {
+    await this.ensureTable();
     const [rows] = await this.db.execute(
       `SELECT m.*, u.first_name, u.last_name, u.email as recipient_email,
               COALESCE(
@@ -275,28 +311,39 @@ export class MessageService {
     groupId?: number;
     parentId?: number;
   }) {
+    await this.ensureTable();
     const sent: number[] = [];
     const msgType = payload.messageType || 'direct';
     const groupId = payload.groupId ?? null;
     const parentId = payload.parentId ?? null;
 
     for (const recipientId of payload.recipientIds) {
-      const [result] = await this.db.execute(
-        `INSERT INTO messages 
-         (sender_id, recipient_id, group_id, parent_id, subject, content, message_type, priority, sent_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          payload.senderId,
-          recipientId,
-          groupId,
-          parentId,
-          payload.subject,
-          payload.content,
-          msgType,
-          payload.priority || 'normal'
-        ]
-      );
-      sent.push((result as any).insertId);
+      try {
+        const [result] = await this.db.execute(
+          `INSERT INTO messages 
+           (sender_id, recipient_id, group_id, parent_id, subject, content, message_type, priority, sent_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            payload.senderId,
+            recipientId,
+            groupId,
+            parentId,
+            payload.subject,
+            payload.content,
+            msgType,
+            payload.priority || 'normal'
+          ]
+        );
+        sent.push((result as any).insertId);
+      } catch (e) {
+        console.error('Messages insert error, falling back to minimal schema:', (e as Error).message);
+        const [result] = await this.db.execute(
+          `INSERT INTO messages (sender_id, recipient_id, subject, content, sent_at)
+           VALUES (?, ?, ?, ?, NOW())`,
+          [payload.senderId, recipientId, payload.subject, payload.content]
+        );
+        sent.push((result as any).insertId);
+      }
     }
     return sent;
   }

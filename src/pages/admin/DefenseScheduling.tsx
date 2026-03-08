@@ -98,7 +98,42 @@ export function DefenseScheduling() {
     });
   }, [staffRows, venueRows, groupRanges, allocations, excludedCount]);
 
-  const handleClearAll = () => {
+  // Load persisted allocations from server when page opens (for cross-session persistence)
+  useEffect(() => {
+    const loadPersisted = async () => {
+      try {
+        const res = await apiClient.getDefenseAllocations();
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const cols: AllocationColumn[] = res.data.map((a: any) => {
+            const venueName = a.venue || '';
+            const gr = a.groupRange;
+            const rangeStr = gr ? `${gr.department} Grp (${gr.start}–${gr.end})` : '';
+            const assessors = Array.isArray(a.assessors) ? a.assessors : [];
+            return { venue: venueName, groupRange: rangeStr, assessors };
+          });
+          setAllocations(cols);
+          setGroupRanges(
+            res.data.map((a: any, i: number) => ({
+              venue_index: i,
+              department: a.groupRange?.department || '',
+              start: a.groupRange?.start ?? 1,
+              end: a.groupRange?.end ?? 1,
+            }))
+          );
+          setActiveTab('allocation');
+        }
+      } catch (e) {
+        console.warn('Failed to load persisted defense allocations', e);
+      }
+    };
+    // Only fetch from server if we don't already have allocations in local storage
+    if (!allocations || allocations.length === 0) {
+      loadPersisted();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleClearAll = async () => {
     setStaffRows([]);
     setVenueRows([]);
     setGroupRanges([]);
@@ -108,6 +143,11 @@ export function DefenseScheduling() {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
+    try {
+      await apiClient.clearDefenseAllocations();
+    } catch (e) {
+      console.warn('Failed to clear persisted defense allocations', e);
+    }
   };
 
   const handleStaffUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -105,6 +105,26 @@ export class DefenseAllocationService {
     }
   }
 
+  async listAllocations(): Promise<AllocationInput[]> {
+    await this.ensureTable();
+    const [rows] = await this.db.execute(
+      'SELECT venue_name, department, group_start, group_end, assessors FROM defense_allocations ORDER BY id ASC'
+    );
+    return (rows as any[]).map((r: any) => {
+      let assessors: string[] = [];
+      try {
+        assessors = typeof r.assessors === 'string' ? JSON.parse(r.assessors) : (r.assessors || []);
+      } catch {
+        assessors = [];
+      }
+      return {
+        venue: r.venue_name,
+        groupRange: { department: r.department, start: r.group_start, end: r.group_end },
+        assessors,
+      };
+    });
+  }
+
   /**
    * Find group_id for a student - try matric_number first, then student_name
    */

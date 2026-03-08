@@ -144,10 +144,10 @@ export function Profile() {
                 {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
               </p>
             </div>
-            {student?.gpa != null && (
+            {student?.gpa != null && !Number.isNaN(Number(student.gpa)) && (
               <div>
                 <p className="text-sm text-gray-600">GPA</p>
-                <p className="font-medium">{student.gpa.toFixed(2)}</p>
+                <p className="font-medium">{Number(student.gpa).toFixed(2)}</p>
               </div>
             )}
           </div>

@@ -15,7 +15,7 @@ export function MainLayout({ children, title }: MainLayoutProps) {
       <Sidebar mobileOpen={mobileSidebarOpen} setMobileOpen={setMobileSidebarOpen} />
       <div className="flex-1 flex flex-col lg:ml-64 min-h-screen">
         <Header title={title} onToggleSidebar={() => setMobileSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pt-16 lg:pt-6 pb-[env(safe-area-inset-bottom)] overscroll-contain min-w-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pt-16 lg:pt-6 pb-[env(safe-area-inset-bottom)] min-w-0">
           {children}
         </main>
       </div>
