@@ -82,7 +82,7 @@ export function ReportReviews() {
   return (
     <MainLayout title="Report Reviews">
       <div className="space-y-6">
-        <Card>
+        <Card className="border border-slate-200 p-4 sm:p-6">
           <h2 className="text-xl font-semibold text-[#022B3A]">Pending Report Reviews</h2>
           <p className="text-sm text-gray-600 mt-1">
             Download each report to review it, then add your comments and approve or reject.
@@ -95,15 +95,15 @@ export function ReportReviews() {
           </div>
         )}
 
-        <Card>
+        <Card className="border border-slate-200 p-4 sm:p-6">
           {loading ? (
             <div className="text-gray-500">Loading reports...</div>
           ) : (
             <div className="space-y-4">
               {pending.map((report) => (
-                <div key={report.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="flex items-start justify-between p-4">
-                    <div>
+                <div key={report.id} className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 p-4">
+                    <div className="min-w-0">
                       <p className="font-semibold text-gray-900">{report.title}</p>
                       <p className="text-sm text-gray-600">
                         {report.group_name || 'Group'} • {report.report_type} • {report.submitted_at?.split('T')[0]}
@@ -112,19 +112,19 @@ export function ReportReviews() {
                         )}
                       </p>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0 md:self-center">
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => openDocument(report)}
                         disabled={loadingDocId === report.id}
+                        className="text-xs sm:text-sm px-3 py-2"
                       >
                         <ExternalLink size={14} className="mr-1" />
                         {loadingDocId === report.id ? 'Downloading...' : 'Download Document'}
                       </Button>
                       <Button
-                        size="sm"
                         onClick={() => expandForReview(report)}
+                        className="text-xs sm:text-sm px-3 py-2"
                       >
                         <FileText size={14} className="mr-1" />
                         Review
@@ -145,21 +145,20 @@ export function ReportReviews() {
                           onChange={(e) => setComments(e.target.value)}
                         />
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
-                          size="sm"
                           onClick={() => submitReview(report.id, true)}
                           disabled={submittingId === report.id || !comments.trim()}
+                          className="text-xs sm:text-sm px-3 py-2"
                         >
                           <CheckCircle size={14} className="mr-1" />
                           {submittingId === report.id ? 'Submitting...' : 'Approve'}
                         </Button>
                         <Button
                           variant="outline"
-                          size="sm"
                           onClick={() => submitReview(report.id, false)}
                           disabled={submittingId === report.id || !comments.trim()}
-                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          className="border-red-300 text-red-700 hover:bg-red-50 text-xs sm:text-sm px-3 py-2"
                         >
                           <XCircle size={14} className="mr-1" />
                           Reject

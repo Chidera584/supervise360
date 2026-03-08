@@ -197,9 +197,6 @@ export function Evaluations() {
             <div>
               <h2 className="text-xl font-bold text-slate-900">Evaluations</h2>
               <p className="text-sm text-slate-600">Review and score each individual student under your supervision.</p>
-              <p className="text-xs text-slate-500 mt-1.5">
-                This list shows your students grouped by project group. Use <strong>Start evaluation</strong> to grade each student, or go to <strong>My Groups</strong> → pick a group → <strong>Grade Work</strong>.
-              </p>
             </div>
           </div>
         </Card>

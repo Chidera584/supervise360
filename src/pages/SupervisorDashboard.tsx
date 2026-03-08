@@ -74,9 +74,9 @@ export function SupervisorDashboard() {
 
   return (
     <MainLayout title="Supervisor Dashboard">
-      <div className="-m-6">
+      <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 min-w-0">
         {/* Hero Section - Full-width blue header */}
-        <div className="relative bg-[#022B3A] px-6 pt-8 pb-24 text-white">
+        <div className="relative bg-[#022B3A] px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
           <h1 className="text-2xl md:text-3xl font-bold">
             Welcome, {user?.first_name}
           </h1>
@@ -86,7 +86,7 @@ export function SupervisorDashboard() {
         </div>
 
         {/* Floating Cards */}
-        <div className="relative -mt-16 px-6">
+        <div className="relative -mt-12 sm:-mt-16 px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
@@ -139,7 +139,7 @@ export function SupervisorDashboard() {
         </div>
 
         {/* Main Content */}
-        <div className="mt-6 px-6 pb-8 bg-gradient-to-b from-slate-50 to-white min-h-[50vh]">
+        <div className="mt-6 px-4 sm:px-6 pb-8 bg-gradient-to-b from-slate-50 to-white min-h-[50vh]">
           <div className="w-full space-y-6">
             <Card className="rounded-2xl shadow-sm border-slate-100">
               <h2 className="text-lg font-semibold text-[#022B3A] mb-4">My Assigned Groups</h2>

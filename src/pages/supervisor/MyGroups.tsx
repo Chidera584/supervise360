@@ -180,20 +180,6 @@ export function MyGroups() {
                 </div>
               </div>
 
-              {/* Progress */}
-              <div className="px-5 py-3 border-b border-slate-100">
-                <div className="flex justify-between text-sm text-slate-600 mb-1">
-                  <span>Project progress</span>
-                  <span>{group.project?.progress_percentage ?? 0}%</span>
-                </div>
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#1F7A8C] rounded-full transition-all duration-300"
-                    style={{ width: `${group.project?.progress_percentage ?? 0}%` }}
-                  />
-                </div>
-              </div>
-
               {/* Report stats inline */}
               <div className="px-5 py-3 flex flex-wrap gap-6 border-b border-slate-100 text-sm">
                 <span className="flex items-center gap-1.5">
