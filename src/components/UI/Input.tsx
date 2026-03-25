@@ -33,8 +33,8 @@ export function Input({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent ${
-          error ? 'border-red-500' : 'border-gray-300'
+        className={`px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 ${
+          error ? 'border-red-500' : ''
         }`}
       />
       {error && <span className="text-xs text-red-500">{error}</span>}

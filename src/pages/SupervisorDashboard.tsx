@@ -23,7 +23,7 @@ interface SupervisorGroup {
 }
 
 export function SupervisorDashboard() {
-  const { user, supervisor } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [supervisorGroups, setSupervisorGroups] = useState<SupervisorGroup[]>([]);
   const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
@@ -64,85 +64,65 @@ export function SupervisorDashboard() {
 
   if (loading) {
     return (
-      <MainLayout title="Supervisor Dashboard">
+      <MainLayout title="Supervisor dashboard">
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading...</div>
+          <div className="text-slate-500">Loading...</div>
         </div>
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title="Supervisor Dashboard">
-      <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 min-w-0">
-        {/* Hero Section - Full-width blue header */}
-        <div className="relative bg-gradient-to-br from-primary via-slate-900 to-indigo-950 px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
-          <h1 className="text-2xl md:text-3xl font-bold">
-            Welcome, {user?.first_name}
-          </h1>
-          <p className="text-slate-300 mt-1">
-            {supervisorGroups.length} group{supervisorGroups.length !== 1 ? 's' : ''} assigned
+    <MainLayout title="Supervisor dashboard">
+      <div className="max-w-6xl mx-auto space-y-8 min-w-0">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-700">Overview</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900 tracking-tight">
+            Welcome{user?.first_name ? `, ${user.first_name}` : ''}
+          </h2>
+          <p className="text-slate-600 mt-1 text-sm">
+            {supervisorGroups.length} group{supervisorGroups.length !== 1 ? 's' : ''} under your supervision
           </p>
         </div>
 
-        {/* Floating Cards */}
-        <div className="relative -mt-12 sm:-mt-16 px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full">
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <Users className="text-accent" size={24} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-slate-500">Assigned Groups</p>
-                  <p className="text-xl font-bold text-primary mt-0.5">{supervisorGroups.length}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <FileText className="text-accent" size={24} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-slate-500">Pending Reviews</p>
-                  <p className="text-xl font-bold text-primary mt-0.5">{pendingReviewsCount}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <MessageSquare className="text-accent" size={24} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-slate-500">Messages</p>
-                  <p className="text-xl font-bold text-primary mt-0.5">{inboxCount}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'Assigned groups', value: supervisorGroups.length, icon: Users, tint: 'brand' as const },
+            { label: 'Pending reviews', value: pendingReviewsCount, icon: FileText, tint: 'amber' as const },
+            { label: 'Messages', value: inboxCount, icon: MessageSquare, tint: 'sky' as const },
+            { label: 'Reports reviewed', value: reportsReviewedCount, icon: CheckCircle, tint: 'emerald' as const },
+          ].map((stat) => {
+            const Icon = stat.icon;
+            const ring =
+              stat.tint === 'brand'
+                ? 'bg-brand-50 ring-brand-100 text-brand-700'
+                : stat.tint === 'amber'
+                  ? 'bg-amber-50 ring-amber-100 text-amber-800'
+                  : stat.tint === 'sky'
+                    ? 'bg-sky-50 ring-sky-100 text-sky-700'
+                    : 'bg-emerald-50 ring-emerald-100 text-emerald-700';
+            return (
+              <div
+                key={stat.label}
+                className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-900/5"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1 ${ring}`}>
+                    <Icon size={20} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{stat.label}</p>
+                    <p className="text-xl font-bold text-slate-900 mt-0.5 tabular-nums">{stat.value}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <CheckCircle className="text-accent" size={24} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-slate-500">Reports Reviewed</p>
-                  <p className="text-xl font-bold text-primary mt-0.5">{reportsReviewedCount}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
-        {/* Main Content */}
-        <div className="mt-6 px-4 sm:px-6 pb-8 bg-gradient-to-b from-slate-50 to-white min-h-[50vh]">
-          <div className="w-full space-y-6">
-            <Card className="rounded-2xl shadow-sm border-slate-100">
-              <h2 className="text-lg font-semibold text-primary mb-4">My Assigned Groups</h2>
+        <div className="space-y-6">
+          <Card className="rounded-xl border-slate-200/90">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">My assigned groups</h2>
               {supervisorGroups.length > 0 ? (
                 <div className="space-y-4">
                   {supervisorGroups.map((group) => (
@@ -186,7 +166,7 @@ export function SupervisorDashboard() {
                         <div className="flex flex-wrap gap-2">
                           {Array.isArray(group.members) && group.members.slice(0, 4).map((member, index) => (
                             <div key={index} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg">
-                              <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
+                              <div className="w-6 h-6 bg-brand-600 rounded-full flex items-center justify-center">
                                 <span className="text-white text-xs font-medium">
                                   {member.name.split(' ').map(n => n[0]).join('')}
                                 </span>
@@ -207,7 +187,7 @@ export function SupervisorDashboard() {
                   <Users className="mx-auto h-12 w-12 text-slate-300 mb-4" />
                   <h3 className="text-lg font-medium text-slate-900 mb-2">No Groups Assigned</h3>
                   <p className="text-slate-600 mb-4">Groups will be assigned by the administrator.</p>
-                  <div className="bg-slate-100/80 border border-accent/20 rounded-xl p-4 max-w-md mx-auto text-left">
+                  <div className="bg-brand-50/60 border border-brand-100/80 rounded-xl p-4 max-w-md mx-auto text-left">
                     <ul className="text-sm text-slate-700 space-y-1">
                       <li>• Admin forms and assigns groups</li>
                       <li>• You'll see them here automatically</li>
@@ -217,7 +197,6 @@ export function SupervisorDashboard() {
                 </div>
               )}
             </Card>
-          </div>
         </div>
       </div>
     </MainLayout>

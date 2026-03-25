@@ -317,7 +317,7 @@ export function DefenseScheduling() {
                 size="sm"
                 onClick={handleGenerate}
                 disabled={loading || staffRows.length === 0 || venueRows.length === 0}
-                className="bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Generating...' : 'Generate Allocation'}
               </Button>
@@ -351,8 +351,8 @@ export function DefenseScheduling() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-                <Building className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 bg-brand-600/10 rounded-lg flex items-center justify-center">
+                <Building className="w-5 h-5 text-brand-600" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{venueRows.length}</p>
@@ -362,8 +362,8 @@ export function DefenseScheduling() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 bg-brand-600/10 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-brand-600" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{configuredRanges}</p>
@@ -373,8 +373,8 @@ export function DefenseScheduling() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 bg-brand-600/10 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-brand-600" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{allocations?.length ?? 0}</p>
@@ -538,11 +538,11 @@ export function DefenseScheduling() {
                       size="sm"
                       onClick={handlePublishToStudents}
                       disabled={publishing}
-                      className="text-accent hover:text-accent-hover hover:border-accent"
+                      className="text-brand-600 hover:text-brand-700 hover:border-brand-600"
                     >
                       {publishing ? (
                         <span className="flex items-center gap-1.5">
-                          <span className="animate-spin rounded-full h-3 w-3 border-2 border-accent border-t-transparent" />
+                          <span className="animate-spin rounded-full h-3 w-3 border-2 border-brand-600 border-t-transparent" />
                           Publishing...
                         </span>
                       ) : (

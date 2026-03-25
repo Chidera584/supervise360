@@ -99,7 +99,7 @@ export function MyGroups() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm text-slate-500">Assigned groups</p>
-              <p className="text-2xl font-bold text-primary">{groups.length}</p>
+              <p className="text-2xl font-bold text-slate-900">{groups.length}</p>
             </div>
           </div>
         </div>
@@ -108,8 +108,8 @@ export function MyGroups() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-5 border border-slate-200">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                <Users className="text-accent" size={24} />
+              <div className="w-12 h-12 rounded-xl bg-brand-600/10 flex items-center justify-center">
+                <Users className="text-brand-600" size={24} />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Active groups</p>
@@ -205,7 +205,7 @@ export function MyGroups() {
                       key={member.id ?? index}
                       className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50/50"
                     >
-                      <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center shrink-0">
                         <span className="text-white font-medium text-sm">
                           {member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                         </span>

@@ -50,7 +50,7 @@ export function SupervisorProfile() {
         <Card>
           <h2 className="text-lg font-semibold text-primary mb-4">Profile</h2>
           <div className="flex flex-col sm:flex-row gap-6">
-            <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center shrink-0">
+            <div className="w-16 h-16 bg-brand-600 rounded-full flex items-center justify-center shrink-0">
               <span className="text-xl font-semibold text-white">
                 {user?.first_name?.[0]}
                 {user?.last_name?.[0]}
@@ -117,21 +117,21 @@ export function SupervisorProfile() {
                   placeholder="Current password"
                   value={passwordForm.currentPassword}
                   onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
                 <input
                   type="password"
                   placeholder="New password"
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
                 <input
                   type="password"
                   placeholder="Confirm"
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
                 {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
                 <div className="flex gap-2 pt-2">

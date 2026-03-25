@@ -18,8 +18,7 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Red accent stripe */}
-      <div className="h-1 bg-gradient-to-r from-[#c41e3a] via-[#e63950] to-[#c41e3a]" />
+      <div className="h-1 bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700" />
 
       {/* Header */}
       <header className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 sticky top-0 z-50">
@@ -30,7 +29,7 @@ export function LandingPage() {
               className="flex items-center gap-2 sm:gap-2.5 group shrink-0 min-w-0"
             >
               <img src="/logo.png" alt="" className="h-8 sm:h-10 w-auto object-contain rounded-xl shrink-0" />
-              <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent truncate">
+              <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-brand-700 to-brand-900 bg-clip-text text-transparent truncate">
                 SUPERVISE360
               </span>
             </button>
@@ -41,10 +40,10 @@ export function LandingPage() {
                 <button
                   key={item.label}
                   onClick={item.onClick}
-                  className="relative px-3 lg:px-4 py-2 text-slate-600 font-medium text-base lg:text-lg rounded-lg hover:text-accent hover:bg-accent-soft/60 transition-all duration-200 group"
+                  className="relative px-3 lg:px-4 py-2 text-slate-600 font-medium text-base lg:text-lg rounded-lg hover:text-brand-800 hover:bg-brand-50/90 transition-all duration-200 group"
                 >
                   {item.label}
-                  <span className="absolute inset-0 rounded-lg bg-accent/5 scale-0 group-hover:scale-100 transition-transform duration-200 -z-10" />
+                  <span className="absolute inset-0 rounded-lg bg-brand-600/10 scale-0 group-hover:scale-100 transition-transform duration-200 -z-10" />
                 </button>
               ))}
             </nav>
@@ -52,7 +51,7 @@ export function LandingPage() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 -mr-2 text-slate-600 hover:text-accent hover:bg-accent-soft/60 rounded-lg transition-colors"
+              className="md:hidden p-2 -mr-2 text-slate-600 hover:text-brand-800 hover:bg-brand-50/90 rounded-lg transition-colors"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -66,7 +65,7 @@ export function LandingPage() {
                 <button
                   key={item.label}
                   onClick={item.onClick}
-                  className="w-full text-left px-4 py-3 text-slate-600 font-medium rounded-lg hover:text-accent hover:bg-accent-soft/60 transition-colors"
+                  className="w-full text-left px-4 py-3 text-slate-600 font-medium rounded-lg hover:text-brand-800 hover:bg-brand-50/90 transition-colors"
                 >
                   {item.label}
                 </button>
@@ -97,7 +96,7 @@ export function LandingPage() {
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(49, 46, 129, 0.85) 45%, rgba(67, 56, 202, 0.78) 100%)',
+                'linear-gradient(135deg, rgba(15, 118, 110, 0.92) 0%, rgba(17, 94, 89, 0.88) 45%, rgba(15, 23, 42, 0.85) 100%)',
             }}
           />
         </div>
@@ -113,8 +112,8 @@ export function LandingPage() {
         `}</style>
         
         {/* Animated gradient orbs */}
-        <div className="absolute top-1/4 -left-20 w-72 h-72 bg-indigo-400/15 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-violet-400/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
+        <div className="absolute top-1/4 -left-20 w-72 h-72 bg-teal-300/20 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-brand-400/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
 
         {/* Floating shapes */}
         <div className="absolute top-20 left-20 w-20 h-20 border-2 border-white/20 rounded-xl rotate-12 animate-float" />
@@ -123,32 +122,32 @@ export function LandingPage() {
 
         {/* Hero content */}
         <div className="relative z-10 min-h-[min(calc(100vh-120px),600px)] flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-12 text-center">
-          <p className="text-indigo-200/90 font-medium tracking-widest text-xs sm:text-sm uppercase mb-3 sm:mb-4 animate-fade-in opacity-0" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
-            Student Project Management System
+          <p className="text-brand-100 font-medium tracking-widest text-xs sm:text-sm uppercase mb-3 sm:mb-4 animate-fade-in opacity-0" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
+            Academic supervision, simplified
           </p>
           
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 sm:mb-6 leading-[1.15] animate-fade-up opacity-0" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
             Streamline Your
             <br />
-            <span className="bg-gradient-to-r from-white via-indigo-100 to-violet-100 bg-clip-text text-transparent drop-shadow-sm">
-              Academic Journey
+            <span className="bg-gradient-to-r from-white via-teal-100 to-emerald-100 bg-clip-text text-transparent drop-shadow-sm">
+              academic journey
             </span>
           </h1>
           
-          <p className="text-base sm:text-lg md:text-xl text-slate-200/95 max-w-2xl leading-relaxed animate-fade-up opacity-0" style={{ animationDelay: '0.7s', animationFillMode: 'forwards' }}>
+          <p className="text-base sm:text-lg md:text-xl text-teal-50/95 max-w-2xl leading-relaxed animate-fade-up opacity-0" style={{ animationDelay: '0.7s', animationFillMode: 'forwards' }}>
             Connect with supervisors, manage submissions, and track your project progress all in one place.
           </p>
 
           {/* Subtle accent line */}
           <div 
-            className="mt-8 h-1 w-24 rounded-full bg-gradient-to-r from-transparent via-[#c41e3a] to-transparent animate-fade-in opacity-0"
+            className="mt-8 h-1 w-24 rounded-full bg-gradient-to-r from-transparent via-white/70 to-transparent animate-fade-in opacity-0"
             style={{ animationDelay: '1s', animationFillMode: 'forwards' }}
           />
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-r from-primary to-slate-900 py-5 border-t border-white/5">
+      <footer className="bg-gradient-to-r from-brand-900 via-slate-900 to-brand-950 py-5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <p className="text-xs sm:text-sm text-slate-300">© 2026 Supervise360. Student Project Management System.</p>
           <a 

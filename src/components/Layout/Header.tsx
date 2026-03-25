@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Trash2, X, Menu } from 'lucide-react';
+import { Bell, User, Trash2, X, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../lib/api';
@@ -17,8 +17,31 @@ interface Notification {
   created_at?: string;
 }
 
+function formatHeaderDate(): string {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function roleLabel(role: string | undefined): string {
+  switch (role) {
+    case 'admin':
+      return 'Administrator';
+    case 'supervisor':
+    case 'external_supervisor':
+      return 'Supervisor';
+    case 'student':
+      return 'Student';
+    default:
+      return 'Member';
+  }
+}
+
 export function Header({ title, onToggleSidebar }: HeaderProps) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -133,113 +156,124 @@ export function Header({ title, onToggleSidebar }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 shrink-0 bg-white/90 backdrop-blur-md text-slate-900 px-4 sm:px-6 py-3 flex items-center justify-between border-b border-slate-200/80 shadow-sm shadow-slate-900/5">
-      <div className="flex items-center gap-3 min-w-0">
-        {onToggleSidebar && (
-          <button
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/30 text-slate-600"
-            aria-label="Open navigation menu"
-          >
-            <Menu size={20} />
-          </button>
-        )}
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-primary truncate">{title}</h1>
-      </div>
+    <header className="sticky top-0 z-40 shrink-0 border-b border-slate-200/90 bg-white/90 px-4 py-3.5 shadow-sm shadow-slate-900/[0.04] backdrop-blur-md sm:px-6">
+      <div className="flex items-center justify-between gap-4 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={22} />
+            </button>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold text-slate-900 truncate tracking-tight">{title}</h1>
+            <p className="text-xs text-slate-500 truncate hidden sm:block">{formatHeaderDate()}</p>
+          </div>
+        </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="relative p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-            title="Notifications"
-          >
-            <Bell size={20} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-accent text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="relative p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+              title="Notifications"
+            >
+              <Bell size={20} strokeWidth={1.75} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
 
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] max-h-96 bg-white rounded-xl shadow-xl shadow-slate-900/10 border border-slate-200/80 overflow-hidden z-50">
-              <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 gap-2">
-                <h3 className="font-semibold text-primary text-sm">Notifications</h3>
-                <div className="flex items-center gap-2">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllRead}
-                      disabled={loading}
-                      className="text-xs text-accent hover:text-accent-hover font-medium disabled:opacity-50"
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                  {notifications.length > 0 && (
-                    <button
-                      onClick={handleClearAll}
-                      disabled={loading}
-                      className="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50 flex items-center gap-1"
-                      title="Clear all notifications"
-                    >
-                      <Trash2 size={12} />
-                      Clear all
-                    </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] max-h-96 rounded-xl border border-slate-200/90 bg-white shadow-lg shadow-slate-900/10 overflow-hidden z-50">
+                <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 gap-2">
+                  <h3 className="font-semibold text-slate-800 text-sm">Notifications</h3>
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        disabled={loading}
+                        className="text-xs text-brand-700 hover:text-brand-800 font-medium disabled:opacity-50"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        disabled={loading}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50 flex items-center gap-1"
+                        title="Clear all notifications"
+                      >
+                        <Trash2 size={12} />
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-slate-500 text-sm">No notifications yet.</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => !n.read_status && handleMarkRead(n.id)}
+                        className={`px-4 py-3 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50/80 transition-colors group flex items-start gap-2 ${
+                          !n.read_status ? 'bg-brand-50/40' : ''
+                        }`}
+                      >
+                        <div className="flex gap-2 flex-1 min-w-0">
+                          {!n.read_status && (
+                            <span className="w-2 h-2 rounded-full bg-brand-600 mt-1.5 shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-900 text-sm truncate">{n.title}</p>
+                            <p className="text-slate-600 text-xs mt-0.5 line-clamp-2">{n.message}</p>
+                            <p className="text-slate-400 text-xs mt-1">{formatDate(n.created_at)}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleClearOne(e, n.id)}
+                          disabled={loading}
+                          className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-red-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                          title="Clear notification"
+                          aria-label="Clear notification"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
-              <div className="max-h-72 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="p-6 text-center text-slate-500 text-sm">No notifications yet.</div>
-                ) : (
-                  notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      onClick={() => !n.read_status && handleMarkRead(n.id)}
-                      className={`px-4 py-3 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors group flex items-start gap-2 ${
-                        !n.read_status ? 'bg-accent-soft/40' : ''
-                      }`}
-                    >
-                      <div className="flex gap-2 flex-1 min-w-0">
-                        {!n.read_status && <span className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0" />}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-900 text-sm truncate">{n.title}</p>
-                          <p className="text-slate-600 text-xs mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-slate-400 text-xs mt-1">{formatDate(n.created_at)}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => handleClearOne(e, n.id)}
-                        disabled={loading}
-                        className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-red-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                        title="Clear notification"
-                        aria-label="Clear notification"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 pl-1 border-l border-slate-200 ml-1">
-          <div className="w-9 h-9 bg-gradient-to-br from-accent to-indigo-700 rounded-full flex items-center justify-center text-white shadow-sm">
-            <User size={18} />
+            )}
           </div>
-          <span className="text-sm hidden sm:inline font-medium text-slate-700 truncate max-w-[120px]">
-            {user?.first_name} {user?.last_name}
-          </span>
-          <button
-            onClick={signOut}
-            className="p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-colors"
-            title="Sign Out"
+
+          <div className="hidden sm:flex flex-col items-end min-w-0 max-w-[160px]">
+            <span className="text-sm font-medium text-slate-900 truncate w-full text-right">
+              {user?.first_name} {user?.last_name}
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-700/90 truncate w-full text-right">
+              {roleLabel(user?.role)}
+            </span>
+          </div>
+          <div
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 ring-2 ring-white shadow flex items-center justify-center text-brand-800"
+            title={`${user?.first_name ?? ''} ${user?.last_name ?? ''}`}
           >
-            <LogOut size={18} />
-          </button>
+            <User size={18} strokeWidth={1.75} />
+          </div>
         </div>
       </div>
     </header>

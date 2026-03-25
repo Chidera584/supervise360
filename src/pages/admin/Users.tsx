@@ -87,10 +87,15 @@ export function Users() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'student': return 'text-blue-600 bg-blue-100';
-      case 'supervisor': return 'text-green-600 bg-green-100';
-      case 'admin': return 'text-purple-600 bg-purple-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'student':
+        return 'text-sky-800 bg-sky-100';
+      case 'supervisor':
+      case 'external_supervisor':
+        return 'text-brand-800 bg-brand-100';
+      case 'admin':
+        return 'text-violet-800 bg-violet-100';
+      default:
+        return 'text-slate-700 bg-slate-100';
     }
   };
 
@@ -160,7 +165,7 @@ export function Users() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-primary">User Management</h2>
+              <h2 className="text-2xl font-bold text-slate-900">User Management</h2>
               <p className="text-gray-600 mt-1">Manage students, supervisors, and administrators</p>
             </div>
             <Button>
@@ -289,7 +294,7 @@ export function Users() {
         {editUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-primary mb-4">Edit User</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Edit User</h3>
               <form onSubmit={handleEdit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
@@ -366,7 +371,7 @@ export function Users() {
         {deleteConfirm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-primary mb-2">Deactivate User</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Deactivate User</h3>
               <p className="text-gray-600 mb-4">
                 Deactivate {deleteConfirm.first_name} {deleteConfirm.last_name}? They will no longer be able to log in.
               </p>

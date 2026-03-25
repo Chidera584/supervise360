@@ -37,7 +37,7 @@ export function DefenseEvaluation() {
     <MainLayout title="Defense & Evaluation">
       <div className="space-y-6">
         <Card>
-          <h2 className="text-lg font-semibold text-primary mb-4">Defense Schedule</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Defense Schedule</h2>
           {hasDefensePanel ? (
             <div className="space-y-2 text-sm text-gray-700">
               {defense.defense_date && (
@@ -81,14 +81,14 @@ export function DefenseEvaluation() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-primary mb-4">Supervisor Evaluation (out of 60)</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Supervisor Evaluation (out of 60)</h2>
           {evaluations.length > 0 ? (
             <div className="space-y-4">
               {evaluations.map((evalItem: any) => (
                 <div key={evalItem.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
                   <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
                     <div>
-                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-accent/15 text-accent capitalize">
+                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-brand-600/15 text-brand-600 capitalize">
                         {evalItem.evaluation_type || 'Evaluation'}
                       </span>
                       {evalItem.evaluated_at && (
@@ -98,7 +98,7 @@ export function DefenseEvaluation() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-primary">
+                      <p className="text-2xl font-bold text-slate-900">
                         {evalItem.total_score != null ? `${evalItem.total_score} / 60` : '—'}
                       </p>
                       <p className="text-sm text-slate-600">Total score</p>

@@ -176,13 +176,15 @@ export function Messages() {
     <MainLayout title="Messages">
       <div className="space-y-6">
         {navState?.groupName && (
-          <Card className="bg-blue-50 border-blue-200">
-            <p className="text-sm text-blue-800">Messaging from: <strong>{navState.groupName}</strong></p>
+          <Card className="bg-brand-50/80 border-brand-200/80">
+            <p className="text-sm text-brand-900">
+              Messaging from: <strong>{navState.groupName}</strong>
+            </p>
           </Card>
         )}
 
-        <Card>
-          <h2 className="text-xl font-semibold text-primary mb-4 flex items-center gap-2">
+        <Card className="border-slate-200/90">
+          <h2 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <Send size={22} /> Compose Message
           </h2>
           {message && (
@@ -191,16 +193,16 @@ export function Messages() {
             </div>
           )}
           {replyTo && (
-            <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-brand-50/80 border border-brand-200/80 text-sm text-brand-900 flex items-center justify-between gap-2">
               <span>Replying to message — {replyTo.sender_group_name ? `will be sent to entire ${replyTo.sender_group_name}` : 'will be sent to group'}</span>
-              <button type="button" onClick={() => setReplyTo(null)} className="text-blue-600 hover:underline font-medium">Cancel reply</button>
+              <button type="button" onClick={() => setReplyTo(null)} className="text-brand-700 hover:underline font-medium shrink-0">Cancel reply</button>
             </div>
           )}
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">To</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500"
                 value={recipientId}
                 onChange={(e) => { setReplyTo(null); setRecipientId(e.target.value); }}
                 disabled={!!replyTo}
@@ -217,18 +219,18 @@ export function Messages() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
               <input
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500"
                 placeholder="Subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Message</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500"
                 rows={4}
                 placeholder="Write your message..."
                 value={content}
@@ -241,7 +243,7 @@ export function Messages() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="border-slate-200/90">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Button
@@ -307,12 +309,12 @@ export function Messages() {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`border rounded-lg overflow-hidden ${
-                    activeTab === 'inbox' && !msg.read_status ? 'border-accent bg-accent-soft/40' : 'border-gray-200'
+                  className={`border rounded-xl overflow-hidden shadow-sm shadow-slate-900/5 ${
+                    activeTab === 'inbox' && !msg.read_status ? 'border-brand-400 bg-brand-50/20' : 'border-slate-200/90'
                   }`}
                 >
                   <div
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/80"
                     onClick={() => markAsRead(msg)}
                   >
                     <div className="flex-1 min-w-0">
@@ -328,7 +330,7 @@ export function Messages() {
                     )}
                   </div>
                   {expandedId === msg.id && (
-                    <div className="border-t border-gray-200 p-4 bg-gray-50">
+                    <div className="border-t border-slate-200/90 p-4 bg-slate-50/80">
                       <p className="text-sm text-gray-900 whitespace-pre-wrap mb-3">{msg.content}</p>
                       {activeTab === 'inbox' && (
                         <Button

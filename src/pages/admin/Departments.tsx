@@ -96,45 +96,45 @@ export function Departments() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <Users className="text-accent" size={20} />
+              <div className="w-10 h-10 rounded-lg bg-brand-600/10 flex items-center justify-center">
+                <Users className="text-brand-600" size={20} />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total Students</p>
-                <p className="text-xl font-bold text-primary">{loading ? '—' : totalStudents}</p>
+                <p className="text-xl font-bold text-slate-900">{loading ? '—' : totalStudents}</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <UserCheck className="text-accent" size={20} />
+              <div className="w-10 h-10 rounded-lg bg-brand-600/10 flex items-center justify-center">
+                <UserCheck className="text-brand-600" size={20} />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total Supervisors</p>
-                <p className="text-xl font-bold text-primary">{loading ? '—' : totalSupervisors}</p>
+                <p className="text-xl font-bold text-slate-900">{loading ? '—' : totalSupervisors}</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <FileText className="text-accent" size={20} />
+              <div className="w-10 h-10 rounded-lg bg-brand-600/10 flex items-center justify-center">
+                <FileText className="text-brand-600" size={20} />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total Groups</p>
-                <p className="text-xl font-bold text-primary">{loading ? '—' : totalGroups}</p>
+                <p className="text-xl font-bold text-slate-900">{loading ? '—' : totalGroups}</p>
               </div>
             </div>
           </Card>
           <Card className={`p-4 ${totalUnassigned > 0 ? 'border-amber-200 bg-amber-50/50' : ''}`}>
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${totalUnassigned > 0 ? 'bg-amber-100' : 'bg-accent/10'}`}>
-                <Users className={totalUnassigned > 0 ? 'text-amber-600' : 'text-accent'} size={20} />
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${totalUnassigned > 0 ? 'bg-amber-100' : 'bg-brand-600/10'}`}>
+                <Users className={totalUnassigned > 0 ? 'text-amber-600' : 'text-brand-600'} size={20} />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Without Supervisor</p>
-                <p className={`text-xl font-bold ${totalUnassigned > 0 ? 'text-amber-700' : 'text-primary'}`}>
+                <p className={`text-xl font-bold ${totalUnassigned > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
                   {loading ? '—' : totalUnassigned}
                 </p>
               </div>
@@ -151,21 +151,21 @@ export function Departments() {
 
         {/* Add Department */}
         <Card className="p-5">
-          <h2 className="text-lg font-semibold text-primary mb-4">Add Department</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Add Department</h2>
           <form onSubmit={handleAddDepartment} className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               placeholder="Department name (e.g. Mechanical Engineering)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             <input
               type="text"
               placeholder="Code (optional, auto-generated)"
               value={newCode}
               onChange={(e) => setNewCode(e.target.value)}
-              className="w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+              className="w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             <Button type="submit" disabled={adding || !newName.trim()}>
               {adding ? 'Adding...' : <><Plus size={18} className="inline mr-1" /> Add</>}
@@ -176,7 +176,7 @@ export function Departments() {
 
         {/* Department cards */}
         <div>
-          <h2 className="text-lg font-semibold text-primary mb-4">Departments</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Departments</h2>
           {loading ? (
             <div className="text-slate-500">Loading...</div>
           ) : stats.length === 0 ? (
@@ -187,11 +187,11 @@ export function Departments() {
                 <Card key={dept.id} className="p-5 hover:shadow-md transition-shadow relative">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                        <Building2 className="text-accent" size={24} />
+                      <div className="w-12 h-12 rounded-xl bg-brand-600/10 flex items-center justify-center shrink-0">
+                        <Building2 className="text-brand-600" size={24} />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-semibold text-primary truncate">{dept.name}</h3>
+                        <h3 className="font-semibold text-slate-900 truncate">{dept.name}</h3>
                         <p className="text-xs text-slate-500">{dept.studentCount} students · {dept.supervisorCount} supervisors</p>
                         {dept.unassignedCount > 0 && (
                           <p className="text-xs text-amber-600 font-medium mt-0.5">{dept.unassignedCount} need supervisor</p>

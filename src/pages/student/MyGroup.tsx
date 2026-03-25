@@ -59,7 +59,7 @@ export function MyGroup() {
     return (
       <MainLayout title="My Group">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
-          <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+          <RefreshCw className="w-8 h-8 text-brand-800 animate-spin" />
           <p className="text-gray-500">Loading group information...</p>
         </div>
       </MainLayout>
@@ -114,7 +114,7 @@ export function MyGroup() {
         <Card>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-primary">{groupData.name}</h2>
+              <h2 className="text-2xl font-bold text-brand-800">{groupData.name}</h2>
               <p className="text-gray-600">
                 {groupData.department && `Department: ${groupData.department}`}
               </p>
@@ -129,9 +129,9 @@ export function MyGroup() {
         {/* Supervisor Information */}
         {groupData.supervisor && (
           <Card>
-            <h3 className="text-lg font-semibold text-primary mb-4">Supervisor</h3>
+            <h3 className="text-lg font-semibold text-brand-800 mb-4">Supervisor</h3>
             <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center">
                 <UserCheck className="text-white" size={24} />
               </div>
               <div className="flex-1">
@@ -148,7 +148,7 @@ export function MyGroup() {
 
         {/* Group Members - Identified by Matric Number */}
         <Card>
-          <h3 className="text-lg font-semibold text-primary mb-4">Group Members</h3>
+          <h3 className="text-lg font-semibold text-brand-800 mb-4">Group Members</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {groupData.members.map((member, index) => {
               const isCurrentUser = member.matricNumber === student?.matric_number;
@@ -160,7 +160,7 @@ export function MyGroup() {
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-brand-600 rounded-full flex items-center justify-center">
                       <span className="text-white font-semibold text-sm">
                         {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </span>
