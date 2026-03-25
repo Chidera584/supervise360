@@ -1,11 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { apiClient } from '../../lib/api';
 import { useDepartment } from '../../contexts/DepartmentContext';
-import { useSearchParams } from 'react-router-dom';
-import { Users as UsersIcon, UserPlus, Search, Edit, Trash2, Mail, Phone, MoreVertical } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { Users as UsersIcon, UserPlus, Edit, Trash2, Mail, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const TEAL = '#006D6D';
+const PAGE_SIZE = 10;
+
+function csvEscape(cell: string) {
+  const s = String(cell ?? '');
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function isUserActive(u: any) {
+  return u.is_active !== false;
+}
+
+function roleLabel(role: string) {
+  if (role === 'external_supervisor') return 'Supervisor';
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
 
 export function Users() {
   const [searchParams] = useSearchParams();
@@ -16,8 +34,10 @@ export function Users() {
   const [studentDetails, setStudentDetails] = useState<Record<string, any>>({});
   const [supervisorDetails, setSupervisorDetails] = useState<Record<string, any>>({});
   const [filter, setFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [departmentFilter, setDepartmentFilter] = useState(deptFromUrl);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [headerSearch, setHeaderSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editUser, setEditUser] = useState<any | null>(null);
@@ -32,7 +52,7 @@ export function Users() {
         apiClient.getUsers(),
         apiClient.getStudents(),
         apiClient.getSupervisors(),
-        apiClient.getDepartments().catch(() => ({ success: false, data: [] }))
+        apiClient.getDepartments().catch(() => ({ success: false, data: [] })),
       ]);
 
       if (usersRes.success && usersRes.data) {
@@ -74,28 +94,83 @@ export function Users() {
     setDepartmentFilter(deptFromUrl);
   }, [deptFromUrl]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [filter, statusFilter, departmentFilter, headerSearch]);
+
   const scopeFiltered = filterByDepartment(users);
+
   const filteredUsers = scopeFiltered.filter((user) => {
     const name = `${user.first_name} ${user.last_name}`.trim();
-    const matchesFilter = filter === 'all' || user.role === filter ||
+    const matchesFilter =
+      filter === 'all' ||
+      user.role === filter ||
       (filter === 'supervisor' && user.role === 'external_supervisor');
     const matchesDept = !departmentFilter || (user.department || '') === departmentFilter;
-    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesDept && matchesSearch;
+    const matchesSearch =
+      name.toLowerCase().includes(headerSearch.toLowerCase()) ||
+      user.email.toLowerCase().includes(headerSearch.toLowerCase());
+    const active = isUserActive(user);
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && active) ||
+      (statusFilter === 'inactive' && !active);
+    return matchesFilter && matchesDept && matchesSearch && matchesStatus;
   });
 
-  const getRoleColor = (role: string) => {
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const pageRows = filteredUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const deptBalance = useMemo(() => {
+    const counts: Record<string, number> = {};
+    scopeFiltered.forEach((u) => {
+      const d = u.department || '—';
+      counts[d] = (counts[d] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4);
+  }, [scopeFiltered]);
+
+  const maxDept = Math.max(...deptBalance.map(([, c]) => c), 1);
+
+  const inactiveInScope = scopeFiltered.filter((u) => !isUserActive(u)).length;
+
+  const exportCsv = () => {
+    const headers = ['first_name', 'last_name', 'email', 'role', 'department', 'active'];
+    const lines = [
+      headers.join(','),
+      ...filteredUsers.map((u) =>
+        [
+          csvEscape(u.first_name || ''),
+          csvEscape(u.last_name || ''),
+          csvEscape(u.email || ''),
+          csvEscape(u.role || ''),
+          csvEscape(u.department || ''),
+          isUserActive(u) ? 'yes' : 'no',
+        ].join(',')
+      ),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supervise360-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getRoleBadge = (role: string) => {
     switch (role) {
       case 'student':
-        return 'text-sky-800 bg-sky-100';
+        return 'text-sky-800 bg-sky-100 border-sky-200/80';
       case 'supervisor':
       case 'external_supervisor':
-        return 'text-brand-800 bg-brand-100';
+        return 'text-amber-900 bg-amber-100 border-amber-200/80';
       case 'admin':
-        return 'text-violet-800 bg-violet-100';
+        return 'text-violet-800 bg-violet-100 border-violet-200/80';
       default:
-        return 'text-slate-700 bg-slate-100';
+        return 'text-slate-700 bg-slate-100 border-slate-200';
     }
   };
 
@@ -143,248 +218,430 @@ export function Users() {
     }
   };
 
+  const filterPill = (key: string, label: string) => {
+    const active = filter === key;
+    return (
+      <button
+        type="button"
+        onClick={() => setFilter(key)}
+        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+          active
+            ? 'text-white border-transparent shadow-sm'
+            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+        }`}
+        style={active ? { backgroundColor: TEAL } : undefined}
+      >
+        {label}
+      </button>
+    );
+  };
+
   if (loading) {
     return (
-      <MainLayout title="Users">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading users...</div>
-        </div>
+      <MainLayout
+        title="Users"
+        topBarSearch={{
+          placeholder: 'Search academic records…',
+          value: headerSearch,
+          onChange: setHeaderSearch,
+        }}
+      >
+        <div className="flex items-center justify-center h-64 text-slate-500">Loading users…</div>
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title="Users">
-      <div className="space-y-6">
+    <MainLayout
+      title="Users"
+      topBarSearch={{
+        placeholder: 'Search academic records…',
+        value: headerSearch,
+        onChange: setHeaderSearch,
+      }}
+    >
+      <div className="max-w-6xl mx-auto space-y-6 min-w-0">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 font-medium">Dismiss</button>
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center justify-between gap-3">
+            <span className="text-sm">{error}</span>
+            <button type="button" onClick={() => setError(null)} className="text-sm font-semibold shrink-0">
+              Dismiss
+            </button>
           </div>
         )}
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">User Management</h2>
-              <p className="text-gray-600 mt-1">Manage students, supervisors, and administrators</p>
-            </div>
-            <Button>
-              <UserPlus className="mr-2" size={16} />
-              Add New User
+
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">User directory</h1>
+            <p className="text-[#4A4A4A] mt-2 text-sm sm:text-base max-w-xl">
+              Audit accounts, departments, and access roles across your administrative scope.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={exportCsv}
+              disabled={filteredUsers.length === 0}
+              className="!rounded-[10px] border-slate-200"
+            >
+              <Download className="w-4 h-4" strokeWidth={1.75} />
+              Export CSV
+            </Button>
+            <Button
+              type="button"
+              title="Account provisioning may require your identity system"
+              className="!rounded-[10px] !bg-[#006D6D] hover:!bg-[#005a5a] !text-white border-0"
+            >
+              <UserPlus className="w-4 h-4" strokeWidth={1.75} />
+              Add new user
             </Button>
           </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Users</option>
-              <option value="student">Students</option>
-              <option value="supervisor">Supervisors</option>
-              <option value="admin">Admins</option>
-            </select>
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Departments</option>
-              {departments.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
-        </Card>
-
-        <div className="space-y-4">
-          {filteredUsers.length === 0 && (
-            <Card>
-              <div className="text-center py-12 text-gray-500">
-                <UsersIcon size={48} className="mx-auto mb-4 opacity-50" />
-                <p className="font-medium">No users found</p>
-                <p className="text-sm mt-1">
-                  {searchTerm || filter !== 'all' ? 'Try adjusting your search or filter.' : 'Users will appear here once they register.'}
-                </p>
-              </div>
-            </Card>
-          )}
-          {filteredUsers.map((user) => {
-            const name = `${user.first_name} ${user.last_name}`.trim();
-            const student = studentDetails[user.email];
-            const supervisor = supervisorDetails[user.email];
-            return (
-              <Card key={user.id}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{name}</h3>
-                    <p className="text-sm text-gray-600">{user.email}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-xs px-2 py-1 rounded-full ${getRoleColor(user.role)}`}>
-                        {user.role}
-                      </span>
-                      <span className="text-xs text-gray-500">{user.department || '—'}</span>
-                    </div>
-                  </div>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <MoreVertical size={16} />
-                  </button>
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Mail size={14} />
-                    <span>{user.email}</span>
-                  </div>
-                  {student?.matric_number && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <UsersIcon size={14} />
-                      <span>Matric: {student.matric_number}</span>
-                    </div>
-                  )}
-                  {student?.gpa && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <UsersIcon size={14} />
-                      <span>GPA: {student.gpa}</span>
-                    </div>
-                  )}
-                  {supervisor?.current_load != null && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <UsersIcon size={14} />
-                      <span>Groups: {supervisor.current_load}</span>
-                    </div>
-                  )}
-                  {supervisor?.phone && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Phone size={14} />
-                      <span>{supervisor.phone}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditUser({ ...user, ...supervisorDetails[user.email] })}>
-                    <Edit size={14} className="mr-1" />
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-red-600 hover:border-red-300" onClick={() => setDeleteConfirm(user)}>
-                    <Trash2 size={14} className="mr-1" />
-                    Deactivate
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
         </div>
 
-        {/* Edit User Modal */}
-        {editUser && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Edit User</h3>
-              <form onSubmit={handleEdit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input
-                    type="text"
-                    value={editUser.first_name || ''}
-                    onChange={(e) => setEditUser({ ...editUser, first_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={editUser.last_name || ''}
-                    onChange={(e) => setEditUser({ ...editUser, last_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <select
-                    value={editUser.department || ''}
-                    onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select department</option>
-                    {departments.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-                {(editUser.role === 'supervisor' || editUser.role === 'external_supervisor') && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                      <input
-                        type="text"
-                        value={editUser.phone || ''}
-                        onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Office Location</label>
-                      <input
-                        type="text"
-                        value={editUser.office_location || ''}
-                        onChange={(e) => setEditUser({ ...editUser, office_location: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
-                      <input
-                        type="text"
-                        value={editUser.specialization || ''}
-                        onChange={(e) => setEditUser({ ...editUser, specialization: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </>
-                )}
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
-                  <Button type="button" variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
-                </div>
-              </form>
+        {/* Filters */}
+        <Card className="!p-4 sm:!p-5 !rounded-xl !shadow-sm border border-slate-200/90">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Filter by role</p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {filterPill('all', 'All users')}
+            {filterPill('student', 'Students')}
+            {filterPill('supervisor', 'Supervisors')}
+            {filterPill('admin', 'Admins')}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 min-w-0">
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Department</label>
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-[10px] border border-slate-200 bg-[#F8F9FA] text-sm focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+              >
+                <option value="">All departments</option>
+                {departments.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Account status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                className="w-full px-3 py-2.5 rounded-[10px] border border-slate-200 bg-[#F8F9FA] text-sm focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+              >
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Deactivated</option>
+              </select>
             </div>
           </div>
-        )}
+        </Card>
 
-        {/* Delete/Deactivate Confirmation */}
-        {deleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">Deactivate User</h3>
-              <p className="text-gray-600 mb-4">
-                Deactivate {deleteConfirm.first_name} {deleteConfirm.last_name}? They will no longer be able to log in.
+        {/* Summary */}
+        <div className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50 to-white p-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-800/80">Total managed</p>
+            <p className="text-3xl font-bold text-[#1a1a1a] tabular-nums mt-1">{filteredUsers.length.toLocaleString()}</p>
+            <p className="text-sm text-slate-600 mt-1">Matches current filters · {scopeFiltered.length.toLocaleString()} in scope</p>
+          </div>
+          <div className="h-10 w-24 rounded-lg bg-sky-100/80 border border-sky-200/60 flex items-end gap-0.5 px-2 pb-1">
+            {[40, 65, 45, 80, 55].map((h, i) => (
+              <div key={i} className="flex-1 rounded-t bg-sky-400/70" style={{ height: `${h}%` }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-[#F8F9FA] text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3 font-semibold">User</th>
+                  <th className="px-4 py-3 font-semibold hidden md:table-cell">Role</th>
+                  <th className="px-4 py-3 font-semibold hidden lg:table-cell">Department</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pageRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-16 text-center text-slate-500">
+                      <UsersIcon size={40} className="mx-auto mb-3 opacity-40" strokeWidth={1.25} />
+                      <p className="font-medium text-slate-700">No users found</p>
+                      <p className="text-sm mt-1">
+                        {headerSearch || filter !== 'all' || statusFilter !== 'all'
+                          ? 'Try adjusting search or filters.'
+                          : 'Users appear here once they are registered.'}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  pageRows.map((user) => {
+                    const name = `${user.first_name} ${user.last_name}`.trim();
+                    const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || '?';
+                    const active = isUserActive(user);
+                    const student = studentDetails[user.email];
+                    const supervisor = supervisorDetails[user.email];
+                    return (
+                      <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                              style={{ backgroundColor: TEAL }}
+                            >
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-[#1a1a1a] truncate">{name || user.email}</p>
+                              <p className="text-xs text-slate-500 truncate flex items-center gap-1 mt-0.5">
+                                <Mail className="w-3 h-3 shrink-0 opacity-60" />
+                                {user.email}
+                              </p>
+                              {student?.matric_number && (
+                                <p className="text-xs text-slate-400 mt-0.5">Matric {student.matric_number}</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <span
+                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getRoleBadge(
+                              user.role
+                            )}`}
+                          >
+                            {roleLabel(user.role)}
+                          </span>
+                          {supervisor?.current_load != null && (
+                            <p className="text-xs text-slate-500 mt-1">Load {supervisor.current_load}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 hidden lg:table-cell text-slate-700">
+                          {user.department || '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-emerald-500' : 'bg-red-500'}`}
+                            />
+                            <span className="text-slate-700 font-medium">{active ? 'Active' : 'Deactivated'}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex flex-wrap justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditUser({ ...user, ...supervisorDetails[user.email] })}
+                              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-[#006D6D]"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" strokeWidth={1.75} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirm(user)}
+                              className="p-2 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
+                              title="Deactivate"
+                              disabled={!active}
+                            >
+                              <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          {filteredUsers.length > PAGE_SIZE && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-[#F8F9FA]/50">
+              <p className="text-xs text-slate-500 tabular-nums">
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredUsers.length)} of{' '}
+                {filteredUsers.length} users
               </p>
-              <div className="flex gap-2">
-                <Button variant="danger" onClick={handleDeactivate} disabled={saving}>
-                  {saving ? 'Deactivating...' : 'Deactivate'}
-                </Button>
-                <Button variant="outline" onClick={() => setDeleteConfirm(null)} disabled={saving}>Cancel</Button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-slate-600 tabular-nums px-2">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Bottom widgets */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card className="!p-5 !rounded-xl border border-slate-200/90 !shadow-sm">
+            <h3 className="font-semibold text-[#1a1a1a] mb-3">Department balance</h3>
+            <ul className="space-y-3">
+              {deptBalance.length === 0 ? (
+                <li className="text-sm text-slate-500">No data</li>
+              ) : (
+                deptBalance.map(([dept, count]) => (
+                  <li key={dept}>
+                    <div className="flex justify-between text-xs mb-1 gap-2">
+                      <span className="text-slate-700 truncate">{dept}</span>
+                      <span className="tabular-nums text-slate-500">{count}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${Math.round((count / maxDept) * 100)}%`, backgroundColor: TEAL }}
+                      />
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
+          </Card>
+          <Card className="!p-5 !rounded-xl border border-slate-200/90 !shadow-sm">
+            <h3 className="font-semibold text-[#1a1a1a] mb-1">Directory health</h3>
+            <p className="text-3xl font-bold text-[#1a1a1a] tabular-nums mt-2">{inactiveInScope}</p>
+            <p className="text-sm text-slate-600 mt-1">Deactivated accounts in your scope</p>
+            <p className="text-xs text-slate-400 mt-3">Use status filters to audit inactive profiles.</p>
+          </Card>
+          <div className="rounded-xl border border-amber-200/90 bg-amber-50/95 p-5 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="font-semibold text-amber-950">Attention required</h3>
+              <p className="text-sm text-amber-900/90 mt-2 leading-relaxed">
+                Supervisors and cohorts can fall out of balance when enrollments shift. Review assignment queues often.
+              </p>
+            </div>
+            <Link
+              to="/supervisor-assignment"
+              className="mt-4 inline-flex justify-center px-4 py-2.5 rounded-[10px] text-sm font-semibold bg-amber-800 text-white hover:bg-amber-900 transition-colors"
+            >
+              Review assignments
+            </Link>
           </div>
-        )}
+        </div>
       </div>
+
+      {editUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">Edit user</h3>
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">First name</label>
+                <input
+                  type="text"
+                  value={editUser.first_name || ''}
+                  onChange={(e) => setEditUser({ ...editUser, first_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Last name</label>
+                <input
+                  type="text"
+                  value={editUser.last_name || ''}
+                  onChange={(e) => setEditUser({ ...editUser, last_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                <select
+                  value={editUser.department || ''}
+                  onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+                >
+                  <option value="">Select department</option>
+                  {departments.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {(editUser.role === 'supervisor' || editUser.role === 'external_supervisor') && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                    <input
+                      type="text"
+                      value={editUser.phone || ''}
+                      onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Office location</label>
+                    <input
+                      type="text"
+                      value={editUser.office_location || ''}
+                      onChange={(e) => setEditUser({ ...editUser, office_location: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Specialization</label>
+                    <input
+                      type="text"
+                      value={editUser.specialization || ''}
+                      onChange={(e) => setEditUser({ ...editUser, specialization: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
+                    />
+                  </div>
+                </>
+              )}
+              <div className="flex gap-2 pt-4">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="!rounded-[10px] !bg-[#006D6D] hover:!bg-[#005a5a] !text-white"
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setEditUser(null)} className="!rounded-[10px]">
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Deactivate user</h3>
+            <p className="text-slate-600 text-sm mb-4">
+              Deactivate {deleteConfirm.first_name} {deleteConfirm.last_name}? They will no longer be able to log in.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="danger" onClick={handleDeactivate} disabled={saving} className="!rounded-[10px]">
+                {saving ? 'Deactivating…' : 'Deactivate'}
+              </Button>
+              <Button variant="outline" onClick={() => setDeleteConfirm(null)} disabled={saving} className="!rounded-[10px]">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }
