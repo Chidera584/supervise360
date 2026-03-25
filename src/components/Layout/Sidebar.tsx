@@ -14,6 +14,11 @@ interface MenuItem {
   path: string;
 }
 
+const navItemBase =
+  'w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors cursor-pointer text-slate-300 hover:bg-white/5 hover:text-white';
+const navItemActive =
+  'bg-white/[0.08] text-white border-l-[3px] border-accent shadow-sm shadow-black/10';
+
 export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
@@ -24,7 +29,9 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
     setMobileOpen(false);
   }, [location.pathname]);
   useEffect(() => {
-    const handler = () => { if (window.innerWidth >= 1024) setMobileOpen(false); };
+    const handler = () => {
+      if (window.innerWidth >= 1024) setMobileOpen(false);
+    };
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
@@ -77,28 +84,35 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
   const navContent = (
     <>
-      <div className="p-6 border-b border-gray-600 flex items-center gap-3">
-        <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl" />
-        <h1 className="text-xl font-bold">Supervise360</h1>
+      <div className="p-6 border-b border-white/10 flex items-center gap-3">
+        <img src="/logo.png" alt="Supervise360" className="h-9 w-9 object-contain rounded-xl ring-1 ring-white/10" />
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-white tracking-tight truncate">Supervise360</h1>
+          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">Academic Suite</p>
+        </div>
       </div>
-      <nav className="flex-1 p-4 overflow-y-auto">
+      <nav className="flex-1 p-3 overflow-y-auto">
         {menuItems.map((item, idx) => (
           <div
             key={idx}
-            onClick={() => { navigate(item.path); setMobileOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors hover:bg-gray-700 cursor-pointer ${
-              location.pathname === item.path ? 'bg-gray-700 border-l-4 border-[#1F7A8C]' : ''
-            }`}
+            onClick={() => {
+              navigate(item.path);
+              setMobileOpen(false);
+            }}
+            className={`${navItemBase} ${location.pathname === item.path ? navItemActive : 'border-l-[3px] border-transparent'}`}
           >
             {item.icon}
-            <span>{item.label}</span>
+            <span className="text-sm font-medium">{item.label}</span>
           </div>
         ))}
       </nav>
-      <div className="p-4 border-t border-gray-600">
+      <div className="p-3 border-t border-white/10">
         <button
-          onClick={() => { signOut(); setMobileOpen(false); }}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-red-300"
+          onClick={() => {
+            signOut();
+            setMobileOpen(false);
+          }}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-500/10 transition-colors text-red-300/90 text-sm font-medium"
         >
           <LogOut size={20} />
           <span>Logout</span>
@@ -109,53 +123,58 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile overlay - blocks scroll when open */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          className="lg:hidden fixed inset-0 bg-slate-950/60 z-40 backdrop-blur-sm"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
           style={{ touchAction: 'none' }}
         />
       )}
-      {/* Mobile drawer - fixed, scrollable nav */}
-      <div className={`lg:hidden fixed top-0 left-0 h-full min-h-[100dvh] w-72 max-w-[85vw] bg-[#022B3A] flex flex-col text-white z-50 transform transition-transform duration-300 ease-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-600 shrink-0">
+      <div
+        className={`lg:hidden fixed top-0 left-0 h-full min-h-[100dvh] w-72 max-w-[85vw] bg-primary flex flex-col text-white z-50 border-r border-white/5 transform transition-transform duration-300 ease-out ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl shrink-0" />
-            <h1 className="text-xl font-bold truncate">Supervise360</h1>
+            <img src="/logo.png" alt="Supervise360" className="h-9 w-9 object-contain rounded-xl shrink-0 ring-1 ring-white/10" />
+            <h1 className="text-lg font-semibold truncate">Supervise360</h1>
           </div>
-          <button onClick={() => setMobileOpen(false)} className="p-2 hover:bg-gray-700 rounded-lg shrink-0" aria-label="Close menu">
-            <X size={24} />
+          <button onClick={() => setMobileOpen(false)} className="p-2 hover:bg-white/10 rounded-lg shrink-0" aria-label="Close menu">
+            <X size={22} />
           </button>
         </div>
-        <nav className="flex-1 min-h-0 p-4 overflow-y-auto overscroll-contain">
+        <nav className="flex-1 min-h-0 p-3 overflow-y-auto overscroll-contain">
           {menuItems.map((item, idx) => (
             <div
               key={idx}
-              onClick={() => { navigate(item.path); setMobileOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors hover:bg-gray-700 cursor-pointer ${
-                location.pathname === item.path ? 'bg-gray-700 border-l-4 border-[#1F7A8C]' : ''
-              }`}
+              onClick={() => {
+                navigate(item.path);
+                setMobileOpen(false);
+              }}
+              className={`${navItemBase} ${location.pathname === item.path ? navItemActive : 'border-l-[3px] border-transparent'}`}
             >
               {item.icon}
-              <span>{item.label}</span>
+              <span className="text-sm font-medium">{item.label}</span>
             </div>
           ))}
         </nav>
-        <div className="p-4 border-t border-gray-600">
+        <div className="p-3 border-t border-white/10">
           <button
-            onClick={() => { signOut(); setMobileOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-red-300"
+            onClick={() => {
+              signOut();
+              setMobileOpen(false);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-500/10 transition-colors text-red-300/90 text-sm font-medium"
           >
             <LogOut size={20} />
             <span>Logout</span>
           </button>
         </div>
       </div>
-      {/* Desktop sidebar - fixed so it stays static when scrolling */}
-      <div className="hidden lg:flex w-64 flex-shrink-0 fixed left-0 top-0 h-screen bg-[#022B3A] flex-col text-white z-30">
-      {navContent}
+      <div className="hidden lg:flex w-64 flex-shrink-0 fixed left-0 top-0 h-screen bg-primary flex-col text-white z-30 border-r border-white/5 shadow-xl shadow-slate-950/20">
+        {navContent}
       </div>
     </>
   );

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    @apply antialiased text-slate-900;
+  }
+}
+
 /* Mobile: prevent overflow, full viewport, safe area */
 html, body {
   overflow-x: hidden;

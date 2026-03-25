@@ -160,7 +160,7 @@ export function Users() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-[#022B3A]">User Management</h2>
+              <h2 className="text-2xl font-bold text-primary">User Management</h2>
               <p className="text-gray-600 mt-1">Manage students, supervisors, and administrators</p>
             </div>
             <Button>
@@ -289,7 +289,7 @@ export function Users() {
         {editUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-[#022B3A] mb-4">Edit User</h3>
+              <h3 className="text-lg font-semibold text-primary mb-4">Edit User</h3>
               <form onSubmit={handleEdit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
@@ -366,7 +366,7 @@ export function Users() {
         {deleteConfirm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-[#022B3A] mb-2">Deactivate User</h3>
+              <h3 className="text-lg font-semibold text-primary mb-2">Deactivate User</h3>
               <p className="text-gray-600 mb-4">
                 Deactivate {deleteConfirm.first_name} {deleteConfirm.last_name}? They will no longer be able to log in.
               </p>

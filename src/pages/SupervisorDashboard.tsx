@@ -76,11 +76,11 @@ export function SupervisorDashboard() {
     <MainLayout title="Supervisor Dashboard">
       <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 min-w-0">
         {/* Hero Section - Full-width blue header */}
-        <div className="relative bg-[#022B3A] px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
+        <div className="relative bg-gradient-to-br from-primary via-slate-900 to-indigo-950 px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
           <h1 className="text-2xl md:text-3xl font-bold">
             Welcome, {user?.first_name}
           </h1>
-          <p className="text-[#BFDBF7] mt-1">
+          <p className="text-slate-300 mt-1">
             {supervisorGroups.length} group{supervisorGroups.length !== 1 ? 's' : ''} assigned
           </p>
         </div>
@@ -90,48 +90,48 @@ export function SupervisorDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <Users className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <Users className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Assigned Groups</p>
-                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{supervisorGroups.length}</p>
+                  <p className="text-xl font-bold text-primary mt-0.5">{supervisorGroups.length}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <FileText className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <FileText className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Pending Reviews</p>
-                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{pendingReviewsCount}</p>
+                  <p className="text-xl font-bold text-primary mt-0.5">{pendingReviewsCount}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <MessageSquare className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <MessageSquare className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Messages</p>
-                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{inboxCount}</p>
+                  <p className="text-xl font-bold text-primary mt-0.5">{inboxCount}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <CheckCircle className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <CheckCircle className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Reports Reviewed</p>
-                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{reportsReviewedCount}</p>
+                  <p className="text-xl font-bold text-primary mt-0.5">{reportsReviewedCount}</p>
                 </div>
               </div>
             </div>
@@ -142,7 +142,7 @@ export function SupervisorDashboard() {
         <div className="mt-6 px-4 sm:px-6 pb-8 bg-gradient-to-b from-slate-50 to-white min-h-[50vh]">
           <div className="w-full space-y-6">
             <Card className="rounded-2xl shadow-sm border-slate-100">
-              <h2 className="text-lg font-semibold text-[#022B3A] mb-4">My Assigned Groups</h2>
+              <h2 className="text-lg font-semibold text-primary mb-4">My Assigned Groups</h2>
               {supervisorGroups.length > 0 ? (
                 <div className="space-y-4">
                   {supervisorGroups.map((group) => (
@@ -186,7 +186,7 @@ export function SupervisorDashboard() {
                         <div className="flex flex-wrap gap-2">
                           {Array.isArray(group.members) && group.members.slice(0, 4).map((member, index) => (
                             <div key={index} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg">
-                              <div className="w-6 h-6 bg-[#1F7A8C] rounded-full flex items-center justify-center">
+                              <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                                 <span className="text-white text-xs font-medium">
                                   {member.name.split(' ').map(n => n[0]).join('')}
                                 </span>
@@ -207,7 +207,7 @@ export function SupervisorDashboard() {
                   <Users className="mx-auto h-12 w-12 text-slate-300 mb-4" />
                   <h3 className="text-lg font-medium text-slate-900 mb-2">No Groups Assigned</h3>
                   <p className="text-slate-600 mb-4">Groups will be assigned by the administrator.</p>
-                  <div className="bg-[#E1E5F2]/50 border border-[#BFDBF7]/50 rounded-xl p-4 max-w-md mx-auto text-left">
+                  <div className="bg-slate-100/80 border border-accent/20 rounded-xl p-4 max-w-md mx-auto text-left">
                     <ul className="text-sm text-slate-700 space-y-1">
                       <li>• Admin forms and assigns groups</li>
                       <li>• You'll see them here automatically</li>

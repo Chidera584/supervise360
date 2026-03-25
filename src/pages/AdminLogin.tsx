@@ -25,7 +25,7 @@ export function AdminLogin() {
     setLoading(false);
   };
 
-  const inputBase = 'w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1e4d8b]/30 focus:border-[#1e4d8b] transition-all duration-200 placeholder:text-slate-400';
+  const inputBase = 'w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-200 placeholder:text-slate-400';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
@@ -34,7 +34,7 @@ export function AdminLogin() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <img src="/logo.png" alt="Supervise360" className="h-9 w-auto object-contain rounded-xl" />
-              <span className="text-lg font-bold bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] bg-clip-text text-transparent">
+              <span className="text-lg font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
                 SUPERVISE360
               </span>
             </div>
@@ -46,7 +46,7 @@ export function AdminLogin() {
       <div className="flex items-center justify-center py-12 px-4 min-h-[calc(100vh-140px)]">
         <div className="w-full max-w-xl animate-slide-up opacity-0" style={{ animationFillMode: 'forwards' }}>
           <div className="text-center mb-8 animate-fade-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#022B3A] to-[#1e4d8b] shadow-lg shadow-slate-900/25 mb-5 p-2">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-slate-900/25 mb-5 p-2">
               <img src="/logo.png" alt="Supervise360" className="w-full h-full object-contain rounded-xl" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800 mb-1">Administrator Login</h1>
@@ -70,7 +70,7 @@ export function AdminLogin() {
                     required
                     className={`${inputBase} pr-12`}
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e4d8b] transition-colors">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-accent transition-colors">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
@@ -83,12 +83,12 @@ export function AdminLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#1F7A8C] hover:bg-[#2a8a9c] hover:shadow-lg hover:shadow-teal-900/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-accent hover:bg-accent-hover hover:shadow-lg hover:shadow-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
               >
                 {loading ? 'Signing In...' : 'Sign In as Administrator'}
               </button>
               <div className="text-center pt-2">
-                <a href="/" className="text-slate-500 text-sm font-medium hover:text-[#1e4d8b] hover:underline transition-colors">
+                <a href="/" className="text-slate-500 text-sm font-medium hover:text-accent hover:underline transition-colors">
                   ← Back to Main Portal
                 </a>
               </div>

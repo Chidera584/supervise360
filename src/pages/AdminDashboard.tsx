@@ -46,11 +46,11 @@ export function AdminDashboard() {
     <MainLayout title="Admin Dashboard">
       <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 min-w-0">
         {/* Hero Section - Full-width blue header */}
-        <div className="relative bg-[#022B3A] px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
+        <div className="relative bg-gradient-to-br from-primary via-slate-900 to-indigo-950 px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
           <h1 className="text-2xl md:text-3xl font-bold">
             Welcome, {user?.first_name}
           </h1>
-          <p className="text-[#BFDBF7] mt-1">
+          <p className="text-slate-300 mt-1">
             Here's what's in your system
           </p>
         </div>
@@ -60,15 +60,15 @@ export function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <Users className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <Users className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Total Students</p>
-                  <p className="text-2xl font-bold text-[#022B3A] mt-0.5 tabular-nums">
+                  <p className="text-2xl font-bold text-primary mt-0.5 tabular-nums">
                     {loading ? '—' : displayStudents}
                   </p>
-                  <Link to="/users" className="inline-flex items-center gap-1 text-xs text-[#1F7A8C] font-medium mt-1 hover:underline">
+                  <Link to="/users" className="inline-flex items-center gap-1 text-xs text-accent font-medium mt-1 hover:underline">
                     View users <ArrowRight size={12} />
                   </Link>
                 </div>
@@ -77,12 +77,12 @@ export function AdminDashboard() {
 
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <UserCheck className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <UserCheck className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Supervisors</p>
-                  <p className="text-2xl font-bold text-[#022B3A] mt-0.5 tabular-nums">
+                  <p className="text-2xl font-bold text-primary mt-0.5 tabular-nums">
                     {loading ? '—' : supervisorCount ?? totals.supervisors ?? 0}
                   </p>
                 </div>
@@ -91,15 +91,15 @@ export function AdminDashboard() {
 
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <Building className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <Building className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Groups</p>
-                  <p className="text-2xl font-bold text-[#022B3A] mt-0.5 tabular-nums">
+                  <p className="text-2xl font-bold text-primary mt-0.5 tabular-nums">
                     {loading ? '—' : displayGroups}
                   </p>
-                  <Link to="/groups" className="inline-flex items-center gap-1 text-xs text-[#1F7A8C] font-medium mt-1 hover:underline">
+                  <Link to="/groups" className="inline-flex items-center gap-1 text-xs text-accent font-medium mt-1 hover:underline">
                     View groups <ArrowRight size={12} />
                   </Link>
                 </div>
@@ -117,7 +117,7 @@ export function AdminDashboard() {
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                 <div className="flex items-center justify-between mb-4">
                   <p className="font-semibold text-slate-800">Department Breakdown</p>
-                  <Link to="/departments" className="text-sm text-[#1F7A8C] font-medium hover:underline flex items-center gap-1">
+                  <Link to="/departments" className="text-sm text-accent font-medium hover:underline flex items-center gap-1">
                     View all <ArrowRight size={14} />
                   </Link>
                 </div>
@@ -127,10 +127,10 @@ export function AdminDashboard() {
                     <Link
                       key={d.id}
                       to={`/departments`}
-                      className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 hover:border-[#BFDBF7] hover:bg-slate-50/50 transition-colors"
+                      className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 hover:border-accent/30 hover:bg-slate-50/50 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                        <Building2 className="text-[#1F7A8C]" size={18} />
+                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                        <Building2 className="text-accent" size={18} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-slate-800 truncate text-sm">{d.name}</p>
@@ -158,18 +158,18 @@ export function AdminDashboard() {
                   <Link
                     key={action.to}
                     to={action.to}
-                    className="group flex items-center gap-4 bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:border-[#BFDBF7] hover:shadow-md transition-all"
+                    className="group flex items-center gap-4 bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:border-accent/30 hover:shadow-md transition-all"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-[#E1E5F2] flex items-center justify-center text-slate-600 group-hover:text-[#022B3A] transition-colors">
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-slate-200/80 flex items-center justify-center text-slate-600 group-hover:text-primary transition-colors">
                       <Icon size={22} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-800 group-hover:text-[#022B3A] transition-colors">
+                      <p className="font-semibold text-slate-800 group-hover:text-primary transition-colors">
                         {action.label}
                       </p>
                       <p className="text-sm text-slate-500">{action.sub}</p>
                     </div>
-                    <ArrowRight size={18} className="text-slate-300 group-hover:text-[#022B3A] group-hover:translate-x-1 transition-all shrink-0" />
+                    <ArrowRight size={18} className="text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
                   </Link>
                 );
               })}

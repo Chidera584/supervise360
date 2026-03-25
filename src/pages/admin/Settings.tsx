@@ -209,8 +209,8 @@ export function Settings() {
           <Card className="border border-slate-200">
             <div className="p-6 space-y-4">
               <div className="flex items-center gap-3 pb-4 border-b">
-                <div className="p-2 bg-[#1F7A8C]/10 rounded-lg">
-                  <Building2 className="text-[#1F7A8C]" size={22} />
+                <div className="p-2 bg-accent/10 rounded-lg">
+                  <Building2 className="text-accent" size={22} />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Department Scope</h2>
@@ -235,7 +235,7 @@ export function Settings() {
                           setSelectedDeptIds((prev) => prev.filter((id) => id !== d.id));
                         }
                       }}
-                      className="w-4 h-4 rounded text-[#1F7A8C]"
+                      className="w-4 h-4 rounded text-accent"
                     />
                     <span className="text-sm">{d.name}</span>
                   </label>
@@ -264,8 +264,8 @@ export function Settings() {
           <Card className="border border-slate-200">
             <div className="p-6 space-y-5">
               <div className="flex items-center gap-3 pb-4 border-b">
-                <div className="p-2 bg-[#1F7A8C]/10 rounded-lg">
-                  <TrendingUp className="text-[#1F7A8C]" size={22} />
+                <div className="p-2 bg-accent/10 rounded-lg">
+                  <TrendingUp className="text-accent" size={22} />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Global Thresholds</h2>
@@ -283,7 +283,7 @@ export function Settings() {
                     max="5"
                     value={globalThresholds.high}
                     onChange={(e) => setGlobalThresholds({ ...globalThresholds, high: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent text-base font-medium text-gray-900 bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent text-base font-medium text-gray-900 bg-white"
                   />
                   <p className="text-xs text-gray-500 mt-1">GPA ≥ this value</p>
                 </div>
@@ -296,7 +296,7 @@ export function Settings() {
                     max="5"
                     value={globalThresholds.medium}
                     onChange={(e) => setGlobalThresholds({ ...globalThresholds, medium: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent text-base font-medium text-gray-900 bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent text-base font-medium text-gray-900 bg-white"
                   />
                   <p className="text-xs text-gray-500 mt-1">GPA ≥ this value</p>
                 </div>
@@ -309,7 +309,7 @@ export function Settings() {
                     max="5"
                     value={globalThresholds.low}
                     onChange={(e) => setGlobalThresholds({ ...globalThresholds, low: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent text-base font-medium text-gray-900 bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent text-base font-medium text-gray-900 bg-white"
                   />
                   <p className="text-xs text-gray-500 mt-1">GPA ≥ this value</p>
                 </div>
@@ -353,7 +353,7 @@ export function Settings() {
                           type="checkbox"
                           checked={dept.useCustomThresholds}
                           onChange={(e) => updateDeptThresholds(deptName, e.target.checked)}
-                          className="w-4 h-4 rounded text-[#1F7A8C]"
+                          className="w-4 h-4 rounded text-accent"
                         />
                         <span className="text-sm">Use custom thresholds</span>
                       </label>

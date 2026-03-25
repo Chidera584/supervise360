@@ -54,7 +54,7 @@ export function Reports() {
     <MainLayout title="Reports">
       <div className="space-y-6 min-w-0">
         <Card className="min-w-0">
-          <h2 className="text-lg sm:text-xl font-semibold text-[#022B3A] mb-4">Upload New Report</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-primary mb-4">Upload New Report</h2>
           <p className="text-sm text-gray-600 mb-4">
             Submit your project proposal and reports here. Select the report type (Proposal, Progress, Final) and choose a file (PDF, Word, etc.).
           </p>
@@ -88,7 +88,7 @@ export function Reports() {
         </Card>
 
         <Card className="min-w-0">
-          <h3 className="text-lg font-semibold text-[#022B3A] mb-4">Submitted Reports</h3>
+          <h3 className="text-lg font-semibold text-primary mb-4">Submitted Reports</h3>
           {loading ? (
             <div className="text-gray-500">Loading reports...</div>
           ) : (

@@ -83,7 +83,7 @@ export function ReportReviews() {
     <MainLayout title="Report Reviews">
       <div className="space-y-6">
         <Card className="border border-slate-200 p-4 sm:p-6">
-          <h2 className="text-xl font-semibold text-[#022B3A]">Pending Report Reviews</h2>
+          <h2 className="text-xl font-semibold text-primary">Pending Report Reviews</h2>
           <p className="text-sm text-gray-600 mt-1">
             Download each report to review it, then add your comments and approve or reject.
           </p>
@@ -139,7 +139,7 @@ export function ReportReviews() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Review Comments</label>
                         <textarea
-                          className="w-full rounded-lg border border-gray-300 p-3 text-sm min-h-[100px] focus:ring-2 focus:ring-[#022B3A] focus:border-transparent"
+                          className="w-full rounded-lg border border-gray-300 p-3 text-sm min-h-[100px] focus:ring-2 focus:ring-accent focus:border-transparent"
                           placeholder="Enter your feedback and comments on this report..."
                           value={comments}
                           onChange={(e) => setComments(e.target.value)}

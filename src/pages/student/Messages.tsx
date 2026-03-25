@@ -182,7 +182,7 @@ export function Messages() {
         )}
 
         <Card>
-          <h2 className="text-xl font-semibold text-[#022B3A] mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-primary mb-4 flex items-center gap-2">
             <Send size={22} /> Compose Message
           </h2>
           {message && (
@@ -245,14 +245,14 @@ export function Messages() {
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Button
-                variant={activeTab === 'inbox' ? 'default' : 'outline'}
+                variant={activeTab === 'inbox' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => { setActiveTab('inbox'); setExpandedId(null); }}
               >
                 <Inbox size={16} className="mr-1" /> Inbox ({inbox.length})
               </Button>
               <Button
-                variant={activeTab === 'sent' ? 'default' : 'outline'}
+                variant={activeTab === 'sent' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => { setActiveTab('sent'); setExpandedId(null); }}
               >
@@ -308,7 +308,7 @@ export function Messages() {
                 <div
                   key={msg.id}
                   className={`border rounded-lg overflow-hidden ${
-                    activeTab === 'inbox' && !msg.read_status ? 'border-[#022B3A] bg-blue-50/30' : 'border-gray-200'
+                    activeTab === 'inbox' && !msg.read_status ? 'border-accent bg-accent-soft/40' : 'border-gray-200'
                   }`}
                 >
                   <div

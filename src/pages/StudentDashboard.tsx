@@ -63,11 +63,11 @@ export function StudentDashboard() {
     <MainLayout title="Student Dashboard">
       <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-m-6">
         {/* Hero Section - Full-width blue header */}
-        <div className="relative bg-[#022B3A] px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
+        <div className="relative bg-gradient-to-br from-primary via-slate-900 to-indigo-950 px-4 sm:px-6 pt-6 sm:pt-8 pb-20 sm:pb-24 text-white">
           <h1 className="text-2xl md:text-3xl font-bold">
             Welcome, {user?.first_name}
           </h1>
-          <p className="text-[#BFDBF7] mt-1">
+          <p className="text-slate-300 mt-1">
             {student?.matric_number ? `Matric: ${student.matric_number}` : user?.department || 'Student Portal'}
           </p>
         </div>
@@ -77,12 +77,12 @@ export function StudentDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 w-full">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <Users className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <Users className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Group Status</p>
-                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">
+                  <p className="text-xl font-bold text-primary mt-0.5">
                     {studentGroup ? studentGroup.name : 'Not Assigned'}
                   </p>
                   {studentGroup && (
@@ -94,12 +94,12 @@ export function StudentDashboard() {
 
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <FileText className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <FileText className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Reports</p>
-                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{reportsCount}</p>
+                  <p className="text-xl font-bold text-primary mt-0.5">{reportsCount}</p>
                   {reportsCount > 0 && (
                     <p className="text-xs text-slate-400 mt-1">{reportsReviewedCount} reviewed</p>
                   )}
@@ -109,12 +109,12 @@ export function StudentDashboard() {
 
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100/80 hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/10 flex items-center justify-center shrink-0">
-                  <MessageSquare className="text-[#1F7A8C]" size={24} />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                  <MessageSquare className="text-accent" size={24} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Messages</p>
-                  <p className="text-xl font-bold text-[#022B3A] mt-0.5">{inboxCount}</p>
+                  <p className="text-xl font-bold text-primary mt-0.5">{inboxCount}</p>
                   <p className="text-xs text-slate-400 mt-1">In inbox</p>
                 </div>
               </div>
@@ -127,12 +127,12 @@ export function StudentDashboard() {
           <div className="w-full space-y-6">
             {/* Group Information */}
             <Card className="rounded-2xl shadow-sm border-slate-100">
-              <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Group Information</h2>
+              <h2 className="text-lg font-semibold text-primary mb-4">Group Information</h2>
               {studentGroup ? (
                 <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-[#E1E5F2]/50 border border-[#BFDBF7]/50 rounded-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-slate-100/80 border border-accent/20 rounded-xl">
                     <div className="min-w-0">
-                      <p className="font-medium text-[#022B3A]">You are assigned to {studentGroup.name}</p>
+                      <p className="font-medium text-primary">You are assigned to {studentGroup.name}</p>
                       <p className="text-sm text-slate-600">Status: {studentGroup.status}</p>
                     </div>
                     <Link to="/my-group" className="shrink-0">
@@ -145,7 +145,7 @@ export function StudentDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {Array.isArray(studentGroup.members) ? studentGroup.members.map((member, index) => (
                         <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                          <div className="w-10 h-10 bg-[#1F7A8C] rounded-full flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center shrink-0">
                             <span className="text-white font-semibold text-sm">
                               {member.name.split(' ').map(n => n[0]).join('')}
                             </span>
@@ -155,7 +155,7 @@ export function StudentDashboard() {
                             <p className="text-xs text-slate-500">{member.matricNumber ?? 'N/A'}</p>
                           </div>
                           {(member.matricNumber ?? (member as any).matric) === student?.matric_number && (
-                            <span className="text-xs bg-[#1F7A8C]/15 text-[#1F7A8C] px-2 py-1 rounded-full font-medium">You</span>
+                            <span className="text-xs bg-accent/15 text-accent px-2 py-1 rounded-full font-medium">You</span>
                           )}
                         </div>
                       )) : (
@@ -167,12 +167,12 @@ export function StudentDashboard() {
                   {studentGroup.supervisor && (
                     <div>
                       <h3 className="font-medium text-slate-900 mb-3">Supervisor</h3>
-                      <div className="flex items-center gap-4 p-4 bg-[#E1E5F2]/50 border border-[#BFDBF7]/50 rounded-xl">
-                        <div className="w-12 h-12 bg-[#1F7A8C] rounded-full flex items-center justify-center shrink-0">
+                      <div className="flex items-center gap-4 p-4 bg-slate-100/80 border border-accent/20 rounded-xl">
+                        <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center shrink-0">
                           <UserCheck className="text-white" size={20} />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-[#022B3A]">{studentGroup.supervisor}</p>
+                          <p className="font-medium text-primary">{studentGroup.supervisor}</p>
                           <p className="text-sm text-slate-600">Project Supervisor</p>
                         </div>
                         <Link to="/messages">

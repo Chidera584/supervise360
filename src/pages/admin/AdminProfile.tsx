@@ -57,9 +57,9 @@ export function AdminProfile() {
     <MainLayout title="Profile">
       <div className="space-y-6">
         <Card>
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Profile</h2>
+          <h2 className="text-lg font-semibold text-primary mb-4">Profile</h2>
           <div className="flex flex-col sm:flex-row gap-6">
-            <div className="w-16 h-16 bg-[#1F7A8C] rounded-full flex items-center justify-center shrink-0">
+            <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center shrink-0">
               <span className="text-xl font-semibold text-white">
                 {user?.first_name?.[0]}
                 {user?.last_name?.[0]}
@@ -81,20 +81,20 @@ export function AdminProfile() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <p className="text-sm text-gray-600 mb-1">Users</p>
-            <p className="text-xl font-bold text-[#022B3A]">{usersCount}</p>
+            <p className="text-xl font-bold text-primary">{usersCount}</p>
           </Card>
           <Card>
             <p className="text-sm text-gray-600 mb-1">Groups</p>
-            <p className="text-xl font-bold text-[#022B3A]">{groupsCount}</p>
+            <p className="text-xl font-bold text-primary">{groupsCount}</p>
           </Card>
           <Card>
             <p className="text-sm text-gray-600 mb-1">Role</p>
-            <p className="text-xl font-bold text-[#022B3A]">Admin</p>
+            <p className="text-xl font-bold text-primary">Admin</p>
           </Card>
         </div>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Contact</h2>
+          <h2 className="text-lg font-semibold text-primary mb-4">Contact</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Email</p>
@@ -121,7 +121,7 @@ export function AdminProfile() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Password</h2>
+          <h2 className="text-lg font-semibold text-primary mb-4">Password</h2>
           {passwordSuccess && (
             <p className="text-sm text-green-600 mb-4">Password updated.</p>
           )}
@@ -132,21 +132,21 @@ export function AdminProfile() {
                 placeholder="Current password"
                 value={passwordForm.currentPassword}
                 onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#022B3A]"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <input
                 type="password"
                 placeholder="New password"
                 value={passwordForm.newPassword}
                 onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#022B3A]"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <input
                 type="password"
                 placeholder="Confirm"
                 value={passwordForm.confirmPassword}
                 onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#022B3A]"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-accent"
               />
               {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
               <div className="flex gap-2 pt-2">

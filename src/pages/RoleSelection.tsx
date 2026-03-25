@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/UI/Button';
-import { ArrowRight, Target, Shield } from 'lucide-react';
+import { ArrowRight, Target, Shield, Users } from 'lucide-react';
 
 interface RoleSelectionProps {
   onRoleSelect: (role: 'student' | 'supervisor') => void;
@@ -38,7 +38,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
         <section className="py-20 text-center">
           <h1 className="text-5xl font-bold text-[#333333] mb-6 leading-tight">
             Welcome to<br />
-            <span className="text-[#1e4d8b]">Supervise360</span>
+            <span className="text-accent">Supervise360</span>
           </h1>
           <p className="text-xl text-[#666666] mb-12 max-w-2xl mx-auto leading-relaxed">
             A comprehensive platform for managing student projects, facilitating collaboration between students and supervisors, and tracking academic progress.
@@ -59,7 +59,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
               className={`
                 group relative p-8 border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl bg-white
                 ${selectedRole === 'student' 
-                  ? 'border-[#1e4d8b] shadow-lg ring-2 ring-[#e3f2fd]' 
+                  ? 'border-accent shadow-lg ring-2 ring-accent/25' 
                   : 'border-gray-200 hover:border-gray-300'
                 }
               `}
@@ -67,7 +67,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
               <div className="text-center">
                 <div className={`
                   w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center p-2 transition-colors overflow-hidden
-                  ${selectedRole === 'student' ? 'bg-[#1e4d8b]' : 'bg-gray-100 group-hover:bg-[#e3f2fd]'}
+                  ${selectedRole === 'student' ? 'bg-accent' : 'bg-gray-100 group-hover:bg-accent-soft'}
                 `}>
                   <img src="/logo.png" alt="" className="w-full h-full object-contain rounded-xl" />
                 </div>
@@ -79,19 +79,19 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
 
                 <div className="space-y-3 text-left">
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     View and manage group projects
                   </div>
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     Submit reports and documentation
                   </div>
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     Communicate with supervisors
                   </div>
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     Track project milestones
                   </div>
                 </div>
@@ -99,7 +99,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
 
               {selectedRole === 'student' && (
                 <div className="absolute top-4 right-4">
-                  <div className="w-6 h-6 bg-[#1e4d8b] rounded-full flex items-center justify-center">
+                  <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                     <div className="w-2 h-2 bg-white rounded-full"></div>
                   </div>
                 </div>
@@ -112,7 +112,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
               className={`
                 group relative p-8 border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl bg-white
                 ${selectedRole === 'supervisor' 
-                  ? 'border-[#1e4d8b] shadow-lg ring-2 ring-[#e3f2fd]' 
+                  ? 'border-accent shadow-lg ring-2 ring-accent/25' 
                   : 'border-gray-200 hover:border-gray-300'
                 }
               `}
@@ -120,7 +120,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
               <div className="text-center">
                 <div className={`
                   w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center p-2 transition-colors overflow-hidden
-                  ${selectedRole === 'supervisor' ? 'bg-[#1e4d8b]' : 'bg-gray-100 group-hover:bg-[#e3f2fd]'}
+                  ${selectedRole === 'supervisor' ? 'bg-accent' : 'bg-gray-100 group-hover:bg-accent-soft'}
                 `}>
                   <img src="/logo.png" alt="" className="w-full h-full object-contain rounded-xl" />
                 </div>
@@ -132,19 +132,19 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
 
                 <div className="space-y-3 text-left">
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     Oversee multiple student groups
                   </div>
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     Review and evaluate projects
                   </div>
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     Provide guidance and feedback
                   </div>
                   <div className="flex items-center text-sm text-[#666666]">
-                    <div className="w-1.5 h-1.5 bg-[#1e4d8b] rounded-full mr-3"></div>
+                    <div className="w-1.5 h-1.5 bg-accent rounded-full mr-3"></div>
                     Monitor project progress
                   </div>
                 </div>
@@ -152,7 +152,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
 
               {selectedRole === 'supervisor' && (
                 <div className="absolute top-4 right-4">
-                  <div className="w-6 h-6 bg-[#1e4d8b] rounded-full flex items-center justify-center">
+                  <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                     <div className="w-2 h-2 bg-white rounded-full"></div>
                   </div>
                 </div>
@@ -165,7 +165,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
             <Button
               onClick={handleContinue}
               disabled={!selectedRole}
-              className="px-8 py-4 text-lg bg-[#1e4d8b] hover:bg-[#1a4178] disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
+              className="px-8 py-4 text-lg bg-accent hover:bg-accent-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-white"
             >
               Continue
               <ArrowRight className="ml-2" size={20} />
@@ -182,24 +182,24 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center bg-white p-6 rounded-xl border border-gray-200">
-              <div className="w-12 h-12 bg-[#e3f2fd] rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Target className="w-6 h-6 text-[#1e4d8b]" />
+              <div className="w-12 h-12 bg-accent-soft rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Target className="w-6 h-6 text-accent" />
               </div>
               <h3 className="text-lg font-semibold text-[#333333] mb-2">Project Tracking</h3>
               <p className="text-[#666666]">Monitor progress, set milestones, and track deliverables throughout the project lifecycle.</p>
             </div>
 
             <div className="text-center bg-white p-6 rounded-xl border border-gray-200">
-              <div className="w-12 h-12 bg-[#e3f2fd] rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-6 h-6 text-[#1e4d8b]" />
+              <div className="w-12 h-12 bg-accent-soft rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Users className="w-6 h-6 text-accent" />
               </div>
               <h3 className="text-lg font-semibold text-[#333333] mb-2">Team Collaboration</h3>
               <p className="text-[#666666]">Facilitate seamless communication between students and supervisors with built-in messaging.</p>
             </div>
 
             <div className="text-center bg-white p-6 rounded-xl border border-gray-200">
-              <div className="w-12 h-12 bg-[#e3f2fd] rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-6 h-6 text-[#1e4d8b]" />
+              <div className="w-12 h-12 bg-accent-soft rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-6 h-6 text-accent" />
               </div>
               <h3 className="text-lg font-semibold text-[#333333] mb-2">Secure & Reliable</h3>
               <p className="text-[#666666]">Enterprise-grade security with reliable data management and user authentication.</p>
@@ -216,7 +216,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
             <div className="mt-2">
               <a
                 href="/admin-login"
-                className="text-[#1e4d8b] hover:underline text-xs"
+                className="text-accent hover:underline text-xs"
               >
                 Administrator Access
               </a>

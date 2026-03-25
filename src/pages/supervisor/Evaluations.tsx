@@ -191,8 +191,8 @@ export function Evaluations() {
         {/* Header */}
         <Card className="border border-slate-200 p-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#1F7A8C]/10 rounded-lg">
-              <Award className="text-[#1F7A8C]" size={24} />
+            <div className="p-2 bg-accent/10 rounded-lg">
+              <Award className="text-accent" size={24} />
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900">Evaluations</h2>
@@ -204,7 +204,7 @@ export function Evaluations() {
         {/* Evaluation status summary for assigned groups */}
         <Card className="border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <Star className="text-[#1F7A8C]" size={20} />
+            <Star className="text-accent" size={20} />
             Evaluation Status
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -247,7 +247,7 @@ export function Evaluations() {
               {pending.map((item) => (
                 <li
                   key={item.project_id}
-                  className="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 bg-white hover:border-[#1F7A8C]/30 hover:bg-slate-50/50 transition-colors"
+                  className="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 bg-white hover:border-accent/30 hover:bg-slate-50/50 transition-colors"
                 >
                   <div className="min-w-0">
                     <p className="font-medium text-slate-900 truncate">{item.student_name}</p>
@@ -292,7 +292,7 @@ export function Evaluations() {
                       <p className="text-sm text-slate-500">{stripGroupName(item.group_name)}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-lg font-bold text-[#022B3A]">{item.total_score} / 60</p>
+                      <p className="text-lg font-bold text-primary">{item.total_score} / 60</p>
                       {item.evaluated_at && (
                         <p className="text-xs text-slate-400 mt-1">
                           {new Date(item.evaluated_at).toLocaleDateString()}
@@ -331,7 +331,7 @@ export function Evaluations() {
                   max={20}
                   value={scores.documentation_score}
                   onChange={(e) => setScores((s) => ({ ...s, documentation_score: Number(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
               <div>
@@ -342,7 +342,7 @@ export function Evaluations() {
                   max={30}
                   value={scores.implementation_score}
                   onChange={(e) => setScores((s) => ({ ...s, implementation_score: Number(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
               <div>
@@ -353,7 +353,7 @@ export function Evaluations() {
                   max={15}
                   value={scores.presentation_score}
                   onChange={(e) => setScores((s) => ({ ...s, presentation_score: Number(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
               <div>
@@ -364,7 +364,7 @@ export function Evaluations() {
                   max={10}
                   value={scores.innovation_score}
                   onChange={(e) => setScores((s) => ({ ...s, innovation_score: Number(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
               <p className="text-sm text-slate-600">Total: {totalScore} / {totalMax}</p>
@@ -374,7 +374,7 @@ export function Evaluations() {
                   value={scores.feedback}
                   onChange={(e) => setScores((s) => ({ ...s, feedback: e.target.value }))}
                   rows={2}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                   placeholder="Overall feedback to the group"
                 />
               </div>
@@ -384,7 +384,7 @@ export function Evaluations() {
                   value={scores.strengths}
                   onChange={(e) => setScores((s) => ({ ...s, strengths: e.target.value }))}
                   rows={1}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
               <div>
@@ -393,7 +393,7 @@ export function Evaluations() {
                   value={scores.weaknesses}
                   onChange={(e) => setScores((s) => ({ ...s, weaknesses: e.target.value }))}
                   rows={1}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
               <div>
@@ -402,7 +402,7 @@ export function Evaluations() {
                   value={scores.recommendations}
                   onChange={(e) => setScores((s) => ({ ...s, recommendations: e.target.value }))}
                   rows={1}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
             </div>

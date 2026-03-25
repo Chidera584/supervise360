@@ -371,9 +371,9 @@ export function SupervisorAssignment() {
     <MainLayout title="Supervisor Assignment">
       <div className="flex flex-col gap-4 flex-1 min-h-0">
         {/* Department selector - each department has its own lecturers, no cross-department assignment */}
-        <Card className="border-2 border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-6">
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-2 flex items-center gap-2">
-            <Building className="w-5 h-5 text-[#1F7A8C]" />
+        <Card className="border-2 border-accent/30 bg-accent/5 p-6">
+          <h2 className="text-lg font-semibold text-primary mb-2 flex items-center gap-2">
+            <Building className="w-5 h-5 text-accent" />
             Select Department
           </h2>
           <p className="text-sm text-slate-600 mb-4">
@@ -384,7 +384,7 @@ export function SupervisorAssignment() {
               <select
                 value={selectedDepartment}
                 onChange={(e) => handleDepartmentChange(e.target.value)}
-                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
+                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent bg-white text-slate-900"
               >
                 <option value="">Select department...</option>
                 {departments.map((d) => (
@@ -481,8 +481,8 @@ export function SupervisorAssignment() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-[#1F7A8C]" />
+              <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-accent" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{assignedGroups.length}</p>
@@ -492,8 +492,8 @@ export function SupervisorAssignment() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-[#1F7A8C]" />
+              <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-accent" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{unassignedGroups.length}</p>
@@ -503,8 +503,8 @@ export function SupervisorAssignment() {
           </Card>
           <Card className="border border-slate-200 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#1F7A8C]/10 rounded-lg flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-[#1F7A8C]" />
+              <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-accent" />
               </div>
               <div>
                 <p className="text-xl font-bold text-slate-900">{totalStats.totalSupervisors}</p>
@@ -553,7 +553,7 @@ export function SupervisorAssignment() {
               )}
             </div>
             {departmentSupervisors.length > 0 && unassignedGroups.length > 0 && (
-              <Button onClick={handleAutoAssignFromExisting} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
+              <Button onClick={handleAutoAssignFromExisting} disabled={assigning} className="bg-accent hover:bg-accent-hover">
                 {assigning ? (
                   <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
                 ) : (
@@ -585,7 +585,7 @@ export function SupervisorAssignment() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C]">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent">
                         {dept.departmentStats.totalAssigned} groups
                       </span>
                     </div>
@@ -601,7 +601,7 @@ export function SupervisorAssignment() {
                               <p className="text-sm text-slate-500">{(supervisor.current_groups || 0)} groups</p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C]">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-accent/15 text-accent">
                                 {(supervisor.current_groups || 0)} groups
                               </span>
                               {supGroups.length > 0 && (
@@ -690,7 +690,7 @@ export function SupervisorAssignment() {
                     <div key={group.id} className="flex items-center justify-between border border-slate-200 rounded-lg p-4 hover:bg-slate-50">
                       <div className="min-w-0">
                         <p className="text-base font-medium text-slate-900 truncate">{group.name}</p>
-                        <p className="text-sm text-[#1F7A8C] font-medium">{group.supervisor}</p>
+                        <p className="text-sm text-accent font-medium">{group.supervisor}</p>
                         <p className="text-sm text-slate-500 truncate">{group.members.join(', ')}</p>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
@@ -727,7 +727,7 @@ export function SupervisorAssignment() {
             <Card className="border border-slate-200 p-6 flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">Uploaded Supervisors ({uploadedSupervisors.length})</h3>
-                <Button onClick={handleAutoAssignSupervisors} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
+                <Button onClick={handleAutoAssignSupervisors} disabled={assigning} className="bg-accent hover:bg-accent-hover">
                   {assigning ? (
                     <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
                   ) : (
@@ -883,7 +883,7 @@ export function SupervisorAssignment() {
                   </div>
                 </div>
                 {swapMember1 && swapMember2 && swapMember1.groupId === swapMember2.groupId && (
-                  <p className="text-sm text-[#1F7A8C]">Select students from different groups.</p>
+                  <p className="text-sm text-accent">Select students from different groups.</p>
                 )}
                 {swapMember1 && swapMember2 && swapMember1.tier !== swapMember2.tier && (
                   <p className="text-sm text-red-600">Students must be in the same tier to swap.</p>

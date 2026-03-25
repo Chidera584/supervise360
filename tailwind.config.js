@@ -3,10 +3,21 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          'Inter',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'sans-serif',
+        ],
+      },
       animation: {
         'fade-up': 'fadeUp 0.8s ease-out forwards',
         'fade-in': 'fadeIn 0.6s ease-out forwards',
-        'float': 'float 6s ease-in-out infinite',
+        float: 'float 6s ease-in-out infinite',
         'slide-up': 'slideUp 0.5s ease-out forwards',
       },
       keyframes: {
@@ -28,15 +39,19 @@ export default {
         },
       },
       colors: {
+        /** Ink: navigation, headings, dark surfaces */
         primary: {
-          DEFAULT: '#022B3A',
-          light: '#1F7A8C',
-          pale: '#BFDBF7',
-          muted: '#E1E5F2',
+          DEFAULT: '#0f172a',
+          light: '#334155',
+          pale: '#cbd5e1',
+          muted: '#f1f5f9',
         },
+        /** Accent: actions, links, focus */
         accent: {
-          DEFAULT: '#1F7A8C',
-          hover: '#2a8a9c',
+          DEFAULT: '#4f46e5',
+          hover: '#4338ca',
+          soft: '#eef2ff',
+          muted: '#a5b4fc',
         },
       },
     },
