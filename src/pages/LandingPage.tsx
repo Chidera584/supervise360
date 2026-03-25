@@ -79,20 +79,14 @@ export function LandingPage() {
 
             {/* Utility row (desktop) */}
             <div className="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
-              <button
-                type="button"
-                className="p-2 rounded-lg text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                aria-label="Notifications"
-              >
-                <Bell className="w-5 h-5" strokeWidth={1.75} />
-              </button>
-              <button
-                type="button"
-                className="p-2 rounded-lg text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                aria-label="Language"
-              >
-                <Globe className="w-5 h-5" strokeWidth={1.75} />
-              </button>
+              <span className="flex items-center gap-0" aria-hidden>
+                <span className="p-2 rounded-lg text-slate-400">
+                  <Bell className="w-5 h-5" strokeWidth={1.75} />
+                </span>
+                <span className="p-2 rounded-lg text-slate-400">
+                  <Globe className="w-5 h-5" strokeWidth={1.75} />
+                </span>
+              </span>
               <button
                 type="button"
                 onClick={goToStudentLogin}
