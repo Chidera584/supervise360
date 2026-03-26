@@ -35,7 +35,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
-app.use(helmet());
+// Note: This API is consumed cross-origin by the Railway-hosted frontend.
+// Helmet's default Cross-Origin-Resource-Policy ("same-origin") can cause browsers to block
+// cross-origin API responses in ways that surface as CORS/network errors.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // CORS configuration - allow frontend URL, localhost, and Railway domains
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
