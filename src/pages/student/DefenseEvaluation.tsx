@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { apiClient } from '../../lib/api';
-import { MapPin, UsersRound } from 'lucide-react';
+import { FileText, MapPin, UsersRound } from 'lucide-react';
 
 export function DefenseEvaluation() {
   const [defense, setDefense] = useState<any>(null);
@@ -29,53 +29,61 @@ export function DefenseEvaluation() {
     loadData();
   }, []);
 
-  // Use allocation-based schedule (venue + assessors) or defense_panels (date + location)
-  const hasDefensePanel = defense && (defense.defense_date || defense.location);
-  const hasAllocationSchedule = defenseSchedule && defenseSchedule.venue;
+  // Use allocation-based schedule (venue + assessors) or defense_panels (location).
+  // Per your request, we never display schedule date/time on this student page.
+  const hasVenue = !!(defenseSchedule?.venue || defense?.location);
+  const venueText = defenseSchedule?.venue || defense?.location || '';
+  const assessors = Array.isArray(defenseSchedule?.assessors) ? defenseSchedule.assessors : [];
 
   return (
     <MainLayout title="Defense & Evaluation">
       <div className="space-y-6">
         <Card>
           <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Defense Schedule</h2>
-          {hasDefensePanel ? (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3 text-sm">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-amber-800 font-medium">Venue</p>
-                  <p className="font-semibold text-gray-900">{defense.location || 'Venue to be announced'}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-amber-800/90 font-medium">Status</p>
-                <p className="text-sm text-gray-800">{defense.status || 'Scheduled'}</p>
-              </div>
-            </div>
-          ) : hasAllocationSchedule ? (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-amber-800 font-medium">Venue</p>
-                  <p className="font-semibold text-gray-900">{defenseSchedule.venue}</p>
-                  {defenseSchedule.groupRange && (
-                    <p className="text-xs text-amber-700 mt-1">{defenseSchedule.groupRange}</p>
-                  )}
-                </div>
-              </div>
-              {defenseSchedule.assessors && defenseSchedule.assessors.length > 0 && (
+          {hasVenue ? (
+            <div className="p-5 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="flex items-start gap-3">
-                  <UsersRound className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <MapPin className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm text-amber-800 font-medium">Assessors</p>
-                    <ul className="text-sm text-gray-800 space-y-1">
-                      {defenseSchedule.assessors.map((a: string, i: number) => (
-                        <li key={i}>{a}</li>
-                      ))}
-                    </ul>
+                    <p className="text-sm text-amber-800 font-medium">Venue</p>
+                    <p className="font-semibold text-gray-900">{venueText}</p>
+                    {defenseSchedule?.groupRange && (
+                      <p className="text-xs text-amber-700 mt-1">{defenseSchedule.groupRange}</p>
+                    )}
                   </div>
                 </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 mt-0.5 rounded-full bg-amber-200 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-amber-800 font-medium">Status</p>
+                    <p className="font-semibold text-gray-900">{defense?.status || 'Pending'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {assessors.length > 0 ? (
+                <div className="pt-3 border-t border-amber-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <UsersRound className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
+                      Board of assessors
+                    </p>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2.5">
+                    {assessors.map((a: string, i: number) => (
+                      <div key={`${a}-${i}`} className="flex items-start gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#1F7A8C]/60 mt-2 flex-shrink-0" />
+                        <span className="text-sm text-gray-800 leading-snug">{a}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-amber-800">
+                  Assessors will be listed once the defense board is confirmed.
+                </p>
               )}
             </div>
           ) : (
@@ -84,7 +92,7 @@ export function DefenseEvaluation() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Supervisor Evaluation (out of 60)</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Evaluation Results (out of 60)</h2>
           {evaluations.length > 0 ? (
             <div className="space-y-4">
               {evaluations.map((evalItem: any) => (
@@ -167,8 +175,14 @@ export function DefenseEvaluation() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-xl border border-slate-100">
-              <p>No evaluation results yet. Scores and feedback will appear here after your supervisor completes the assessment.</p>
+            <div className="text-center py-14 text-slate-500 bg-slate-50 rounded-xl border border-slate-100 relative overflow-hidden">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-white border border-slate-200/70 flex items-center justify-center mb-4">
+                <FileText className="w-7 h-7 text-slate-400" />
+              </div>
+              <p className="text-slate-700 font-semibold">No evaluations yet.</p>
+              <p className="mt-2 text-sm text-slate-500 px-4 leading-relaxed">
+                Results will be published here once the defense board completes their review.
+              </p>
             </div>
           )}
         </Card>
