@@ -1,33 +1,17 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { MainLayout } from "../../components/Layout/MainLayout";
+import { Card } from "../../components/UI/Card";
 import { Button } from "../../components/UI/Button";
-import {
-  Sliders,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  Info,
-  Building2,
-  Shield,
-  Bell,
-  ScrollText,
-  RotateCcw,
-  Check,
-  User,
-} from "lucide-react";
+import { Sliders, TrendingUp, AlertCircle, CheckCircle, Info, Building2 } from "lucide-react";
 import { API_BASE_URL, apiClient } from "../../lib/api";
 import { useDepartment } from "../../contexts/DepartmentContext";
 import { useAuth } from "../../contexts/AuthContext";
-
-const TEAL = "#006D6D";
 
 interface GpaThresholds {
   high: number;
   medium: number;
   low: number;
 }
-
-type SettingsTab = "policy" | "access" | "alerts" | "audit";
 
 export function Settings() {
   const { managesAllDepartments, adminDepartments, refreshAdminDepartments } = useDepartment();
@@ -36,32 +20,31 @@ export function Settings() {
   const [allDepartments, setAllDepartments] = useState<{ id: number; name: string; code: string }[]>([]);
   const [selectedDeptIds, setSelectedDeptIds] = useState<number[]>([]);
   const [savingDepts, setSavingDepts] = useState(false);
-
+  
   const [globalThresholds, setGlobalThresholds] = useState<GpaThresholds>({
-    high: 3.8,
-    medium: 3.3,
-    low: 0.0,
+    high: 3.80,
+    medium: 3.30,
+    low: 0.00
   });
-
-  const [departmentThresholds, setDepartmentThresholds] = useState<
-    Record<string, { useCustomThresholds: boolean; thresholds: GpaThresholds }>
-  >({});
-
+  
+  const [departmentThresholds, setDepartmentThresholds] = useState<Record<string, { useCustomThresholds: boolean; thresholds: GpaThresholds }>>({});
+  
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingDept, setSavingDept] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("policy");
-  const [headerSearch, setHeaderSearch] = useState("");
+  const [message, setMessage] = useState<{type: string; text: string} | null>(null);
 
   useEffect(() => {
     loadAllThresholds();
   }, []);
 
   useEffect(() => {
-    if (user?.role === "admin") {
+    if (user?.role === 'admin') {
       const loadDepts = async () => {
-        const [listRes, meRes] = await Promise.all([apiClient.getDepartments(), apiClient.getAdminDepartments()]);
+        const [listRes, meRes] = await Promise.all([
+          apiClient.getDepartments(),
+          apiClient.getAdminDepartments(),
+        ]);
         if (listRes.success && Array.isArray(listRes.data)) {
           setAllDepartments(listRes.data as { id: number; name: string; code: string }[]);
         }
@@ -74,22 +57,14 @@ export function Settings() {
     }
   }, [user?.role]);
 
-  const showMessage = (type: string, text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 5000);
-  };
-
   const handleSaveAdminDepartments = async () => {
     setSavingDepts(true);
     const res = await apiClient.setAdminDepartments(selectedDeptIds);
     if (res.success) {
       await refreshAdminDepartments();
-      showMessage(
-        "success",
-        selectedDeptIds.length === 0 ? "You now manage all departments" : `Managing ${selectedDeptIds.length} department(s)`
-      );
+      showMessage('success', selectedDeptIds.length === 0 ? 'You now manage all departments' : `Managing ${selectedDeptIds.length} department(s)`);
     } else {
-      showMessage("error", res.message || "Failed to update");
+      showMessage('error', res.message || 'Failed to update');
     }
     setSavingDepts(false);
   };
@@ -99,10 +74,8 @@ export function Settings() {
       setLoading(true);
       localStorage.removeItem("cached_gpa_thresholds");
       const res = await fetch(`${API_BASE_URL}/settings/gpa-thresholds/all`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}`,
-        },
-        cache: "no-store",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}` },
+        cache: 'no-store'
       });
       if (res.ok) {
         const data = await res.json();
@@ -110,10 +83,7 @@ export function Settings() {
         if (data.data?.departments) {
           const map: Record<string, { useCustomThresholds: boolean; thresholds: GpaThresholds }> = {};
           data.data.departments.forEach((d: any) => {
-            map[d.name] = {
-              useCustomThresholds: d.useCustomThresholds ?? false,
-              thresholds: d.thresholds ?? { high: 3.8, medium: 3.3, low: 0 },
-            };
+            map[d.name] = { useCustomThresholds: d.useCustomThresholds ?? false, thresholds: d.thresholds ?? { high: 3.8, medium: 3.3, low: 0 } };
           });
           setDepartmentThresholds(map);
         }
@@ -126,18 +96,6 @@ export function Settings() {
     }
   };
 
-  const discardChanges = async () => {
-    await loadAllThresholds();
-    if (user?.role === "admin") {
-      const meRes = await apiClient.getAdminDepartments();
-      if (meRes.success && meRes.data) {
-        const d = meRes.data as { ids: number[] | null };
-        setSelectedDeptIds(d.ids ?? []);
-      }
-    }
-    showMessage("success", "Restored last saved values");
-  };
-
   const saveGlobalThresholds = async () => {
     try {
       setSaving(true);
@@ -145,15 +103,17 @@ export function Settings() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}`
         },
-        body: JSON.stringify(globalThresholds),
+        body: JSON.stringify(globalThresholds)
       });
       const data = await res.json();
       if (res.ok) {
-        showMessage("success", "Global thresholds updated");
+        showMessage("success", "Global thresholds updated successfully");
+        // Force immediate refresh - clear ALL cache
         localStorage.removeItem("cached_gpa_thresholds");
         localStorage.setItem("gpa_thresholds_changed", Date.now().toString());
+        // Dispatch multiple events to ensure all listeners catch it
         window.dispatchEvent(new Event("gpa_thresholds_changed"));
         window.dispatchEvent(new Event("refresh_gpa_thresholds"));
         await loadAllThresholds();
@@ -167,69 +127,20 @@ export function Settings() {
     }
   };
 
-  const saveFooterBundle = async () => {
-    if (user?.role !== "admin") {
-      await saveGlobalThresholds();
-      return;
-    }
-    if (!validateThresholds(globalThresholds)) {
-      showMessage("error", "Invalid GPA tiers: need 0 ≤ LOW ≤ MEDIUM ≤ HIGH ≤ 5.0");
-      return;
-    }
-    setSaving(true);
-    setSavingDepts(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/settings/gpa-thresholds/global`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(globalThresholds),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        showMessage("error", data.message || "Failed to update global thresholds");
-        return;
-      }
-      localStorage.removeItem("cached_gpa_thresholds");
-      localStorage.setItem("gpa_thresholds_changed", Date.now().toString());
-      window.dispatchEvent(new Event("gpa_thresholds_changed"));
-      window.dispatchEvent(new Event("refresh_gpa_thresholds"));
-
-      const deptRes = await apiClient.setAdminDepartments(selectedDeptIds);
-      if (!deptRes.success) {
-        showMessage("error", deptRes.message || "Failed to update department scope");
-        return;
-      }
-      await refreshAdminDepartments();
-      showMessage("success", "Saved academic policy and admin scope");
-      await loadAllThresholds();
-    } catch {
-      showMessage("error", "Failed to save");
-    } finally {
-      setSaving(false);
-      setSavingDepts(false);
-    }
-  };
-
   const saveDepartmentThresholds = async (deptName: string) => {
     const dept = departmentThresholds[deptName];
     if (!dept) return;
     try {
       setSavingDept(deptName);
       const payload = { useCustomThresholds: dept.useCustomThresholds, ...dept.thresholds };
-      const res = await fetch(
-        `${API_BASE_URL}/settings/gpa-thresholds/department/${encodeURIComponent(deptName)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/settings/gpa-thresholds/department/${encodeURIComponent(deptName)}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("supervise360_token") || localStorage.getItem("token")}`
+        },
+        body: JSON.stringify(payload)
+      });
       const data = await res.json();
       if (res.ok) {
         showMessage("success", `Settings updated for ${deptName}`);
@@ -248,498 +159,265 @@ export function Settings() {
     }
   };
 
-  const updateDeptThresholds = (
-    deptName: string,
-    useCustom?: boolean,
-    thresholds?: GpaThresholds
-  ) => {
-    setDepartmentThresholds((prev) => {
+  const updateDeptThresholds = (deptName: string, useCustom?: boolean, thresholds?: GpaThresholds) => {
+    setDepartmentThresholds(prev => {
       const current = prev[deptName] ?? { useCustomThresholds: false, thresholds: globalThresholds };
       return {
         ...prev,
         [deptName]: {
           useCustomThresholds: useCustom ?? current.useCustomThresholds,
-          thresholds: thresholds ?? current.thresholds,
-        },
+          thresholds: thresholds ?? current.thresholds
+        }
       };
     });
   };
 
+  const showMessage = (type: string, text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 5000);
+  };
+
   const validateThresholds = (thresholds: GpaThresholds): boolean => {
-    return (
-      thresholds.high >= thresholds.medium &&
-      thresholds.medium >= thresholds.low &&
-      thresholds.low >= 0 &&
-      thresholds.high <= 5.0
-    );
+    return thresholds.high >= thresholds.medium && 
+           thresholds.medium >= thresholds.low && 
+           thresholds.low >= 0 && 
+           thresholds.high <= 5.0;
   };
-
-  const tabBtn = (id: SettingsTab, icon: ReactNode, label: string) => {
-    const on = activeTab === id;
-    return (
-      <button
-        type="button"
-        onClick={() => setActiveTab(id)}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-colors text-left ${
-          on ? "bg-[#006D6D]/12 text-[#006D6D]" : "text-slate-600 hover:bg-slate-100"
-        }`}
-      >
-        <span className={on ? "text-[#006D6D]" : "text-slate-400"}>{icon}</span>
-        {label}
-      </button>
-    );
-  };
-
-  const manageAllScope = selectedDeptIds.length === 0;
-  const filteredDeptEntries = Object.entries(departmentThresholds).filter(([name]) =>
-    name.toLowerCase().includes(headerSearch.trim().toLowerCase())
-  );
 
   return (
-    <MainLayout
-      title="Settings"
-      topBarSearch={{
-        placeholder: "Search system settings…",
-        value: headerSearch,
-        onChange: setHeaderSearch,
-      }}
-    >
-      <div className="max-w-6xl mx-auto min-w-0 pb-24">
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">System configuration</h1>
-          <p className="text-[#4A4A4A] mt-2 text-sm sm:text-base max-w-2xl leading-relaxed">
-            Manage institutional GPA policy, administrative visibility, and guardrails that affect grouping and
-            reporting across Supervise360.
-          </p>
+    <MainLayout title="Settings">
+      <div className="w-full space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">GPA Tier Configuration</h1>
+            <p className="text-gray-600 mt-1">Configure student classification thresholds</p>
+          </div>
+          <div className="p-3 bg-slate-100 rounded-lg">
+            <Sliders className="text-slate-700" size={28} />
+          </div>
         </div>
 
         {message && (
-          <div
-            className={`mb-6 flex items-center gap-3 p-4 rounded-xl border ${
-              message.type === "success"
-                ? "border-emerald-200 bg-emerald-50/90 text-emerald-900"
-                : "border-red-200 bg-red-50/90 text-red-900"
-            }`}
-          >
-            {message.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-            <span className="text-sm font-medium">{message.text}</span>
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-800">
+            {message.type === "success" ? <CheckCircle size={20} className="text-slate-600" /> : <AlertCircle size={20} className="text-slate-600" />}
+            <span>{message.text}</span>
           </div>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          {/* Sub-navigation */}
-          <nav className="w-full lg:w-56 shrink-0 space-y-1 lg:sticky lg:top-4">
-            {tabBtn("policy", <Sliders size={18} />, "Academic policy")}
-            {tabBtn("access", <Shield size={18} />, "Security & access")}
-            {tabBtn("alerts", <Bell size={18} />, "System alerts")}
-            {tabBtn("audit", <ScrollText size={18} />, "Audit logs")}
-          </nav>
+        {/* Admin: Department scope - which departments this admin manages */}
+        {user?.role === 'admin' && (
+          <Card className="border border-slate-200">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3 pb-4 border-b">
+                <div className="p-2 bg-[#1F7A8C]/10 rounded-lg">
+                  <Building2 className="text-[#1F7A8C]" size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Department Scope</h2>
+                  <p className="text-sm text-gray-600">
+                    {managesAllDepartments ? 'You manage all departments' : `Managing ${adminDepartments?.length ?? 0} department(s)`}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600">
+                Select which departments you manage. Leave all unchecked to manage all departments (super admin). Check specific departments to limit your scope.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                {allDepartments.map((d) => (
+                  <label key={d.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedDeptIds.includes(d.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedDeptIds((prev) => [...prev, d.id]);
+                        } else {
+                          setSelectedDeptIds((prev) => prev.filter((id) => id !== d.id));
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-[#1F7A8C]"
+                    />
+                    <span className="text-sm">{d.name}</span>
+                  </label>
+                ))}
+              </div>
+              <Button onClick={handleSaveAdminDepartments} disabled={savingDepts}>
+                {savingDepts ? 'Saving...' : 'Save Department Scope'}
+              </Button>
+            </div>
+          </Card>
+        )}
 
-          <div className="flex-1 min-w-0 space-y-6">
-            {loading && activeTab === "policy" ? (
-              <div className="text-slate-500 py-12 text-center">Loading settings…</div>
-            ) : (
-              <>
-                {activeTab === "policy" && user?.role === "admin" && (
-                  <>
-                    <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-11 h-11 rounded-xl flex items-center justify-center"
-                            style={{ backgroundColor: `${TEAL}18` }}
-                          >
-                            <TrendingUp className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
-                          </div>
-                          <div>
-                            <h2 className="text-lg font-bold text-[#1a1a1a]">Global GPA configuration</h2>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mt-1">
-                              Base institutional standards
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex gap-3">
+          <Info className="text-slate-600 flex-shrink-0 mt-0.5" size={20} />
+          <div className="text-sm text-slate-800">
+            <p className="font-medium">How it works</p>
+            <p className="text-slate-600 mt-1">
+              Students are classified into HIGH, MEDIUM, or LOW tiers based on GPA. 
+              Groups are formed with balanced tier distribution for optimal collaboration.
+            </p>
+          </div>
+        </div>
 
-                      <div className="mt-6 grid md:grid-cols-3 gap-4">
-                        <div className="md:col-span-1 flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-[#F8F9FA] p-6">
-                          <label className="text-xs font-semibold uppercase text-slate-500">High tier cutoff</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="5"
-                            value={globalThresholds.high}
-                            onChange={(e) =>
-                              setGlobalThresholds({ ...globalThresholds, high: parseFloat(e.target.value) || 0 })
-                            }
-                            className="mt-3 w-full max-w-[140px] text-center text-3xl font-bold text-[#1a1a1a] py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25 bg-white"
-                          />
-                          <p className="text-xs text-slate-500 mt-3 text-center leading-snug">
-                            Used for high-tier classification and defense readiness signals.
-                          </p>
-                        </div>
-                        <div className="md:col-span-2 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-1.5">Medium tier</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="5"
-                                value={globalThresholds.medium}
-                                onChange={(e) =>
-                                  setGlobalThresholds({ ...globalThresholds, medium: parseFloat(e.target.value) || 0 })
-                                }
-                                className="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
-                              />
-                              <p className="text-xs text-slate-500 mt-1">GPA ≥ this value → medium</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-1.5">Low tier floor</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="5"
-                                value={globalThresholds.low}
-                                onChange={(e) =>
-                                  setGlobalThresholds({ ...globalThresholds, low: parseFloat(e.target.value) || 0 })
-                                }
-                                className="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25"
-                              />
-                              <p className="text-xs text-slate-500 mt-1">GPA ≥ this value → low</p>
-                            </div>
-                          </div>
-                          {!validateThresholds(globalThresholds) && (
-                            <div className="flex items-center gap-2 text-amber-800 text-sm bg-amber-50 border border-amber-200/80 p-3 rounded-xl">
-                              <AlertCircle size={16} />
-                              <span>Invalid: 0 ≤ LOW ≤ MEDIUM ≤ HIGH ≤ 5.0</span>
-                            </div>
-                          )}
-                          <div className="flex items-start gap-2 text-sm text-amber-900 bg-amber-50/95 border border-amber-200/80 rounded-xl p-4">
-                            <AlertCircle className="shrink-0 mt-0.5" size={18} />
-                            <p>
-                              Changing tier cutoffs affects how existing students are bucketed in dashboards and grouping
-                              quality metrics. Communicate policy changes before applying in production.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+        {/* Global Thresholds - Default for departments that don't use custom */}
+        {user?.role === 'admin' && (
+          <Card className="border border-slate-200">
+            <div className="p-6 space-y-5">
+              <div className="flex items-center gap-3 pb-4 border-b">
+                <div className="p-2 bg-[#1F7A8C]/10 rounded-lg">
+                  <TrendingUp className="text-[#1F7A8C]" size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Global Thresholds</h2>
+                  <p className="text-sm text-gray-600">Default for all departments (used when a department doesn&apos;t have custom thresholds)</p>
+                </div>
+              </div>
 
-                      <div className="mt-6 flex flex-wrap gap-2">
-                        <Button
-                          onClick={saveGlobalThresholds}
-                          disabled={saving || !validateThresholds(globalThresholds)}
-                          className="!rounded-[10px] !bg-[#006D6D] hover:!bg-[#005a5a] !text-white"
-                        >
-                          {saving ? "Saving…" : "Save global tiers only"}
-                        </Button>
-                      </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">HIGH Tier</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    value={globalThresholds.high}
+                    onChange={(e) => setGlobalThresholds({ ...globalThresholds, high: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent text-base font-medium text-gray-900 bg-white"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">GPA ≥ this value</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">MEDIUM Tier</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    value={globalThresholds.medium}
+                    onChange={(e) => setGlobalThresholds({ ...globalThresholds, medium: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent text-base font-medium text-gray-900 bg-white"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">GPA ≥ this value</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">LOW Tier</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="5"
+                    value={globalThresholds.low}
+                    onChange={(e) => setGlobalThresholds({ ...globalThresholds, low: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent text-base font-medium text-gray-900 bg-white"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">GPA ≥ this value</p>
+                </div>
+              </div>
+
+              {!validateThresholds(globalThresholds) && (
+                <div className="flex items-center gap-2 text-slate-700 text-sm bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                  <AlertCircle size={16} className="text-slate-500" />
+                  <span>Invalid: 0 ≤ LOW ≤ MEDIUM ≤ HIGH ≤ 5.0</span>
+                </div>
+              )}
+
+              <Button onClick={saveGlobalThresholds} disabled={saving || !validateThresholds(globalThresholds)}>
+                {saving ? "Saving..." : "Save Global Thresholds"}
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Per-Department Custom Thresholds */}
+        {user?.role === 'admin' && Object.keys(departmentThresholds).length > 0 && (
+          <Card className="border border-slate-200">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b">
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <Building2 className="text-slate-700" size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Department-Specific Thresholds</h2>
+                  <p className="text-sm text-gray-600">Override global thresholds per department</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {Object.entries(departmentThresholds).map(([deptName, dept]) => (
+                  <div key={deptName} className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-medium text-gray-900">{deptName}</h3>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={dept.useCustomThresholds}
+                          onChange={(e) => updateDeptThresholds(deptName, e.target.checked)}
+                          className="w-4 h-4 rounded text-[#1F7A8C]"
+                        />
+                        <span className="text-sm">Use custom thresholds</span>
+                      </label>
                     </div>
 
-                    {Object.keys(departmentThresholds).length > 0 && (
-                      <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+                    {dept.useCustomThresholds && (
+                      <>
+                        <div className="grid grid-cols-3 gap-4 mb-4">
                           <div>
-                            <h2 className="text-lg font-bold text-[#1a1a1a]">Departmental overrides</h2>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mt-1">
-                              Specific program adjustments
-                            </p>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">HIGH</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="5"
+                              value={dept.thresholds.high}
+                              onChange={(e) => updateDeptThresholds(deptName, undefined, { ...dept.thresholds, high: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                            />
                           </div>
-                          <span className="text-sm font-semibold shrink-0" style={{ color: TEAL }}>
-                            Toggle custom use per department
-                          </span>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">MEDIUM</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="5"
+                              value={dept.thresholds.medium}
+                              onChange={(e) => updateDeptThresholds(deptName, undefined, { ...dept.thresholds, medium: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">LOW</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="5"
+                              value={dept.thresholds.low}
+                              onChange={(e) => updateDeptThresholds(deptName, undefined, { ...dept.thresholds, low: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                            />
+                          </div>
                         </div>
-
-                        <div className="space-y-2">
-                          {filteredDeptEntries.length === 0 ? (
-                            <p className="text-sm text-slate-500 py-6 text-center">No departments match search.</p>
-                          ) : (
-                            filteredDeptEntries.map(([deptName, dept]) => (
-                              <div
-                                key={deptName}
-                                className="rounded-xl border border-slate-100 bg-[#F8F9FA]/80 p-4 hover:border-slate-200 transition-colors"
-                              >
-                                <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-semibold text-[#1a1a1a]">{deptName}</p>
-                                    <label className="inline-flex items-center gap-2 mt-2 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={dept.useCustomThresholds}
-                                        onChange={(e) => updateDeptThresholds(deptName, e.target.checked)}
-                                        className="w-4 h-4 rounded border-slate-300 text-[#006D6D] focus:ring-[#006D6D]"
-                                      />
-                                      <span className="text-sm text-slate-600">Use custom thresholds</span>
-                                    </label>
-                                  </div>
-                                  {dept.useCustomThresholds ? (
-                                    <div className="grid grid-cols-3 gap-2 lg:w-[280px]">
-                                      <div>
-                                        <span className="text-[10px] font-bold uppercase text-slate-400">High</span>
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          min="0"
-                                          max="5"
-                                          value={dept.thresholds.high}
-                                          onChange={(e) =>
-                                            updateDeptThresholds(deptName, undefined, {
-                                              ...dept.thresholds,
-                                              high: parseFloat(e.target.value) || 0,
-                                            })
-                                          }
-                                          className="w-full mt-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
-                                        />
-                                      </div>
-                                      <div>
-                                        <span className="text-[10px] font-bold uppercase text-slate-400">Med</span>
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          min="0"
-                                          max="5"
-                                          value={dept.thresholds.medium}
-                                          onChange={(e) =>
-                                            updateDeptThresholds(deptName, undefined, {
-                                              ...dept.thresholds,
-                                              medium: parseFloat(e.target.value) || 0,
-                                            })
-                                          }
-                                          className="w-full mt-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
-                                        />
-                                      </div>
-                                      <div>
-                                        <span className="text-[10px] font-bold uppercase text-slate-400">Low</span>
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          min="0"
-                                          max="5"
-                                          value={dept.thresholds.low}
-                                          onChange={(e) =>
-                                            updateDeptThresholds(deptName, undefined, {
-                                              ...dept.thresholds,
-                                              low: parseFloat(e.target.value) || 0,
-                                            })
-                                          }
-                                          className="w-full mt-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
-                                        />
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400 lg:text-right">
-                                      Inherits global
-                                    </p>
-                                  )}
-                                  <Button
-                                    onClick={() => saveDepartmentThresholds(deptName)}
-                                    disabled={
-                                      savingDept === deptName ||
-                                      (dept.useCustomThresholds && !validateThresholds(dept.thresholds))
-                                    }
-                                    className="!rounded-[10px] shrink-0"
-                                  >
-                                    {savingDept === deptName ? "Saving…" : "Save"}
-                                  </Button>
-                                </div>
-                                {dept.useCustomThresholds && !validateThresholds(dept.thresholds) && (
-                                  <p className="text-xs text-amber-600 mt-2">Invalid tier ordering for this department.</p>
-                                )}
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
+                        {!validateThresholds(dept.thresholds) && (
+                          <p className="text-xs text-amber-600 mb-2">Invalid: 0 ≤ LOW ≤ MEDIUM ≤ HIGH ≤ 5.0</p>
+                        )}
+                      </>
                     )}
 
-                    <div
-                      className="rounded-xl border border-slate-200/80 p-4 flex gap-3"
-                      style={{ backgroundColor: `${TEAL}08` }}
+                    <Button
+                      onClick={() => saveDepartmentThresholds(deptName)}
+                      disabled={savingDept === deptName || (dept.useCustomThresholds && !validateThresholds(dept.thresholds))}
                     >
-                      <Info className="shrink-0 mt-0.5" style={{ color: TEAL }} size={20} />
-                      <div className="text-sm text-slate-700">
-                        <p className="font-semibold text-[#1a1a1a]">How tiers are used</p>
-                        <p className="text-slate-600 mt-1 leading-relaxed">
-                          Students are classified into HIGH, MEDIUM, and LOW for dashboards and for balanced group
-                          formation where your workflows apply tier mix rules.
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {activeTab === "policy" && user?.role !== "admin" && (
-                  <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-                    You don&apos;t have access to academic policy settings.
+                      {savingDept === deptName ? "Saving..." : `Save ${deptName}`}
+                    </Button>
                   </div>
-                )}
-
-                {activeTab === "access" && user?.role === "admin" && (
-                  <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
-                    <div className="flex flex-col xl:flex-row gap-6">
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-lg font-bold text-[#1a1a1a]">Administrative department scope</h2>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mt-1">
-                          Visibility & access control
-                        </p>
-                        <p className="text-sm text-slate-600 mt-4 leading-relaxed">
-                          {managesAllDepartments
-                            ? "You currently manage all departments (full visibility)."
-                            : `You are limited to ${adminDepartments?.length ?? 0} department(s).`}
-                        </p>
-
-                        <div className="mt-5 inline-flex rounded-[10px] border border-slate-200 p-1 bg-[#F8F9FA]">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDeptIds([])}
-                            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
-                              manageAllScope ? "text-white shadow-sm" : "text-slate-600 hover:text-slate-800"
-                            }`}
-                            style={manageAllScope ? { backgroundColor: TEAL } : undefined}
-                          >
-                            All departments
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (selectedDeptIds.length === 0 && allDepartments.length > 0) {
-                                setSelectedDeptIds([allDepartments[0].id]);
-                              }
-                            }}
-                            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
-                              !manageAllScope ? "text-white shadow-sm" : "text-slate-600 hover:text-slate-800"
-                            }`}
-                            style={!manageAllScope ? { backgroundColor: TEAL } : undefined}
-                          >
-                            Selected scope
-                          </button>
-                        </div>
-
-                        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto rounded-xl border border-slate-100 p-3 bg-[#F8F9FA]/50">
-                          {allDepartments.map((d) => (
-                            <label
-                              key={d.id}
-                              className="flex items-center gap-2 p-2 rounded-lg hover:bg-white cursor-pointer border border-transparent hover:border-slate-100"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedDeptIds.includes(d.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) setSelectedDeptIds((prev) => [...prev, d.id]);
-                                  else setSelectedDeptIds((prev) => prev.filter((id) => id !== d.id));
-                                }}
-                                className="w-4 h-4 rounded border-slate-300 text-[#006D6D] focus:ring-[#006D6D]"
-                              />
-                              <span className="text-sm text-slate-800">{d.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                        <Button
-                          onClick={handleSaveAdminDepartments}
-                          disabled={savingDepts}
-                          className="mt-4 !rounded-[10px] !bg-[#006D6D] hover:!bg-[#005a5a] !text-white"
-                        >
-                          {savingDepts ? "Saving…" : "Save scope only"}
-                        </Button>
-                      </div>
-                      <div className="w-full xl:w-72 shrink-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                          Active administrative profile
-                        </p>
-                        <div className="mt-4 flex items-center gap-3">
-                          <div
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-white"
-                            style={{ backgroundColor: TEAL }}
-                          >
-                            <User size={22} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-[#1a1a1a] truncate">
-                              {user?.first_name} {user?.last_name}
-                            </p>
-                            <p className="text-xs text-slate-500">Administrator</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === "access" && user?.role !== "admin" && (
-                  <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-                    Department scope is managed by administrators.
-                  </div>
-                )}
-
-                {activeTab === "alerts" && (
-                  <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-8">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-700">
-                        <Bell size={20} />
-                      </div>
-                      <h2 className="text-lg font-bold text-[#1a1a1a]">System alerts</h2>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed">
-                      In-app and email alert routing is configured server-side. Contact your deployment team to tune
-                      SMTP, thresholds, and escalation paths. UI controls for alert subscriptions will appear here in a
-                      future release.
-                    </p>
-                  </div>
-                )}
-
-                {activeTab === "audit" && (
-                  <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-8">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
-                        <ScrollText size={20} />
-                      </div>
-                      <h2 className="text-lg font-bold text-[#1a1a1a]">Audit logs</h2>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed">
-                      Detailed audit trails (sign-ins, settings changes, data exports) are retained on the application
-                      server. Request extended retention or SIEM integration from your infrastructure owner.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {user?.role === "admin" && (
-        <div className="fixed bottom-0 left-0 right-0 lg:left-64 z-20 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-slate-500 text-center sm:text-left">
-              Sticky actions: save global GPA tiers and admin scope together. Department overrides still save per
-              department above.
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={discardChanges}
-                disabled={saving || savingDepts}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Discard
-              </button>
-              <button
-                type="button"
-                disabled={saving || savingDepts || !validateThresholds(globalThresholds)}
-                onClick={saveFooterBundle}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] text-sm font-semibold text-white shadow-sm disabled:opacity-50"
-                style={{ backgroundColor: TEAL }}
-              >
-                <Check className="w-4 h-4" />
-                {saving || savingDepts ? "Saving…" : "Save changes"}
-              </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </Card>
+        )}
+      </div>
     </MainLayout>
   );
 }
