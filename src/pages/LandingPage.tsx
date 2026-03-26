@@ -257,7 +257,7 @@ export function LandingPage() {
                   </button>
                 </div>
 
-                <div className="mt-6 grid grid-cols-2 gap-4 text-sm" data-animate="fade-in" style={{ transitionDelay: '420ms' }}>
+                <div className="hidden sm:grid mt-6 grid-cols-2 gap-4 text-sm" data-animate="fade-in" style={{ transitionDelay: '420ms' }}>
                   <div className="flex gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}14` }}>
                       <ShieldCheck className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
@@ -453,7 +453,7 @@ export function LandingPage() {
                   />
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-animate="fade-in">
+                <div className="hidden sm:block mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-animate="fade-in">
                   <p className="text-sm font-semibold text-slate-900">
                     “Milestones and feedback became clear immediately.”
                   </p>
@@ -480,7 +480,7 @@ export function LandingPage() {
                 <p className="text-white/85 text-base sm:text-lg leading-relaxed mb-10" data-animate="fade-in">
                   Works for small classes and large departments.
                 </p>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="hidden md:grid md:grid-cols-2 gap-4">
                   {[
                     { t: 'Department-ready', d: 'Scales across your program.' },
                     { t: 'Clarity for everyone', d: 'Clear next steps for each role.' },
