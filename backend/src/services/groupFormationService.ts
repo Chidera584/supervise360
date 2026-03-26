@@ -458,6 +458,45 @@ export class GroupFormationService {
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
         console.log(`🏗️  Rebalanced MEDIUM+LOW remainder: formed H+M, moved LOW into donor group (${donorGroup.name})`);
         groupCounter++;
+      } else if (tiers === 'HIGH+HIGH') {
+        // Need: convert H+H → H+M by borrowing a MEDIUM from any existing 3-member group, and placing our extra HIGH into that donor.
+        const donorGroup = groups.find((g) => g.members.length === 3 && g.members.some((m) => m.tier === 'MEDIUM'));
+        if (!donorGroup) {
+          throw new Error('Cannot form valid 2-member group from HIGH+HIGH remainder: no 3-member donor group with a MEDIUM exists.');
+        }
+        const borrowedM = pickLowestByTier(donorGroup.members, 'MEDIUM');
+        const [h1, h2] = sortedRemainder;
+        if (!borrowedM || !h1 || !h2) {
+          throw new Error('Internal error: failed to resolve HIGH+HIGH remainder or borrowed MEDIUM.');
+        }
+
+        // Replace the borrowed MEDIUM in the donor with the extra HIGH (keep donor at 3 members)
+        donorGroup.members = sortByGpaDesc(donorGroup.members.filter((m) => m !== borrowedM).concat([h2]));
+        donorGroup.avg_gpa = recomputeAvg(donorGroup.members);
+
+        const pair = sortByGpaDesc([h1, borrowedM]);
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
+        console.log(`🏗️  Rebalanced HIGH+HIGH remainder: formed H+M, moved extra HIGH into donor group (${donorGroup.name})`);
+        groupCounter++;
+      } else if (tiers === 'MEDIUM+MEDIUM') {
+        // Need: convert M+M → H+M by borrowing a HIGH from any existing 3-member group, and placing our extra MEDIUM into that donor.
+        const donorGroup = groups.find((g) => g.members.length === 3 && g.members.some((m) => m.tier === 'HIGH'));
+        if (!donorGroup) {
+          throw new Error('Cannot form valid 2-member group from MEDIUM+MEDIUM remainder: no 3-member donor group with a HIGH exists.');
+        }
+        const borrowedH = pickLowestByTier(donorGroup.members, 'HIGH');
+        const [m1, m2] = sortedRemainder;
+        if (!borrowedH || !m1 || !m2) {
+          throw new Error('Internal error: failed to resolve MEDIUM+MEDIUM remainder or borrowed HIGH.');
+        }
+
+        donorGroup.members = sortByGpaDesc(donorGroup.members.filter((m) => m !== borrowedH).concat([m2]));
+        donorGroup.avg_gpa = recomputeAvg(donorGroup.members);
+
+        const pair = sortByGpaDesc([borrowedH, m1]);
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
+        console.log(`🏗️  Rebalanced MEDIUM+MEDIUM remainder: formed H+M, moved extra MEDIUM into donor group (${donorGroup.name})`);
+        groupCounter++;
       } else if (tiers === 'LOW+LOW') {
         // Convert L+L → H+L+L by borrowing a HIGH from a donor that will become a valid 2-member H+M after removal.
         const donorGroup = groups.find(
