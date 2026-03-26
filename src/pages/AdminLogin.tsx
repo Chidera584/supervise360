@@ -33,7 +33,7 @@ export function AdminLogin() {
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <img src="/logo-auth-teal.png" alt="Supervise360" className="h-10 w-auto object-contain" />
+              <img src="/logo-auth-teal.png" alt="Supervise360" className="h-10 w-auto object-contain rounded-2xl" />
               <span className="text-lg font-bold" style={{ color: '#006d6d' }}>
                 Supervise360
               </span>
@@ -49,7 +49,7 @@ export function AdminLogin() {
             <img
               src="/logo-auth-teal.png"
               alt="Supervise360"
-              className="mx-auto w-16 h-16 object-contain mb-5"
+              className="mx-auto w-16 h-16 object-contain rounded-2xl mb-5"
             />
             <h1 className="text-2xl font-bold text-slate-800 mb-1">Administrator Login</h1>
             <p className="text-slate-500">Access the admin dashboard</p>

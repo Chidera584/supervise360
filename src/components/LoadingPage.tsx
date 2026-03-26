@@ -21,7 +21,7 @@ export function LoadingPage({ message = 'Loading...' }: LoadingPageProps) {
           <img
             src="/logo-auth-teal.png"
             alt="Supervise360"
-            className="w-20 h-20 object-contain"
+            className="w-20 h-20 object-contain rounded-2xl"
           />
         </div>
 

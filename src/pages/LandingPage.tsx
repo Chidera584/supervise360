@@ -118,7 +118,7 @@ export function LandingPage() {
               onClick={() => navigate('/')}
               className="flex items-center gap-2.5 sm:gap-3 group shrink-0 min-w-0 text-left"
             >
-              <img src="/logo-shell-white.png" alt="" className="h-9 sm:h-10 w-auto object-contain shrink-0" />
+              <img src="/logo-shell-white.png" alt="" className="h-9 sm:h-10 w-auto object-contain rounded-2xl shrink-0" />
               <span className="text-base sm:text-lg font-bold tracking-tight text-white truncate">
                 Supervise360
               </span>
@@ -468,7 +468,7 @@ export function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
             <div className="sm:col-span-2 lg:col-span-1" data-animate="slide-left">
               <div className="flex items-center gap-2 mb-3">
-                <img src="/logo-auth-teal.png" alt="" className="h-9 w-auto object-contain" />
+                <img src="/logo-auth-teal.png" alt="" className="h-9 w-auto object-contain rounded-2xl" />
                 <span className="font-bold text-[#1a1a1a]">
                   Supervise<span style={{ color: TEAL }}>360</span>
                 </span>
