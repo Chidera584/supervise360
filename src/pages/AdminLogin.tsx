@@ -29,16 +29,14 @@ export function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      <header className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 sticky top-0 z-50">
+      <header className="bg-[#006d6d] text-white shadow-sm border-b border-white/15 sticky top-0 z-50">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <img src="/logo-auth-teal.png" alt="Supervise360" className="h-10 w-auto object-contain rounded-2xl" />
-              <span className="text-lg font-bold" style={{ color: '#006d6d' }}>
-                Supervise360
-              </span>
+              <span className="text-lg font-bold text-white">Supervise360</span>
             </div>
-            <span className="text-sm font-medium text-slate-500">Administrator Portal</span>
+            <span className="text-sm font-medium text-white/85">Administrator Portal</span>
           </div>
         </div>
       </header>
