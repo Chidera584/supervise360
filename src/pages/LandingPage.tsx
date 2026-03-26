@@ -126,7 +126,8 @@ export function LandingPage() {
             </button>
 
             {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
+            <div className="hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
+              <nav className="flex items-center gap-2 lg:gap-3 shrink-0">
               {navItems.map((item) => (
                 <button
                   key={item.label}
@@ -142,7 +143,16 @@ export function LandingPage() {
                   {item.label}
                 </button>
               ))}
-            </nav>
+              </nav>
+
+              <button
+                type="button"
+                onClick={goAdmin}
+                className="px-3.5 lg:px-4 py-2 text-sm font-semibold rounded-lg border border-white/25 text-white hover:bg-white/10 transition-colors"
+              >
+                Admin login
+              </button>
+            </div>
 
             {/* Mobile menu button */}
             <button
