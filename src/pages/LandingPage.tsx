@@ -212,14 +212,14 @@ export function LandingPage() {
                   data-animate="fade-up"
                   style={{ transitionDelay: '120ms' }}
                 >
-                  Supervision, reporting, and feedback—kept in one place.
+                  Supervision, reporting, and feedback, kept in one place.
                 </h1>
                 <p
                   className="mt-5 text-base sm:text-lg leading-relaxed opacity-0"
                   data-animate="fade-up"
                   style={{ color: MUTED, transitionDelay: '200ms' }}
                 >
-                  Built for real campus workflows: groups, submissions, reviews, messaging, and defense scheduling—without the
+                  Built for real campus workflows: groups, submissions, reviews, messaging, and defense scheduling, without the
                   spreadsheet chaos.
                 </p>
 
@@ -446,7 +446,7 @@ export function LandingPage() {
 
                 <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-animate="fade-in">
                   <p className="text-sm font-semibold text-slate-900">
-                    “Our students stopped asking what’s next — the milestones and feedback were finally visible.”
+                    “Our students stopped asking what’s next. The milestones and feedback were finally visible.”
                   </p>
                   <p className="text-xs text-slate-500 mt-2">Department coordinator</p>
                 </div>
@@ -469,13 +469,13 @@ export function LandingPage() {
                   Built for modern campuses
                 </h2>
                 <p className="text-white/85 text-base sm:text-lg leading-relaxed mb-10" data-animate="fade-in">
-                  Whether you coordinate a handful of groups or an entire department, Supervise360 keeps the supervision narrative coherent—for students, supervisors, and administrators.
+                  Whether you coordinate a handful of groups or an entire department, Supervise360 keeps the supervision narrative coherent for students, supervisors, and administrators.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {[
                     { t: 'Department-ready', d: 'Scales from a course to a faculty-wide program.' },
                     { t: 'Clarity for everyone', d: 'Students know what to submit; supervisors know what to review.' },
-                    { t: 'Designed for focus', d: 'Less noise—more follow-through and feedback quality.' },
+                    { t: 'Designed for focus', d: 'Less noise, more follow-through and feedback quality.' },
                     { t: 'Consistent records', d: 'Submissions, reviews, and evaluation history are preserved.' },
                   ].map((x) => (
                     <div key={x.t} className="rounded-2xl bg-white/10 border border-white/15 p-4">
