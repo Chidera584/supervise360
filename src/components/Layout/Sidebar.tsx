@@ -120,9 +120,6 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
         <img src="/logo.png" alt="Supervise360" className="h-9 w-9 object-contain rounded-xl shrink-0" />
         <div className="min-w-0">
           <p className="text-lg font-bold tracking-tight truncate text-white">Supervise360</p>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/70 mt-0.5">
-            Academic administration
-          </p>
         </div>
       </div>
     </div>
@@ -312,7 +309,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
       )}
       <div
         className={`lg:hidden fixed top-0 left-0 h-full min-h-[100dvh] w-72 max-w-[85vw] flex flex-col z-50 transform transition-transform duration-300 ease-out ${
-          isLightShell ? 'bg-[#008080] text-white border-r border-white/15' : 'bg-[#022B3A] text-white'
+          isLightShell ? 'bg-[#006D6D] text-white border-r border-white/15' : 'bg-[#022B3A] text-white'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div
@@ -405,7 +402,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
       <div
         className={`hidden lg:flex w-64 flex-shrink-0 fixed left-0 top-0 h-screen flex-col z-30 ${
-          isLightShell ? 'bg-[#008080] text-white border-r border-white/15' : 'bg-[#022B3A] text-white'
+          isLightShell ? 'bg-[#006D6D] text-white border-r border-white/15' : 'bg-[#022B3A] text-white'
         }`}
       >
         {isAdmin ? <AdminNav mobile={false} /> : isStudent ? <StudentNav mobile={false} /> : <DefaultNav />}

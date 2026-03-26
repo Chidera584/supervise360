@@ -76,7 +76,7 @@ export function AdminDashboard() {
 
   return (
     <MainLayout title="Admin overview">
-      <div className="max-w-6xl mx-auto space-y-8 min-w-0">
+      <div className="space-y-8 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Admin overview</h1>
@@ -262,45 +262,6 @@ export function AdminDashboard() {
               </Link>
             ))}
           </div>
-        </div>
-
-        {/* Activity-style panel (static samples — replace with API when available) */}
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5 sm:p-6">
-          <h2 className="text-lg font-bold text-[#1a1a1a] mb-4">Recent activity</h2>
-          <ul className="space-y-3">
-            <li className="flex gap-3 p-3 rounded-lg bg-emerald-50/80 border border-emerald-100/80">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-900">Dashboard data refreshed</p>
-                <p className="text-xs text-slate-600 mt-0.5">Totals reflect the latest enrollment and group records.</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-2">System</p>
-              </div>
-            </li>
-            <li className="flex gap-3 p-3 rounded-lg bg-sky-50/80 border border-sky-100/80">
-              <Info className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-900">Tip: review department scope</p>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Admins with a limited scope can adjust departments in Settings.
-                </p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-2">Administration</p>
-              </div>
-            </li>
-            <li className="flex gap-3 p-3 rounded-lg bg-amber-50/80 border border-amber-100/80">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-900">Check supervisor assignment</p>
-                <p className="text-xs text-slate-600 mt-0.5">Resolve students still awaiting a primary supervisor.</p>
-                <Link
-                  to="/supervisor-assignment"
-                  className="inline-block mt-2 text-xs font-bold uppercase tracking-wide"
-                  style={{ color: TEAL }}
-                >
-                  Open assignment →
-                </Link>
-              </div>
-            </li>
-          </ul>
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm pb-2">

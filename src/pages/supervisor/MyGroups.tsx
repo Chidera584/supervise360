@@ -227,20 +227,19 @@ export function MyGroups() {
                           {getStatusIcon(group.status)}
                           {chip.label}
                         </span>
-                        {group.project?.progress_percentage != null && (
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                            style={{ backgroundColor: 'rgba(0,109,109,0.10)', color: TEAL }}
-                          >
-                            {(() => {
-                              const apiPctRaw = group.project?.progress_percentage ?? 0;
-                              const apiPct = apiPctRaw <= 1 ? apiPctRaw * 100 : apiPctRaw;
-                              const derivedPct = group.reportsTotal ? Math.min(100, Math.round((group.reportsTotal / 4) * 100)) : 0;
-                              const pctToShow = apiPctRaw && apiPct > 0 ? apiPct : derivedPct;
-                              return `${pctToShow.toFixed(2)}%`;
-                            })()} progress
-                          </span>
-                        )}
+                        {(() => {
+                          const submittedCount = group.reportsTotal ?? 0;
+                          const derivedPct = submittedCount ? Math.min(100, (submittedCount / 4) * 100) : 0;
+                          if (derivedPct <= 0) return null;
+                          return (
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{ backgroundColor: 'rgba(0,109,109,0.10)', color: TEAL }}
+                            >
+                              {derivedPct.toFixed(2)}% progress
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <p className="text-sm text-slate-600 mt-1 line-clamp-1">

@@ -46,33 +46,12 @@ export default {
           pale: '#cbd5e1',
           muted: '#f1f5f9',
         },
-        /**
-         * Brand teal — primary actions, active nav, links (aligned with Supervise360 references).
-         */
-        brand: {
-          DEFAULT: '#0f766e',
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
-          800: '#115e59',
-          900: '#134e4a',
-        },
-        /** Accent: keep in sync with brand for existing `accent` utilities */
+        /** Accent: actions, links, focus */
         accent: {
-          DEFAULT: '#0d9488',
-          hover: '#0f766e',
-          soft: '#ccfbf1',
-          muted: '#5eead4',
-        },
-        /** App canvas behind cards */
-        canvas: {
-          DEFAULT: '#f4f6f8',
-          subtle: '#f8fafc',
+          DEFAULT: '#4f46e5',
+          hover: '#4338ca',
+          soft: '#eef2ff',
+          muted: '#a5b4fc',
         },
       },
     },

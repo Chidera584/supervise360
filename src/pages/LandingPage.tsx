@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Menu,
   X,
+  Globe,
   GraduationCap,
   LayoutGrid,
   BarChart3,
@@ -28,19 +29,58 @@ export function LandingPage() {
     const els = Array.from(document.querySelectorAll<HTMLElement>('[data-animate]'));
     if (els.length === 0) return;
 
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+
+    const applyInitialState = (el: HTMLElement) => {
+      if (prefersReducedMotion) {
+        el.style.opacity = '';
+        el.style.transform = '';
+        return;
+      }
+
+      const anim = el.getAttribute('data-animate') || 'fade-up';
+      el.style.opacity = '0';
+      el.style.willChange = 'opacity, transform';
+      el.style.transition = 'opacity 650ms ease, transform 650ms ease';
+
+      if (anim === 'slide-left') {
+        el.style.transform = 'translateX(-28px)';
+      } else if (anim === 'slide-right') {
+        el.style.transform = 'translateX(28px)';
+      } else if (anim === 'fade-in') {
+        el.style.transform = 'translateY(0)';
+      } else {
+        // fade-up default
+        el.style.transform = 'translateY(18px)';
+      }
+    };
+
+    const applyVisibleState = (el: HTMLElement) => {
+      const anim = el.getAttribute('data-animate') || 'fade-up';
+      el.style.opacity = '1';
+      el.style.willChange = '';
+
+      if (anim === 'slide-left' || anim === 'slide-right') {
+        el.style.transform = 'translateX(0)';
+      } else {
+        el.style.transform = 'translateY(0)';
+      }
+    };
+
+    // Set initial hidden state immediately to avoid flicker.
+    els.forEach(applyInitialState);
+    if (prefersReducedMotion) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const el = entry.target as HTMLElement;
-          const anim = el.getAttribute('data-animate');
-          if (anim === 'fade-up') el.classList.add('animate-fade-up');
-          if (anim === 'fade-in') el.classList.add('animate-fade-in');
-          el.classList.remove('opacity-0');
+          applyVisibleState(el);
           observer.unobserve(el);
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.12, rootMargin: '0px 0px -10% 0px' }
     );
 
     els.forEach((el) => observer.observe(el));
@@ -144,7 +184,7 @@ export function LandingPage() {
                   backgroundImage: `url(${src})`,
                   animation: 'fadeSlide 12s infinite',
                   animationDelay: `${idx * 4}s`,
-                  opacity: 0.32,
+                  opacity: 0.55,
                   filter: 'saturate(1.12) contrast(1.08) brightness(1.02)',
                   transform: 'scale(1.04)',
                 }}
@@ -154,7 +194,7 @@ export function LandingPage() {
               className="absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(180deg, rgba(248,249,250,0.92) 0%, rgba(255,255,255,0.96) 45%, rgba(242,244,247,0.98) 100%)',
+                  'linear-gradient(180deg, rgba(248,249,250,0.78) 0%, rgba(255,255,255,0.88) 45%, rgba(242,244,247,0.93) 100%)',
               }}
             />
             <div className="absolute -top-24 -right-24 w-[min(420px,50vw)] h-[min(420px,50vw)] rounded-full bg-[#006D6D]/[0.06] blur-3xl" />
@@ -163,11 +203,11 @@ export function LandingPage() {
 
           <style>{`
             @keyframes fadeSlide {
-              0% { opacity: 0; }
-              8% { opacity: 1; }
-              30% { opacity: 1; }
-              40% { opacity: 0; }
-              100% { opacity: 0; }
+              0% { opacity: 0.18; }
+              8% { opacity: 0.66; }
+              30% { opacity: 0.66; }
+              40% { opacity: 0.22; }
+              100% { opacity: 0.22; }
             }
           `}</style>
 
@@ -226,10 +266,17 @@ export function LandingPage() {
         {/* Journey */}
         <section id="journey" className="bg-white border-t border-slate-100">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
-            <h2 className="text-2xl sm:text-3xl font-bold text-center text-[#1a1a1a] mb-3">
+            <h2
+              className="text-2xl sm:text-3xl font-bold text-center text-[#1a1a1a] mb-3"
+              data-animate="fade-up"
+            >
               Select your journey
             </h2>
-            <p className="text-center max-w-xl mx-auto mb-10 sm:mb-14" style={{ color: MUTED }}>
+            <p
+              className="text-center max-w-xl mx-auto mb-10 sm:mb-14"
+              style={{ color: MUTED }}
+              data-animate="fade-in"
+            >
               Choose the path that matches your role. You will sign in with your institutional credentials.
             </p>
               <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
@@ -237,7 +284,7 @@ export function LandingPage() {
                 type="button"
                 onClick={goToStudentLogin}
                   className="text-left rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm hover:shadow-md hover:border-slate-300/80 transition-all group relative overflow-hidden opacity-0"
-                  data-animate="fade-up"
+                  data-animate="slide-left"
               >
                 <div
                   className="inline-flex items-center justify-center w-12 h-12 rounded-lg mb-5"
@@ -260,7 +307,7 @@ export function LandingPage() {
                 type="button"
                 onClick={goToSupervisorLogin}
                   className="text-left rounded-xl p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow text-white opacity-0"
-                  data-animate="fade-up"
+                  data-animate="slide-right"
                 style={{ backgroundColor: TEAL }}
               >
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-white/15 mb-5 border border-white/20">
@@ -286,10 +333,10 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
             <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-14">
               <div className="h-1 w-12 rounded-full mx-auto mb-5" style={{ backgroundColor: TEAL }} />
-              <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" data-animate="fade-up">
                 Designed for academic clarity
               </h2>
-              <p className="mt-3 text-base sm:text-lg" style={{ color: MUTED }}>
+              <p className="mt-3 text-base sm:text-lg" style={{ color: MUTED }} data-animate="fade-in">
                 Fewer handoffs, clearer expectations, and reporting that stays close to the work.
               </p>
             </div>
@@ -310,8 +357,13 @@ export function LandingPage() {
                   title: 'Accountable workflows',
                   body: 'Structured reviews and records help uphold integrity without slowing people down.',
                 },
-              ].map((f) => (
-                <div key={f.title} className="text-center sm:text-left">
+              ].map((f, i) => (
+                <div
+                  key={f.title}
+                  className="text-center sm:text-left"
+                  data-animate={i % 2 === 0 ? 'slide-left' : 'slide-right'}
+                  style={{ transitionDelay: `${i * 120}ms` }}
+                >
                   <div
                     className="inline-flex items-center justify-center w-11 h-11 rounded-lg mb-4 mx-auto sm:mx-0"
                     style={{ backgroundColor: `${TEAL}18` }}
@@ -332,7 +384,7 @@ export function LandingPage() {
         <section className="py-14 sm:py-20 text-white" style={{ backgroundColor: SLATE_BLUE }}>
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-              <div className="relative">
+              <div className="relative" data-animate="slide-left" style={{ transitionDelay: '60ms' }}>
                 <div className="aspect-[4/3] max-w-md mx-auto lg:mx-0 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
                   <div className="text-center p-8">
                     <GraduationCap className="w-14 h-14 mx-auto text-white/80 mb-4" strokeWidth={1.25} />
@@ -340,15 +392,12 @@ export function LandingPage() {
                     <p className="text-2xl sm:text-3xl font-bold mt-2">Built for modern campuses</p>
                   </div>
                 </div>
-                <div className="absolute -bottom-4 left-4 sm:left-8 bg-white rounded-xl shadow-xl px-4 py-3 max-w-[240px]">
-                  <p className="text-2xl font-bold" style={{ color: TEAL }}>98%</p>
-                </div>
               </div>
-              <div>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight mb-6">
+              <div data-animate="slide-right" style={{ transitionDelay: '140ms' }}>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight mb-6" data-animate="fade-up">
                   Empowering teams to run supervision with confidence
                 </h2>
-                <p className="text-white/85 text-base sm:text-lg leading-relaxed mb-10">
+                <p className="text-white/85 text-base sm:text-lg leading-relaxed mb-10" data-animate="fade-in">
                   Whether you coordinate dozens of groups or hundreds, Supervise360 keeps the academic narrative coherent—for students, supervisors, and administrators.
                 </p>
                 <div className="grid grid-cols-2 gap-6 sm:gap-8">
@@ -370,10 +419,10 @@ export function LandingPage() {
         <section className="relative overflow-hidden border-t border-slate-100 bg-[#f2f4f7]">
           <div className="absolute -right-20 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-[#006D6D]/[0.07] pointer-events-none" />
           <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] mb-4" data-animate="fade-up">
               Ready to elevate your academic management?
             </h2>
-            <p className="text-base sm:text-lg mb-8" style={{ color: MUTED }}>
+            <p className="text-base sm:text-lg mb-8" style={{ color: MUTED }} data-animate="fade-in">
               Open the student portal to get started, or head to admin login if you manage the platform.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
@@ -384,6 +433,7 @@ export function LandingPage() {
                 style={{ backgroundColor: TEAL }}
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = TEAL_HOVER; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = TEAL; }}
+                data-animate="slide-left"
               >
                 Open student portal
               </button>
@@ -392,6 +442,7 @@ export function LandingPage() {
                 onClick={goToSupervisorLogin}
                 className="w-full sm:w-auto px-2 py-3 text-sm sm:text-base font-semibold border-0 bg-transparent hover:underline underline-offset-4"
                 style={{ color: TEAL }}
+                data-animate="slide-right"
               >
                 Supervisor sign-in
               </button>
@@ -404,7 +455,7 @@ export function LandingPage() {
       <footer className="bg-white border-t border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-14">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
-            <div className="sm:col-span-2 lg:col-span-1">
+            <div className="sm:col-span-2 lg:col-span-1" data-animate="slide-left">
               <div className="flex items-center gap-2 mb-3">
                 <img src="/logo.png" alt="" className="h-9 w-auto object-contain rounded-lg" />
                 <span className="font-bold text-[#1a1a1a]">
@@ -423,7 +474,7 @@ export function LandingPage() {
                 </a>
               </div>
             </div>
-            <div>
+            <div data-animate="slide-right">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Product</p>
               <ul className="space-y-2 text-sm">
                 <li>
@@ -443,7 +494,7 @@ export function LandingPage() {
                 </li>
               </ul>
             </div>
-            <div>
+            <div data-animate="slide-left">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Resources</p>
               <ul className="space-y-2 text-sm">
                 <li>
@@ -460,7 +511,7 @@ export function LandingPage() {
                 </li>
               </ul>
             </div>
-            <div>
+            <div data-animate="slide-right">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Contact</p>
               <ul className="space-y-2 text-sm">
                 <li>

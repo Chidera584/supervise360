@@ -8,8 +8,7 @@ interface LoginProps {
   onBackToRoleSelection: () => void;
 }
 
-const inputBase =
-  'w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-600 transition-all duration-200 placeholder:text-slate-400';
+const inputBase = 'w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1e4d8b]/30 focus:border-[#1e4d8b] transition-all duration-200 placeholder:text-slate-400';
 
 function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => void }) {
   return (
@@ -18,13 +17,13 @@ function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => vo
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="Supervise360" className="h-9 w-auto object-contain rounded-xl" />
-            <span className="text-lg font-bold bg-gradient-to-r from-brand-700 to-brand-900 bg-clip-text text-transparent">
+            <span className="text-lg font-bold bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] bg-clip-text text-transparent">
               SUPERVISE360
             </span>
           </div>
           <button
             onClick={onBackToRoleSelection}
-            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-brand-700 hover:bg-slate-100 rounded-lg transition-all duration-200 font-medium"
+            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-[#1e4d8b] hover:bg-slate-100 rounded-lg transition-all duration-200 font-medium"
           >
             <ArrowLeft size={18} />
             Back to Home
@@ -38,7 +37,7 @@ function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => vo
 function RoleBadge({ title, subtitle, selectedRole }: { title: string; subtitle: string; selectedRole: 'student' | 'supervisor' }) {
   return (
     <div className="text-center mb-8 animate-fade-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 shadow-lg shadow-brand-900/25 mb-5 p-2">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/25 mb-5 p-2">
         <img src="/logo.png" alt="Supervise360" className="w-full h-full object-contain rounded-xl" />
       </div>
       <h1 className="text-2xl font-bold text-slate-800 mb-1">{title}</h1>
@@ -163,7 +162,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
                       required
                       className={`${inputBase} pr-12`}
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-700 transition-colors">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e4d8b] transition-colors">
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
@@ -198,7 +197,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 rounded-xl font-semibold text-white bg-brand-600 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                  className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#1F7A8C] hover:bg-[#2a8a9c] hover:shadow-lg hover:shadow-teal-900/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
                 >
                   {loading ? 'Creating Account...' : 'Create Account'}
                 </button>
@@ -206,7 +205,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
                   <button
                     type="button"
                     onClick={() => { setIsSignUp(false); setError(''); setSignUpMessage(''); }}
-                    className="text-brand-700 text-sm font-medium hover:underline"
+                    className="text-[#1e4d8b] text-sm font-medium hover:underline"
                   >
                     Already have an account? Sign In
                   </button>
@@ -242,7 +241,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
                     required
                     className={`${inputBase} pr-12`}
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-700 transition-colors">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1e4d8b] transition-colors">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
@@ -255,7 +254,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-brand-600 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#1F7A8C] hover:bg-[#2a8a9c] hover:shadow-lg hover:shadow-teal-900/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
               >
                 {loading ? 'Signing In...' : 'Sign In'}
               </button>
@@ -263,11 +262,11 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
                 <button
                   type="button"
                   onClick={() => { setIsSignUp(true); setError(''); }}
-                  className="block w-full text-brand-700 text-sm font-medium hover:underline"
+                  className="block w-full text-[#1e4d8b] text-sm font-medium hover:underline"
                 >
                   Don't have an account? Sign Up
                 </button>
-                <button type="button" className="text-slate-500 text-sm hover:text-brand-700 hover:underline">
+                <button type="button" className="text-slate-500 text-sm hover:text-[#1e4d8b] hover:underline">
                   Forgot Password?
                 </button>
               </div>

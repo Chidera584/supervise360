@@ -1,9 +1,6 @@
-import { LogOut, Menu, Search, HelpCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { LogOut, Menu, Search } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import type { MainLayoutTopBarSearch } from './MainLayout';
-
-const TEAL = '#006D6D';
 
 interface HeaderProps {
   title: string;
@@ -21,14 +18,14 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
 
   if (isLightShell) {
     return (
-      <header className="sticky top-0 z-30 shrink-0 bg-white border-b border-slate-200/90 shadow-sm px-3 sm:px-5 py-3">
+      <header className="sticky top-0 z-30 shrink-0 bg-[#006D6D] text-white border-b border-white/15 shadow-sm px-3 sm:px-5 py-3">
         <div className="flex items-center gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-4">
           <div className="flex items-center gap-2 min-w-0 flex-1 lg:flex-none">
             {onToggleSidebar && (
               <button
                 type="button"
                 onClick={onToggleSidebar}
-                className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#006D6D]/30"
+                className="lg:hidden p-2 -ml-1 rounded-lg text-white/90 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
                 aria-label="Open navigation menu"
               >
                 <Menu size={20} />
@@ -47,35 +44,20 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
                   value={topBarSearch.value}
                   onChange={(e) => topBarSearch.onChange(e.target.value)}
                   placeholder={topBarSearch.placeholder}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 bg-[#F8F9FA] text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006D6D]/25 focus:border-[#006D6D]/40"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full border border-white/20 bg-white/15 text-sm text-white placeholder:text-white/65 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/30"
                   aria-label={topBarSearch.placeholder}
                 />
               </div>
             ) : (
-              <span className="text-sm font-medium text-slate-500 truncate lg:hidden">{title}</span>
+              <span className="text-sm font-medium text-white/90 truncate lg:hidden">{title}</span>
             )}
           </div>
 
-          <div className="hidden lg:flex items-center justify-center px-2">
-            <span className="text-sm font-semibold tracking-wide whitespace-nowrap" style={{ color: TEAL }}>
-              {isAdmin ? 'Academic Management System' : 'Student workspace'}
-            </span>
-          </div>
-
           <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
-            {/* Help link only; notifications/profile icons intentionally removed */}
-            <Link
-              to={isAdmin ? '/settings' : '/profile'}
-              className="hidden sm:inline-flex p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
-              title={isAdmin ? 'Help & settings' : 'Profile & help'}
-            >
-              <HelpCircle size={20} strokeWidth={1.75} />
-            </Link>
-
             <button
               type="button"
               onClick={signOut}
-              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+              className="p-2 rounded-lg text-white/90 hover:bg-white/10 transition-colors"
               title="Sign out"
             >
               <LogOut size={18} />
@@ -104,13 +86,6 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <Link
-          to={isAdmin ? '/settings' : '/profile'}
-          className="hidden sm:inline-flex p-2 rounded-lg text-white/90 hover:bg-[#1F7A8C]/30 transition-colors"
-          title={isAdmin ? 'Help & settings' : 'Profile & help'}
-        >
-          <HelpCircle size={20} strokeWidth={1.75} />
-        </Link>
         <button
           type="button"
           onClick={signOut}

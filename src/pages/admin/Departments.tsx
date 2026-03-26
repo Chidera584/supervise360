@@ -12,7 +12,6 @@ import {
   Filter,
   ArrowUpDown,
   Shield,
-  Sparkles,
   Landmark,
   Cpu,
 } from 'lucide-react';
@@ -440,7 +439,7 @@ export function Departments() {
           </div>
           <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-5 flex gap-4">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white text-amber-700 shadow-sm">
-              <Sparkles className="w-5 h-5" strokeWidth={1.75} />
+              <UserCheck className="w-5 h-5" strokeWidth={1.75} />
             </div>
             <div>
               <h3 className="font-semibold text-[#1a1a1a]">Smart assignments</h3>

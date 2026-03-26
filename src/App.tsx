@@ -89,7 +89,7 @@ function App() {
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => window.location.reload()}
-                className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-brand-800 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg shadow-brand-900/20"
+                className="px-5 py-2.5 bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg shadow-blue-900/20"
               >
                 Retry
               </button>

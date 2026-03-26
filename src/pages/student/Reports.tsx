@@ -64,14 +64,23 @@ export function Reports() {
   }, []);
 
   const milestoneState = useMemo(() => {
-    const has = (t: string) =>
-      reports.some((r) => String(r.report_type || '').toLowerCase() === t.toLowerCase());
-    const progressN = reports.filter((r) => String(r.report_type || '').toLowerCase() === 'progress').length;
+    const hasSubmitted = (t: string) =>
+      reports.some(
+        (r) =>
+          String(r.report_type || '').toLowerCase() === t.toLowerCase() &&
+          // Some APIs may return "placeholder" rows for a report_type.
+          // Only mark a milestone as done when there's an actual submission timestamp.
+          !!r.submitted_at
+      );
+    const progressN = reports.filter(
+      (r) =>
+        String(r.report_type || '').toLowerCase() === 'progress' && !!r.submitted_at
+    ).length;
     const steps = STEPS.map((s) => {
-      if (s.key === 'proposal') return { ...s, done: has('proposal') };
+      if (s.key === 'proposal') return { ...s, done: hasSubmitted('proposal') };
       if (s.key === 'progress') return { ...s, done: progressN >= 1 };
       if (s.key === 'progress2') return { ...s, done: progressN >= 2 };
-      return { ...s, done: has('final') };
+      return { ...s, done: hasSubmitted('final') };
     });
     const firstIncomplete = steps.findIndex((s) => !s.done);
     return steps.map((s, i) => {
@@ -91,7 +100,9 @@ export function Reports() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('report_type', reportType);
-    formData.append('title', `${reportType} report`);
+    // Use a unique title to allow re-submissions of the same report_type
+    // after supervisor feedback (some backends treat duplicates by title).
+    formData.append('title', `${reportType} report (${Date.now()})`);
     const response = await apiClient.uploadReport(formData);
     if (response.success) {
       setMessage({ type: 'success', text: 'Report uploaded successfully.' });
@@ -334,10 +345,6 @@ export function Reports() {
                 <li className="flex gap-2">
                   <Check className="w-4 h-4 shrink-0 mt-0.5" />
                   Use clear filenames and your department&apos;s style guide (e.g. APA) if required.
-                </li>
-                <li className="flex gap-2">
-                  <Check className="w-4 h-4 shrink-0 mt-0.5" />
-                  Include cover page and signatures where your program requires them.
                 </li>
                 <li className="flex gap-2">
                   <Check className="w-4 h-4 shrink-0 mt-0.5" />

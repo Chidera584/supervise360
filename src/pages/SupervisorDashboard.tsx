@@ -199,14 +199,19 @@ export function SupervisorDashboard() {
                           >
                             {statusChip.text}
                           </span>
-                          {group.project?.progress_percentage != null && (
-                            <span
-                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                              style={{ backgroundColor: '#1F7A8C20', color: '#1F7A8C' }}
-                            >
-                              {group.project.progress_percentage}% progress
-                            </span>
-                          )}
+                          {(() => {
+                            const submittedCount = group.reportsTotal ?? 0;
+                            const derivedPct = submittedCount ? Math.min(100, (submittedCount / 4) * 100) : 0;
+                            if (derivedPct <= 0) return null;
+                            return (
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                                style={{ backgroundColor: '#1F7A8C20', color: '#1F7A8C' }}
+                              >
+                                {derivedPct.toFixed(2)}% progress
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         <p className="text-sm text-slate-600 mt-1 line-clamp-1">
@@ -295,16 +300,18 @@ function MetricCard({
 }) {
   return (
     <div
-      className="rounded-2xl border border-slate-200/90 bg-white shadow-sm p-5"
-      style={{ borderLeft: `4px solid ${accent}` }}
+      className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5 flex gap-4"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: accentBg }}>
-          {icon}
-        </div>
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <div
+        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: accentBg }}
+      >
+        {icon}
       </div>
-      <p className="mt-2 text-2xl font-bold text-[#1a1a1a] tabular-nums">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-slate-500">{label}</p>
+        <p className="text-2xl font-bold text-[#1a1a1a] tabular-nums mt-0.5">{value}</p>
+      </div>
     </div>
   );
 }

@@ -62,11 +62,16 @@ export function StudentDashboard() {
   }, [syncWithDatabase]);
 
   const milestones = useMemo(() => {
-    const has = (t: string) =>
-      reportsList.some((r) => String(r.report_type || '').toLowerCase() === t.toLowerCase());
-    const proposalDone = has('proposal');
-    const finalDone = has('final');
-    const progressN = reportsList.filter((r) => String(r.report_type || '').toLowerCase() === 'progress').length;
+    const hasSubmitted = (t: string) =>
+      reportsList.some(
+        (r) =>
+          String(r.report_type || '').toLowerCase() === t.toLowerCase() && !!r.submitted_at
+      );
+    const proposalDone = hasSubmitted('proposal');
+    const finalDone = hasSubmitted('final');
+    const progressN = reportsList.filter(
+      (r) => String(r.report_type || '').toLowerCase() === 'progress' && !!r.submitted_at
+    ).length;
     const steps = [
       { id: 'proposal', label: 'Proposal', done: proposalDone },
       { id: 'progress1', label: 'Progress #1', done: progressN >= 1 },

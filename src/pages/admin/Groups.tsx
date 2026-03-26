@@ -210,9 +210,9 @@ export function Groups() {
         )}
 
         {/* Step 1: Select Department - Required before upload */}
-        <Card className="border-2 border-brand-600/30 bg-brand-600/5 p-6">
-          <h2 className="text-lg font-semibold text-brand-800 mb-2 flex items-center gap-2">
-            <Building className="w-5 h-5 text-brand-600" />
+        <Card className="border-2 border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-6">
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-2 flex items-center gap-2">
+            <Building className="w-5 h-5 text-[#1F7A8C]" />
             Select Department
           </h2>
           <p className="text-sm text-slate-600 mb-4">
@@ -223,7 +223,7 @@ export function Groups() {
               <select
                 value={selectedDepartment}
                 onChange={(e) => handleDepartmentChange(e.target.value)}
-                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white text-slate-900"
+                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
               >
                 <option value="">Select department...</option>
                 {departments.map((d) => (
@@ -260,7 +260,7 @@ export function Groups() {
               <Button
                 onClick={() => selectedDepartment && fileInputRef.current?.click()}
                 disabled={!selectedDepartment}
-                className="bg-brand-800 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#022B3A] hover:bg-[#1F7A8C] disabled:opacity-50 disabled:cursor-not-allowed"
                 title={!selectedDepartment ? 'Select a department first' : 'Upload students for ' + selectedDepartment}
               >
                 <Upload className="w-4 h-4 mr-2" />
@@ -304,7 +304,7 @@ export function Groups() {
         {isLoading && (
           <Card>
             <div className="p-8 text-center">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-800" />
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#022B3A]" />
               <p className="text-gray-600">Loading groups data...</p>
             </div>
           </Card>
@@ -399,7 +399,7 @@ export function Groups() {
                     placeholder="Search by group name, member, supervisor..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-slate-900 placeholder-slate-400"
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#022B3A] focus:border-transparent text-slate-900 placeholder-slate-400"
                   />
                 </div>
               </div>
@@ -469,7 +469,7 @@ export function Groups() {
               <Button
                 onClick={() => selectedDepartment && fileInputRef.current?.click()}
                 disabled={!selectedDepartment}
-                className="bg-brand-800 hover:bg-brand-600 disabled:opacity-50"
+                className="bg-[#022B3A] hover:bg-[#1F7A8C] disabled:opacity-50"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Students
