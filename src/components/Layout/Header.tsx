@@ -19,7 +19,7 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
   if (isLightShell) {
     return (
       <header className="sticky top-0 z-30 shrink-0 bg-[#006D6D] text-white border-b border-white/15 shadow-sm px-3 sm:px-5 py-3">
-        <div className="flex items-center gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-4">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-1 lg:flex-none">
             {onToggleSidebar && (
               <button

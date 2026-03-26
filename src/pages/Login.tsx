@@ -197,7 +197,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#1F7A8C] hover:bg-[#2a8a9c] hover:shadow-lg hover:shadow-teal-900/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                  className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#006d6d] hover:bg-[#005a5a] hover:shadow-lg hover:shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
                 >
                   {loading ? 'Creating Account...' : 'Create Account'}
                 </button>
@@ -254,7 +254,7 @@ export function Login({ selectedRole, onBackToRoleSelection }: LoginProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#1F7A8C] hover:bg-[#2a8a9c] hover:shadow-lg hover:shadow-teal-900/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                className="w-full py-3.5 rounded-xl font-semibold text-white bg-[#006d6d] hover:bg-[#005a5a] hover:shadow-lg hover:shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
               >
                 {loading ? 'Signing In...' : 'Sign In'}
               </button>

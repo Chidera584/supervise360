@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu,
   X,
@@ -22,6 +22,7 @@ const BG_SOFT = '#F8F9FA';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const slideImages = ['/landing-slide-1.png', '/landing-slide-2.png', '/landing-slide-3.png'];
 
@@ -111,7 +112,7 @@ export function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-slate-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-3 py-3.5 sm:py-4 min-w-0">
+          <div className="flex items-center justify-between gap-6 py-3.5 sm:py-4 min-w-0">
             <button
               type="button"
               onClick={() => navigate('/')}
@@ -124,13 +125,18 @@ export function LandingPage() {
             </button>
 
             {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-1 lg:gap-2 shrink-0">
+            <nav className="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
               {navItems.map((item) => (
                 <button
                   key={item.label}
                   type="button"
                   onClick={item.onClick}
-                  className="px-3 lg:px-4 py-2 text-sm font-medium tracking-wide text-slate-600 rounded-lg hover:text-[#1a1a1a] hover:bg-slate-50 transition-colors"
+                  className={[
+                    'px-3 lg:px-4 py-2 text-sm font-medium tracking-wide rounded-lg transition-colors',
+                    item.label === 'Home' && location.pathname === '/'
+                      ? 'bg-[#006d6d]/12 border border-[#006d6d]/25 text-[#006d6d] font-semibold hover:bg-[#006d6d]/15 hover:text-[#004f4f]'
+                      : 'text-slate-600 hover:text-[#1a1a1a] hover:bg-slate-50',
+                  ].join(' ')}
                 >
                   {item.label}
                 </button>
@@ -155,7 +161,12 @@ export function LandingPage() {
                   key={item.label}
                   type="button"
                   onClick={item.onClick}
-                  className="w-full text-left px-4 py-3 text-slate-600 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                  className={[
+                    'w-full text-left px-4 py-3 rounded-lg transition-colors',
+                    item.label === 'Home' && location.pathname === '/'
+                      ? 'text-[#006d6d] font-semibold bg-[#006d6d]/10 border border-[#006d6d]/20'
+                      : 'text-slate-600 font-medium hover:bg-slate-50',
+                  ].join(' ')}
                 >
                   {item.label}
                 </button>
@@ -234,7 +245,7 @@ export function LandingPage() {
               data-animate="fade-up"
               style={{ color: MUTED, animationDelay: '0.35s', animationFillMode: 'forwards' }}
             >
-              Connect students and supervisors, manage submissions, and keep milestones visible—in one calm, structured workspace.
+              Connect students and supervisors, manage submissions, and keep milestones visible in one calm, structured workspace.
             </p>
             <div
               className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 opacity-0"
