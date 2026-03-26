@@ -222,15 +222,14 @@ export function LandingPage() {
                   data-animate="fade-up"
                   style={{ transitionDelay: '120ms' }}
                 >
-                  Supervision, reporting, and feedback, kept in one place.
+                  Supervision made simple.
                 </h1>
                 <p
                   className="mt-4 text-base sm:text-lg leading-relaxed opacity-0"
                   data-animate="fade-up"
                   style={{ color: MUTED, transitionDelay: '200ms' }}
                 >
-                  Built for real campus workflows: groups, submissions, reviews, messaging, and defense scheduling, without the
-                  spreadsheet chaos.
+                  Manage groups, submissions, feedback, and defense scheduling in one workspace.
                 </p>
 
                 <div
@@ -265,7 +264,7 @@ export function LandingPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">Audit-ready</p>
-                      <p className="text-slate-600 mt-0.5">Clear records for submissions and reviews.</p>
+                      <p className="text-slate-600 mt-0.5">Clear records for review.</p>
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -274,7 +273,7 @@ export function LandingPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">Progress visible</p>
-                      <p className="text-slate-600 mt-0.5">Milestones stay close to the work.</p>
+                      <p className="text-slate-600 mt-0.5">Milestones stay visible.</p>
                     </div>
                   </div>
                 </div>
@@ -302,7 +301,7 @@ export function LandingPage() {
                     <div className="absolute left-5 right-5 bottom-5 rounded-2xl bg-white/90 backdrop-blur border border-white/60 p-4">
                       <p className="text-sm font-semibold text-slate-900">From proposal to final defense</p>
                       <p className="text-xs text-slate-600 mt-1">
-                        Centralize supervision tasks across students, supervisors, and administrators.
+                        Students, supervisors, and admins stay aligned.
                       </p>
                     </div>
                   </div>
@@ -339,7 +338,7 @@ export function LandingPage() {
               style={{ color: MUTED }}
               data-animate="fade-in"
             >
-              Choose the path that matches your role. You will sign in with your institutional credentials.
+              Choose your role and continue.
             </p>
               <div className="grid md:grid-cols-2 gap-5 lg:gap-6">
               <button
@@ -356,7 +355,7 @@ export function LandingPage() {
                 </div>
                 <h3 className="text-xl font-bold text-[#1a1a1a] mb-2">For students</h3>
                 <p className="text-sm sm:text-base leading-relaxed mb-6" style={{ color: MUTED }}>
-                  View your group, submit reports, and stay on top of milestones and feedback.
+                  Submit reports, track milestones, and receive feedback.
                 </p>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: TEAL }}>
                   Explore student portal
@@ -377,7 +376,7 @@ export function LandingPage() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">For supervisors</h3>
                 <p className="text-sm sm:text-base leading-relaxed text-white/90 mb-6">
-                  Review submissions, guide groups, and keep supervision work organized in one portfolio-style view.
+                  Review submissions, guide groups, and manage evaluations.
                 </p>
                 <span
                   className="inline-flex items-center justify-center px-5 py-2.5 rounded-[10px] bg-white text-sm font-semibold w-full sm:w-auto"
@@ -399,7 +398,7 @@ export function LandingPage() {
                 Designed around how campuses actually work
               </h2>
               <p className="mt-3 text-base sm:text-lg" style={{ color: MUTED }} data-animate="fade-in">
-                Move faster with clearer roles, stronger follow-through, and fewer handoffs.
+                Clear roles, faster follow-through.
               </p>
             </div>
             <div className="grid lg:grid-cols-12 gap-6 lg:gap-8 items-start">
@@ -408,17 +407,17 @@ export function LandingPage() {
                   {
                     icon: LayoutGrid,
                     title: 'Groups stay structured',
-                    body: 'Assignments, membership, and milestones stay visible for everyone who needs them.',
+                    body: 'Assignments and milestones stay visible.',
                   },
                   {
                     icon: FileText,
                     title: 'Submissions feel organized',
-                    body: 'Track progress reports and final deliverables with clear states and review history.',
+                    body: 'Track reports with clear states.',
                   },
                   {
                     icon: ShieldCheck,
                     title: 'Feedback is accountable',
-                    body: 'Review notes and decisions are recorded without slowing down supervision.',
+                    body: 'Review notes and decisions are recorded.',
                   },
                 ].map((f, i) => (
                   <div
@@ -456,7 +455,7 @@ export function LandingPage() {
 
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-animate="fade-in">
                   <p className="text-sm font-semibold text-slate-900">
-                    “Our students stopped asking what’s next. The milestones and feedback were finally visible.”
+                    “Milestones and feedback became clear immediately.”
                   </p>
                   <p className="text-xs text-slate-500 mt-2">Department coordinator</p>
                 </div>
@@ -479,14 +478,14 @@ export function LandingPage() {
                   Built for modern campuses
                 </h2>
                 <p className="text-white/85 text-base sm:text-lg leading-relaxed mb-10" data-animate="fade-in">
-                  Whether you coordinate a handful of groups or an entire department, Supervise360 keeps the supervision narrative coherent for students, supervisors, and administrators.
+                  Works for small classes and large departments.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {[
-                    { t: 'Department-ready', d: 'Scales from a course to a faculty-wide program.' },
-                    { t: 'Clarity for everyone', d: 'Students know what to submit; supervisors know what to review.' },
-                    { t: 'Designed for focus', d: 'Less noise, more follow-through and feedback quality.' },
-                    { t: 'Consistent records', d: 'Submissions, reviews, and evaluation history are preserved.' },
+                    { t: 'Department-ready', d: 'Scales across your program.' },
+                    { t: 'Clarity for everyone', d: 'Clear next steps for each role.' },
+                    { t: 'Designed for focus', d: 'Less noise, better follow-through.' },
+                    { t: 'Consistent records', d: 'History is preserved and searchable.' },
                   ].map((x) => (
                     <div key={x.t} className="rounded-2xl bg-white/10 border border-white/15 p-4">
                       <p className="font-semibold">{x.t}</p>
@@ -507,7 +506,7 @@ export function LandingPage() {
               Ready to elevate your academic management?
             </h2>
             <p className="text-base sm:text-lg mb-8" style={{ color: MUTED }} data-animate="fade-in">
-              Open the student portal to get started, or head to admin login if you manage the platform.
+              Open your portal to get started.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <button
@@ -547,7 +546,7 @@ export function LandingPage() {
                 </span>
               </div>
               <p className="text-sm leading-relaxed mb-4" style={{ color: MUTED }}>
-                A structured workspace for student supervision, reporting, and academic milestones.
+                A workspace for supervision, reporting, and milestones.
               </p>
               <div className="flex items-center gap-3">
                 <a href="#" className="p-2 rounded-lg text-slate-500 hover:bg-slate-50 hover:text-[#006D6D] transition-colors" aria-label="Social">
