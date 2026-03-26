@@ -30,7 +30,7 @@ export function MainLayout({ children, title, topBarSearch }: MainLayoutProps) {
       <div className="flex-1 flex flex-col lg:ml-64 min-h-screen min-w-0">
         <Header title={title} onToggleSidebar={() => setMobileSidebarOpen(true)} topBarSearch={topBarSearch} />
         <main
-          className={`flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pt-16 lg:pt-6 pb-[env(safe-area-inset-bottom)] min-w-0 ${
+          className={`flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pt-16 lg:pt-6 pb-[env(safe-area-inset-bottom)] min-w-0 motion-safe:animate-fade-in ${
             isLightShell ? 'bg-[#F8F9FA]' : ''
           }`}
         >
