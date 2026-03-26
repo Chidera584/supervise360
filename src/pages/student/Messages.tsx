@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { MainLayout } from '../../components/Layout/MainLayout';
-import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { apiClient } from '../../lib/api';
-import { Send, Inbox, Mail, ChevronDown, ChevronUp, Trash2, Reply } from 'lucide-react';
+import { Trash2, Reply, Plus, MessageCircle } from 'lucide-react';
 import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
+
+const TEAL = '#006D6D';
 
 interface Contact {
   id: number;
@@ -46,7 +47,9 @@ export function Messages() {
   const [recipientId, setRecipientId] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [listFilter, setListFilter] = useState<'all' | 'unread' | 'groups'>('all');
+  const [headerSearch, setHeaderSearch] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showClearInboxModal, setShowClearInboxModal] = useState(false);
   const [showClearSentModal, setShowClearSentModal] = useState(false);
@@ -86,12 +89,48 @@ export function Messages() {
     }
   }, [replyTo]);
 
+  const messages = activeTab === 'inbox' ? inbox : sent;
+
+  const filteredList = useMemo(() => {
+    const q = headerSearch.trim().toLowerCase();
+    let list = messages;
+    if (activeTab === 'inbox' && listFilter === 'unread') {
+      list = list.filter((m) => !m.read_status);
+    }
+    if (activeTab === 'inbox' && listFilter === 'groups') {
+      list = list.filter((m) => !!m.sender_group_name);
+    }
+    if (!q) return list;
+    return list.filter(
+      (m) =>
+        m.subject.toLowerCase().includes(q) ||
+        getFromTo(m).toLowerCase().includes(q) ||
+        m.content.toLowerCase().includes(q)
+    );
+  }, [messages, headerSearch, listFilter, activeTab]);
+
+  useEffect(() => {
+    if (filteredList.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !filteredList.some((m) => m.id === selectedId)) {
+      setSelectedId(filteredList[0].id);
+    }
+  }, [filteredList, selectedId]);
+
+  const selected = filteredList.find((m) => m.id === selectedId) ?? null;
+
   const sendMessage = async () => {
     const rid = recipientId ? Number(recipientId) : 0;
     const selectedContact = contacts.find((c) => String(c.id) === recipientId);
     const contactType = selectedContact?.type || 'user';
 
-    const hasRecipient = replyTo || (contactType === 'group' && rid > 0) || (contactType === 'broadcast' && rid === -1) || (contactType === 'user' && rid > 0);
+    const hasRecipient =
+      replyTo ||
+      (contactType === 'group' && rid > 0) ||
+      (contactType === 'broadcast' && rid === -1) ||
+      (contactType === 'user' && rid > 0);
     if (!hasRecipient || !subject.trim() || !content.trim()) {
       setMessage({ type: 'error', text: 'Please select a recipient, enter a subject, and write your message.' });
       return;
@@ -128,10 +167,8 @@ export function Messages() {
       await apiClient.markMessageRead(msg.id);
       setInbox((prev) => prev.map((m) => (m.id === msg.id ? { ...m, read_status: true } : m)));
     }
-    setExpandedId(expandedId === msg.id ? null : msg.id);
+    setSelectedId(msg.id);
   };
-
-  const messages = activeTab === 'inbox' ? inbox : sent;
 
   const handleClearInbox = async () => {
     setClearing(true);
@@ -173,187 +210,268 @@ export function Messages() {
   };
 
   return (
-    <MainLayout title="Messages">
-      <div className="space-y-6">
+    <MainLayout
+      title="Messages"
+      topBarSearch={{
+        placeholder: 'Search conversations…',
+        value: headerSearch,
+        onChange: setHeaderSearch,
+      }}
+    >
+      <div className="max-w-6xl mx-auto min-w-0 space-y-6">
         {navState?.groupName && (
-          <Card className="bg-brand-50/80 border-brand-200/80">
-            <p className="text-sm text-brand-900">
-              Messaging from: <strong>{navState.groupName}</strong>
-            </p>
-          </Card>
+          <div
+            className="rounded-xl border px-4 py-3 text-sm"
+            style={{ backgroundColor: `${TEAL}10`, borderColor: `${TEAL}33`, color: '#0f4a4a' }}
+          >
+            Messaging from: <strong>{navState.groupName}</strong>
+          </div>
         )}
 
-        <Card className="border-slate-200/90">
-          <h2 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <Send size={22} /> Compose Message
-          </h2>
-          {message && (
-            <div className={`p-3 rounded-lg mb-4 ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-              {message.text}
-            </div>
-          )}
-          {replyTo && (
-            <div className="p-3 rounded-xl bg-brand-50/80 border border-brand-200/80 text-sm text-brand-900 flex items-center justify-between gap-2">
-              <span>Replying to message — {replyTo.sender_group_name ? `will be sent to entire ${replyTo.sender_group_name}` : 'will be sent to group'}</span>
-              <button type="button" onClick={() => setReplyTo(null)} className="text-brand-700 hover:underline font-medium shrink-0">Cancel reply</button>
-            </div>
-          )}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">To</label>
-              <select
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500"
-                value={recipientId}
-                onChange={(e) => { setReplyTo(null); setRecipientId(e.target.value); }}
-                disabled={!!replyTo}
-              >
-                <option value="">Select recipient...</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.label ? `(${c.label})` : ''}
-                  </option>
-                ))}
-              </select>
-              {contacts.length === 0 && !loading && (
-                <p className="text-xs text-amber-600 mt-1">No contacts available. Join a group and have a supervisor assigned to message.</p>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Messaging</h1>
+            <p className="text-slate-500 mt-1 text-sm sm:text-base">
+              Centralized conversations with your supervisor and group.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[minmax(260px,340px)_1fr] gap-6 items-stretch min-h-[min(70vh,640px)]">
+          {/* Conversation list */}
+          <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-slate-100 space-y-3">
+              <div className="flex rounded-[10px] border border-slate-200 p-1 bg-[#F8F9FA]">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('inbox')}
+                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                    activeTab === 'inbox' ? 'text-white shadow-sm' : 'text-slate-600'
+                  }`}
+                  style={activeTab === 'inbox' ? { backgroundColor: TEAL } : undefined}
+                >
+                  Inbox ({inbox.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('sent')}
+                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                    activeTab === 'sent' ? 'text-white shadow-sm' : 'text-slate-600'
+                  }`}
+                  style={activeTab === 'sent' ? { backgroundColor: TEAL } : undefined}
+                >
+                  Sent ({sent.length})
+                </button>
+              </div>
+              {activeTab === 'inbox' && (
+                <div className="flex flex-wrap gap-2">
+                  {(['all', 'unread', 'groups'] as const).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setListFilter(f)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                        listFilter === f
+                          ? 'text-white border-transparent'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                      }`}
+                      style={listFilter === f ? { backgroundColor: TEAL } : undefined}
+                    >
+                      {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Groups'}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
-              <input
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500"
-                placeholder="Subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
+            <div className="flex-1 overflow-y-auto min-h-[200px]">
+              {loading ? (
+                <p className="p-6 text-sm text-slate-500 text-center">Loading…</p>
+              ) : filteredList.length === 0 ? (
+                <p className="p-8 text-sm text-slate-500 text-center">No messages match.</p>
+              ) : (
+                filteredList.map((msg) => (
+                  <button
+                    key={msg.id}
+                    type="button"
+                    onClick={() => markAsRead(msg)}
+                    className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${
+                      selectedId === msg.id ? 'bg-[#006D6D]/08' : ''
+                    } ${activeTab === 'inbox' && !msg.read_status ? 'border-l-[3px] border-l-[#006D6D]' : ''}`}
+                  >
+                    <p className="font-semibold text-slate-900 text-sm truncate">{msg.subject}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">{getFromTo(msg)}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{msg.sent_at?.split('T')[0]}</p>
+                  </button>
+                ))
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Message</label>
-              <textarea
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500"
-                rows={4}
-                placeholder="Write your message..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
+            <div className="p-3 border-t border-slate-100 flex flex-wrap gap-2">
+              {activeTab === 'inbox' && inbox.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowClearInboxModal(true)}
+                  disabled={clearing}
+                  className="!text-red-600 !border-red-200 hover:!bg-red-50"
+                >
+                  <Trash2 size={14} className="mr-1" /> Clear inbox
+                </Button>
+              )}
+              {activeTab === 'sent' && sent.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowClearSentModal(true)}
+                  disabled={clearing}
+                  className="!text-red-600 !border-red-200 hover:!bg-red-50"
+                >
+                  <Trash2 size={14} className="mr-1" /> Clear sent
+                </Button>
+              )}
             </div>
-            <Button onClick={sendMessage} disabled={sending || !recipientId}>
-              {sending ? 'Sending...' : 'Send Message'}
-            </Button>
           </div>
-        </Card>
 
-        <Card className="border-slate-200/90">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant={activeTab === 'inbox' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => { setActiveTab('inbox'); setExpandedId(null); }}
-              >
-                <Inbox size={16} className="mr-1" /> Inbox ({inbox.length})
-              </Button>
-              <Button
-                variant={activeTab === 'sent' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => { setActiveTab('sent'); setExpandedId(null); }}
-              >
-                <Mail size={16} className="mr-1" /> Sent ({sent.length})
-              </Button>
-            </div>
-            {activeTab === 'inbox' && inbox.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowClearInboxModal(true)}
-                disabled={clearing}
-                className="text-red-600 border-red-200 hover:bg-red-50"
-              >
-                <Trash2 size={14} className="mr-1" /> Clear Inbox
-              </Button>
-            )}
-            {activeTab === 'sent' && sent.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowClearSentModal(true)}
-                disabled={clearing}
-                className="text-red-600 border-red-200 hover:bg-red-50"
-              >
-                <Trash2 size={14} className="mr-1" /> Clear Sent
-              </Button>
-            )}
-          </div>
-          <ConfirmationModal
-            isOpen={showClearInboxModal}
-            onClose={() => setShowClearInboxModal(false)}
-            onConfirm={handleClearInbox}
-            title="Clear Inbox"
-            message="Are you sure you want to permanently delete all messages in your inbox? This cannot be undone."
-            confirmText="Clear Inbox"
-            type="danger"
-          />
-          <ConfirmationModal
-            isOpen={showClearSentModal}
-            onClose={() => setShowClearSentModal(false)}
-            onConfirm={handleClearSent}
-            title="Clear Sent Messages"
-            message="Are you sure you want to permanently delete all sent messages? This cannot be undone."
-            confirmText="Clear Sent"
-            type="danger"
-          />
-          {loading ? (
-            <div className="text-gray-500 py-8">Loading messages...</div>
-          ) : (
-            <div className="space-y-2">
-              {messages.map((msg) => (
+          {/* Detail + compose */}
+          <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm flex flex-col min-h-[480px]">
+            <div className="p-4 sm:p-5 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                <Plus className="w-4 h-4" style={{ color: TEAL }} />
+                Compose message
+              </h2>
+              {message && (
                 <div
-                  key={msg.id}
-                  className={`border rounded-xl overflow-hidden shadow-sm shadow-slate-900/5 ${
-                    activeTab === 'inbox' && !msg.read_status ? 'border-brand-400 bg-brand-50/20' : 'border-slate-200/90'
+                  className={`mt-3 p-3 rounded-lg text-sm ${
+                    message.type === 'success' ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-800'
                   }`}
                 >
-                  <div
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/80"
-                    onClick={() => markAsRead(msg)}
+                  {message.text}
+                </div>
+              )}
+              {replyTo && (
+                <div className="mt-3 p-3 rounded-lg bg-sky-50 border border-sky-100 text-sm text-sky-900 flex items-center justify-between gap-2">
+                  <span className="min-w-0">
+                    Replying to message —{' '}
+                    {replyTo.sender_group_name
+                      ? `will be sent to entire ${replyTo.sender_group_name}`
+                      : 'will be sent to group'}
+                  </span>
+                  <button type="button" onClick={() => setReplyTo(null)} className="text-sky-700 font-medium shrink-0">
+                    Cancel
+                  </button>
+                </div>
+              )}
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">To</label>
+                  <select
+                    className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm bg-[#F8F9FA]"
+                    value={recipientId}
+                    onChange={(e) => {
+                      setReplyTo(null);
+                      setRecipientId(e.target.value);
+                    }}
+                    disabled={!!replyTo}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{msg.subject}</p>
-                      <p className="text-sm text-gray-600">
-                        {activeTab === 'inbox' ? 'From' : 'To'}: {getFromTo(msg)} • {msg.sent_at?.split('T')[0]}
-                      </p>
-                    </div>
-                    {expandedId === msg.id ? (
-                      <ChevronUp size={20} className="text-gray-500 flex-shrink-0" />
-                    ) : (
-                      <ChevronDown size={20} className="text-gray-500 flex-shrink-0" />
-                    )}
-                  </div>
-                  {expandedId === msg.id && (
-                    <div className="border-t border-slate-200/90 p-4 bg-slate-50/80">
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap mb-3">{msg.content}</p>
-                      {activeTab === 'inbox' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setReplyTo(msg);
-                            setExpandedId(null);
-                          }}
-                        >
-                          <Reply size={14} className="mr-1" /> Reply
-                        </Button>
-                      )}
-                    </div>
+                    <option value="">Select recipient…</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.label ? `(${c.label})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {contacts.length === 0 && !loading && (
+                    <p className="text-xs text-amber-700 mt-1">No contacts yet—join a group with a supervisor.</p>
                   )}
                 </div>
-              ))}
-              {messages.length === 0 && (
-                <div className="text-center py-12 text-gray-500">No messages yet.</div>
-              )}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Subject</label>
+                  <input
+                    className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm"
+                    placeholder="Subject"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Message</label>
+                  <textarea
+                    className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm min-h-[100px] resize-y"
+                    placeholder="Type a message…"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                  />
+                </div>
+                <Button
+                  onClick={sendMessage}
+                  disabled={sending || !recipientId}
+                  className="!rounded-[10px] !bg-[#006D6D] hover:!bg-[#005a5a] !text-white border-0"
+                >
+                  {sending ? 'Sending…' : 'Send message'}
+                </Button>
+              </div>
             </div>
-          )}
-        </Card>
+
+            <div className="flex-1 flex flex-col min-h-0 border-t border-slate-100">
+              <div className="px-4 py-2 border-b border-slate-50 flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                <MessageCircle className="w-4 h-4" style={{ color: TEAL }} />
+                Thread
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#F8F9FA]/80">
+                {!selected ? (
+                  <p className="text-center text-slate-500 text-sm py-12">Select a message to read.</p>
+                ) : (
+                  <div className="max-w-xl">
+                    <div
+                      className={`rounded-2xl px-4 py-3 shadow-sm border ${
+                        activeTab === 'sent'
+                          ? 'ml-auto text-white border-transparent'
+                          : 'bg-white border-slate-200 text-slate-800'
+                      }`}
+                      style={activeTab === 'sent' ? { backgroundColor: TEAL } : undefined}
+                    >
+                      <p className="text-xs opacity-80 mb-1">{getFromTo(selected)}</p>
+                      <p className="font-semibold">{selected.subject}</p>
+                      <p className="text-sm mt-2 whitespace-pre-wrap leading-relaxed opacity-95">{selected.content}</p>
+                      <p className="text-[10px] mt-3 opacity-70">{selected.sent_at?.replace('T', ' ').slice(0, 16)}</p>
+                    </div>
+                    {activeTab === 'inbox' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4 !rounded-[10px]"
+                        onClick={() => {
+                          setReplyTo(selected);
+                          setSelectedId(selected.id);
+                        }}
+                      >
+                        <Reply size={14} className="mr-1" /> Reply
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ConfirmationModal
+          isOpen={showClearInboxModal}
+          onClose={() => setShowClearInboxModal(false)}
+          onConfirm={handleClearInbox}
+          title="Clear inbox"
+          message="Are you sure you want to permanently delete all messages in your inbox? This cannot be undone."
+          confirmText="Clear inbox"
+          type="danger"
+        />
+        <ConfirmationModal
+          isOpen={showClearSentModal}
+          onClose={() => setShowClearSentModal(false)}
+          onConfirm={handleClearSent}
+          title="Clear sent messages"
+          message="Are you sure you want to permanently delete all sent messages? This cannot be undone."
+          confirmText="Clear sent"
+          type="danger"
+        />
       </div>
     </MainLayout>
   );

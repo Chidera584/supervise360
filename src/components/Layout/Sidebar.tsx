@@ -37,6 +37,8 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
+  const isStudent = user?.role === 'student';
+  const isLightShell = isAdmin || isStudent;
 
   useEffect(() => {
     setMobileOpen(false);
@@ -97,7 +99,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
   const linkClass = (path: string, mobile: boolean) => {
     const active = location.pathname === path;
-    if (isAdmin) {
+    if (isLightShell) {
       return `w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] mb-1 transition-colors cursor-pointer text-sm ${
         active
           ? 'font-semibold bg-[#006D6D]/12 text-[#006D6D]'
@@ -126,6 +128,78 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
       <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl" />
       <h1 className="text-xl font-bold">Supervise360</h1>
     </div>
+  );
+
+  const studentBranding = (
+    <div className="px-1 pt-2 pb-4 border-b border-slate-200/90 flex items-center gap-3">
+      <img src="/logo.png" alt="" className="h-9 w-9 object-contain rounded-xl shrink-0" />
+      <div className="min-w-0">
+        <p className="text-lg font-bold tracking-tight truncate" style={{ color: TEAL }}>
+          Supervise360
+        </p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mt-0.5">Student portal</p>
+      </div>
+    </div>
+  );
+
+  const StudentNav = ({ mobile }: { mobile: boolean }) => (
+    <>
+      {mobile ? (
+        <div className="px-4 pt-4 pb-2 border-b border-slate-200 shrink-0">{studentBranding}</div>
+      ) : (
+        <div className="px-4 pt-5 pb-0">{studentBranding}</div>
+      )}
+      <nav className={`flex-1 p-3 overflow-y-auto ${mobile ? 'min-h-0' : ''}`}>
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const active = location.pathname === item.path;
+          return (
+            <div
+              key={item.path}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  navigate(item.path);
+                  setMobileOpen(false);
+                }
+              }}
+              onClick={() => {
+                navigate(item.path);
+                setMobileOpen(false);
+              }}
+              className={linkClass(item.path, mobile)}
+            >
+              <Icon size={20} strokeWidth={active ? 2 : 1.75} className={active ? 'text-[#006D6D]' : 'text-slate-500'} />
+              <span>{item.label}</span>
+            </div>
+          );
+        })}
+      </nav>
+      <div className="p-3 border-t border-slate-200 space-y-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => {
+            navigate('/profile');
+            setMobileOpen(false);
+          }}
+          className="w-full text-left py-2.5 px-3 rounded-[10px] text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          Help center
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            signOut();
+            setMobileOpen(false);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          <LogOut size={18} />
+          <span>Logout</span>
+        </button>
+      </div>
+    </>
   );
 
   const AdminNav = ({ mobile }: { mobile: boolean }) => (
@@ -246,15 +320,15 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
       )}
       <div
         className={`lg:hidden fixed top-0 left-0 h-full min-h-[100dvh] w-72 max-w-[85vw] flex flex-col z-50 transform transition-transform duration-300 ease-out ${
-          isAdmin ? 'bg-[#F8F9FA] text-slate-800 border-r border-slate-200' : 'bg-[#022B3A] text-white'
+          isLightShell ? 'bg-[#F8F9FA] text-slate-800 border-r border-slate-200' : 'bg-[#022B3A] text-white'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div
           className={`flex items-center justify-between p-4 border-b shrink-0 ${
-            isAdmin ? 'border-slate-200' : 'border-gray-600'
+            isLightShell ? 'border-slate-200' : 'border-gray-600'
           }`}
         >
-          {!isAdmin && (
+          {!isLightShell && (
             <>
               <div className="flex items-center gap-3 min-w-0">
                 <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl shrink-0" />
@@ -270,7 +344,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
               </button>
             </>
           )}
-          {isAdmin && (
+          {isLightShell && (
             <>
               <span className="text-sm font-semibold text-slate-800">Menu</span>
               <button
@@ -287,6 +361,10 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
         {isAdmin ? (
           <div className="flex flex-col flex-1 min-h-0">
             <AdminNav mobile />
+          </div>
+        ) : isStudent ? (
+          <div className="flex flex-col flex-1 min-h-0">
+            <StudentNav mobile />
           </div>
         ) : (
           <>
@@ -335,12 +413,12 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
       <div
         className={`hidden lg:flex w-64 flex-shrink-0 fixed left-0 top-0 h-screen flex-col z-30 ${
-          isAdmin
+          isLightShell
             ? 'bg-[#F8F9FA] text-slate-800 border-r border-slate-200'
             : 'bg-[#022B3A] text-white'
         }`}
       >
-        {isAdmin ? <AdminNav mobile={false} /> : <DefaultNav />}
+        {isAdmin ? <AdminNav mobile={false} /> : isStudent ? <StudentNav mobile={false} /> : <DefaultNav />}
       </div>
     </>
   );

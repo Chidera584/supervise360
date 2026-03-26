@@ -25,6 +25,8 @@ const TEAL = '#006D6D';
 export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
   const { user, signOut } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isStudent = user?.role === 'student';
+  const isLightShell = isAdmin || isStudent;
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -156,7 +158,7 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
         type="button"
         onClick={() => setDropdownOpen(!dropdownOpen)}
         className={`relative p-2 rounded-lg transition-colors ${
-          isAdmin ? 'text-slate-600 hover:bg-slate-100' : 'text-white hover:bg-[#1F7A8C]/30'
+          isLightShell ? 'text-slate-600 hover:bg-slate-100' : 'text-white hover:bg-[#1F7A8C]/30'
         }`}
         title="Notifications"
       >
@@ -252,7 +254,7 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
     </div>
   );
 
-  if (isAdmin) {
+  if (isLightShell) {
     return (
       <header className="sticky top-0 z-30 shrink-0 bg-white border-b border-slate-200/90 shadow-sm px-3 sm:px-5 py-3">
         <div className="flex items-center gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-4">
@@ -289,16 +291,16 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
               className="text-sm font-semibold tracking-wide whitespace-nowrap"
               style={{ color: TEAL }}
             >
-              Academic Management System
+              {isAdmin ? 'Academic Management System' : 'Student workspace'}
             </span>
           </div>
 
           <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
             {notificationBell}
             <Link
-              to="/settings"
+              to={isAdmin ? '/settings' : '/profile'}
               className="hidden sm:inline-flex p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
-              title="Help & settings"
+              title={isAdmin ? 'Help & settings' : 'Profile & help'}
             >
               <HelpCircle size={20} strokeWidth={1.75} />
             </Link>

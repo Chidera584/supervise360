@@ -1,23 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MainLayout } from '../components/Layout/MainLayout';
-import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroups } from '../contexts/GroupsContext';
 import { apiClient } from '../lib/api';
 import { Link } from 'react-router-dom';
-import { Users, FileText, MessageSquare, UserCheck } from 'lucide-react';
+import {
+  Users,
+  FileText,
+  UserCheck,
+  Shield,
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  Lock,
+  Mail,
+} from 'lucide-react';
+
+const TEAL = '#006D6D';
+const PURPLE = '#7c3aed';
 
 export function StudentDashboard() {
   const { user, student } = useAuth();
   const { groups, syncWithDatabase } = useGroups();
   const [loading, setLoading] = useState(true);
+  const [reportsList, setReportsList] = useState<any[]>([]);
   const [reportsCount, setReportsCount] = useState(0);
   const [reportsReviewedCount, setReportsReviewedCount] = useState(0);
-  const [inboxCount, setInboxCount] = useState(0);
+  const [inboxPreview, setInboxPreview] = useState<any[]>([]);
 
-  const studentGroup = groups.find(group =>
-    group.members.some(member => {
+  const studentGroup = groups.find((group) =>
+    group.members.some((member) => {
       const matric = member.matricNumber ?? (member as any).matric;
       return matric === student?.matric_number;
     })
@@ -28,17 +41,16 @@ export function StudentDashboard() {
       try {
         setLoading(true);
         await syncWithDatabase();
-        const [reportsRes, inboxRes] = await Promise.all([
-          apiClient.getMyReports(),
-          apiClient.getInbox(),
-        ]);
+        const [reportsRes, inboxRes] = await Promise.all([apiClient.getMyReports(), apiClient.getInbox()]);
         if (reportsRes.success && Array.isArray(reportsRes.data)) {
           const reports = reportsRes.data as any[];
+          setReportsList(reports);
           setReportsCount(reports.length);
           setReportsReviewedCount(reports.filter((r: any) => r.reviewed).length);
         }
         if (inboxRes.success && Array.isArray(inboxRes.data)) {
-          setInboxCount((inboxRes.data as any[]).length);
+          const inbox = inboxRes.data as any[];
+          setInboxPreview(inbox.slice(0, 4));
         }
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
@@ -49,144 +61,272 @@ export function StudentDashboard() {
     loadData();
   }, [syncWithDatabase]);
 
+  const milestones = useMemo(() => {
+    const has = (t: string) =>
+      reportsList.some((r) => String(r.report_type || '').toLowerCase() === t.toLowerCase());
+    const proposalDone = has('proposal');
+    const progressDone = has('progress');
+    const finalDone = has('final');
+    const interimDone = has('other');
+    const steps = [
+      { id: 'proposal', label: 'Proposal', done: proposalDone },
+      { id: 'progress', label: 'Progress report', done: progressDone },
+      { id: 'interim', label: 'Interim demo', done: interimDone },
+      { id: 'final', label: 'Final submission', done: finalDone },
+    ];
+    const firstIncomplete = steps.findIndex((s) => !s.done);
+    return steps.map((s, i) => {
+      if (s.done) return { ...s, state: 'done' as const };
+      if (firstIncomplete === -1) return { ...s, state: 'done' as const };
+      return { ...s, state: i === firstIncomplete ? ('current' as const) : ('pending' as const) };
+    });
+  }, [reportsList]);
+
+  const progressPct = reportsCount > 0 ? Math.round((reportsReviewedCount / reportsCount) * 100) : 0;
+
   if (loading) {
     return (
-      <MainLayout title="Student dashboard">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading...</div>
-        </div>
+      <MainLayout title="Student Dashboard">
+        <div className="flex items-center justify-center h-64 text-slate-500">Loading…</div>
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title="Student dashboard">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-700">Overview</p>
-          <h2 className="mt-1 text-2xl font-bold text-slate-900 tracking-tight">
-            Hello{user?.first_name ? `, ${user.first_name}` : ''}
-          </h2>
-          <p className="text-slate-600 mt-1 text-sm">
-            {student?.matric_number ? `Matric ${student.matric_number}` : user?.department || 'Your workspace for supervision and submissions.'}
-          </p>
+    <MainLayout title="Student Dashboard">
+      <div className="max-w-6xl mx-auto space-y-8 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Student dashboard</h1>
+            <p className="text-slate-500 mt-1">
+              Welcome back, <span className="font-semibold text-slate-700">{user?.first_name}</span>
+              {student?.matric_number ? (
+                <span className="text-slate-400"> · Matric {student.matric_number}</span>
+              ) : null}
+            </p>
+          </div>
+          <Link
+            to="/reports"
+            className="text-sm font-semibold shrink-0 inline-flex items-center gap-1"
+            style={{ color: TEAL }}
+          >
+            Submit work <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-900/5">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-50 ring-1 ring-brand-100 flex items-center justify-center shrink-0">
-                <Users className="text-brand-700" size={20} strokeWidth={1.75} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Group</p>
-                <p className="text-lg font-bold text-slate-900 mt-0.5 truncate">
-                  {studentGroup ? studentGroup.name : 'Not assigned'}
-                </p>
-                {studentGroup && <p className="text-xs text-emerald-700 font-medium mt-1">Active</p>}
-              </div>
+        {/* Summary cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 flex gap-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 text-emerald-700" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Group status</p>
+              <p className="text-lg font-bold mt-1" style={{ color: TEAL }}>
+                {studentGroup ? 'Assigned' : 'Not assigned'}
+              </p>
+              <p className="text-sm text-slate-600 mt-0.5 truncate">
+                {studentGroup ? studentGroup.name : 'Awaiting administrator'}
+              </p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-900/5">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-50 ring-1 ring-violet-100 flex items-center justify-center shrink-0">
-                <FileText className="text-violet-700" size={20} strokeWidth={1.75} />
+          <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 flex gap-4">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${TEAL}18` }}
+            >
+              <FileText className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Reports status</p>
+              <p className="text-lg font-bold text-[#1a1a1a] mt-1 tabular-nums">
+                {reportsReviewedCount} / {reportsCount || '—'}
+              </p>
+              <div className="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${progressPct}%`, backgroundColor: TEAL }}
+                />
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Reports</p>
-                <p className="text-lg font-bold text-slate-900 mt-0.5 tabular-nums">{reportsCount}</p>
-                {reportsCount > 0 && (
-                  <p className="text-xs text-slate-500 mt-1">{reportsReviewedCount} reviewed</p>
-                )}
-              </div>
+              <p className="text-xs text-slate-500 mt-1">Reviewed submissions</p>
             </div>
           </div>
 
-          <div className="rounded-xl border-0 bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-md shadow-brand-900/15">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                <MessageSquare className="text-white" size={20} strokeWidth={1.75} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-100">Inbox</p>
-                <p className="text-lg font-bold mt-0.5 tabular-nums">{inboxCount}</p>
-                <p className="text-xs text-brand-100/90 mt-1">Messages</p>
-              </div>
+          <div
+            className="rounded-xl border border-slate-200/80 p-5 text-white shadow-md flex flex-col justify-between min-h-[120px]"
+            style={{ background: `linear-gradient(145deg, ${TEAL} 0%, #0a4d4d 100%)` }}
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Next milestone</p>
+              <p className="text-lg font-bold mt-1">
+                {milestones.find((m) => m.state === 'current')?.label || 'Progress report'}
+              </p>
             </div>
+            <p className="text-sm text-white/90">Keep momentum—submit updates on schedule.</p>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <Card className="rounded-xl border-slate-200/90">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Group information</h2>
-            {studentGroup ? (
+        <div className="grid lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3 space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3 mb-5">
+                <h2 className="text-lg font-bold text-[#1a1a1a]">Group snapshot</h2>
+                <Link to="/my-group" className="text-sm font-semibold" style={{ color: TEAL }}>
+                  View all details
+                </Link>
+              </div>
+              {studentGroup ? (
                 <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-brand-50/50 border border-brand-100/80 rounded-xl">
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900">You are assigned to {studentGroup.name}</p>
-                      <p className="text-sm text-slate-600">Status: {studentGroup.status}</p>
+                  {studentGroup.supervisor && (
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-slate-100 bg-[#F8F9FA]">
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-white shrink-0"
+                        style={{ backgroundColor: TEAL }}
+                      >
+                        <UserCheck className="w-6 h-6" strokeWidth={1.75} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[#1a1a1a]">{studentGroup.supervisor}</p>
+                        <p className="text-sm text-slate-500">Project supervisor</p>
+                      </div>
+                      <Link to="/messages">
+                        <Button className="!rounded-[10px] w-full sm:w-auto whitespace-nowrap !bg-[#006D6D] hover:!bg-[#005a5a] !text-white border-0">
+                          <Mail className="w-4 h-4 mr-2" />
+                          Quick contact
+                        </Button>
+                      </Link>
                     </div>
-                    <Link to="/my-group" className="shrink-0">
-                      <Button className="w-full sm:w-auto">View Group Details</Button>
-                    </Link>
-                  </div>
-
+                  )}
                   <div>
-                    <h3 className="font-medium text-slate-900 mb-3">Group Members ({Array.isArray(studentGroup.members) ? studentGroup.members.length : 0})</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {Array.isArray(studentGroup.members) ? studentGroup.members.map((member, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                          <div className="w-10 h-10 bg-brand-600 rounded-full flex items-center justify-center shrink-0">
-                            <span className="text-white font-semibold text-sm">
-                              {member.name.split(' ').map(n => n[0]).join('')}
-                            </span>
+                    <p className="text-sm font-medium text-slate-700 mb-3">
+                      Members ({Array.isArray(studentGroup.members) ? studentGroup.members.length : 0})
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {Array.isArray(studentGroup.members) ? (
+                        studentGroup.members.map((member, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white"
+                          >
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                              style={{ backgroundColor: `${TEAL}` }}
+                            >
+                              {member.name
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .slice(0, 2)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-slate-900 truncate">{member.name}</p>
+                              <p className="text-xs text-slate-500">{member.matricNumber ?? '—'}</p>
+                            </div>
+                            {(member.matricNumber ?? (member as any).matric) === student?.matric_number && (
+                              <span
+                                className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: `${TEAL}20`, color: TEAL }}
+                              >
+                                You
+                              </span>
+                            )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 truncate">{member.name}</p>
-                            <p className="text-xs text-slate-500">{member.matricNumber ?? 'N/A'}</p>
-                          </div>
-                          {(member.matricNumber ?? (member as any).matric) === student?.matric_number && (
-                            <span className="text-xs bg-brand-100 text-brand-800 px-2 py-1 rounded-full font-medium">You</span>
-                          )}
-                        </div>
-                      )) : (
-                        <div className="col-span-3 p-3 text-slate-500 text-sm">No members data available</div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500">No member data.</p>
                       )}
                     </div>
                   </div>
-
-                  {studentGroup.supervisor && (
-                    <div>
-                      <h3 className="font-medium text-slate-900 mb-3">Supervisor</h3>
-                      <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-                        <div className="w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center shrink-0">
-                          <UserCheck className="text-white" size={20} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-slate-900">{studentGroup.supervisor}</p>
-                          <p className="text-sm text-slate-600">Project Supervisor</p>
-                        </div>
-                        <Link to="/messages">
-                          <Button variant="outline" size="sm">
-                            <MessageSquare className="mr-2" size={14} />
-                            Contact
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Users className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">No Group Assigned</h3>
-                  <p className="text-slate-600">
-                    Groups will be formed by the administrator. You'll be notified when assigned.
-                  </p>
+                <div className="text-center py-10 text-slate-500">
+                  <Users className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                  <p className="font-medium text-slate-800">No group assigned yet</p>
+                  <p className="text-sm mt-1">Your administrator will place you in a group when ready.</p>
                 </div>
               )}
-          </Card>
+            </div>
+
+            {/* Milestones */}
+            <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-[#1a1a1a]">Project milestones</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Track progress toward final submission</p>
+                </div>
+                <div className="flex flex-wrap gap-3 text-[10px] text-slate-500 uppercase tracking-wide">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Done
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PURPLE }} /> Current
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-slate-300" /> Pending
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                {milestones.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`rounded-xl border p-4 flex flex-col gap-2 ${
+                      m.state === 'done'
+                        ? 'border-emerald-200 bg-emerald-50/50'
+                        : m.state === 'current'
+                          ? 'border-violet-200 bg-violet-50/60'
+                          : 'border-slate-200 bg-slate-50/80 opacity-80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      {m.state === 'done' ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      ) : m.state === 'current' ? (
+                        <Sparkles className="w-5 h-5" style={{ color: PURPLE }} />
+                      ) : (
+                        <Lock className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+                    <p className="font-semibold text-[#1a1a1a]">{m.label}</p>
+                    <p className="text-xs text-slate-500">
+                      {m.state === 'done' ? 'Completed' : m.state === 'current' ? 'In progress' : 'Locked'}
+                    </p>
+                    {m.state === 'current' && (
+                      <Link to="/reports">
+                        <Button className="mt-2 w-full !text-xs !font-bold !uppercase !tracking-wide !py-2 !bg-violet-600 hover:!bg-violet-700 !text-white border-0">
+                          Submit now
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6 h-full flex flex-col">
+              <h2 className="text-lg font-bold text-[#1a1a1a] mb-4">Recent activity</h2>
+              <ul className="space-y-4 flex-1">
+                {inboxPreview.length === 0 ? (
+                  <li className="text-sm text-slate-500 py-6 text-center">No messages yet.</li>
+                ) : (
+                  inboxPreview.map((msg) => (
+                    <li key={msg.id} className="border-b border-slate-100 last:border-0 pb-4 last:pb-0">
+                      <p className="text-[#1a1a1a] font-medium text-sm line-clamp-2">{msg.subject}</p>
+                      <p className="text-xs text-slate-400 mt-1">Inbox · {msg.sent_at?.split('T')[0]}</p>
+                    </li>
+                  ))
+                )}
+              </ul>
+              <Link to="/messages" className="mt-4 block w-full">
+                <Button variant="outline" className="w-full !rounded-[10px] font-semibold border-slate-200">
+                  Go to inbox
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </MainLayout>
