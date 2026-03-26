@@ -1,0 +1,34 @@
+# Render Blueprint — deploy from the Render dashboard: New → Blueprint → connect this repo
+# https://render.com/docs/blueprint-spec
+#
+# After first deploy: set secrets on each service (database URL, JWT, SMTP, etc.)
+
+services:
+  # Express API (Node) — deploy this first; copy its URL for the static site build
+  - type: web
+    name: supervise360-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Set these in the Render dashboard (or mark sync: false and add manually):
+      # MYSQL_URL or DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, DB_SSL
+      # JWT_SECRET, FRONTEND_URL (your static site URL), SMTP_*, etc.
+
+staticSites:
+  # Vite/React — set VITE_API_URL to https://<supervise360-api>.onrender.com/api before/after build
+  - name: supervise360-web
+    region: oregon
+    rootDir: .
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Set in dashboard: https://<supervise360-api>.onrender.com/api (must include /api)
+      - key: VITE_API_URL
+        sync: false
