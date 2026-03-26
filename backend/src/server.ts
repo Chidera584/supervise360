@@ -46,7 +46,7 @@ app.use(
 
 // CORS configuration - allow frontend URL, localhost, and Railway domains
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-app.use(cors({
+const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
     const allowed = [
       frontendUrl,
@@ -62,8 +62,13 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+// Ensure preflight requests are answered consistently before hitting auth middleware/routes.
+app.options('*', cors(corsOptions));
 
 // Rate limiting - more lenient in development
 const limiter = rateLimit({
