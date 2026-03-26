@@ -7,6 +7,7 @@ import {
   GraduationCap,
   LayoutGrid,
   BarChart3,
+  FileText,
   ShieldCheck,
   ArrowRight,
   Mail,
