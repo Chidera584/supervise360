@@ -400,67 +400,89 @@ export class GroupFormationService {
 
     if (remainder.length === 2) {
       // Allowed: H+M only. NOT H+L, M+L, or L+L.
-      const [a, b] = remainder;
-      const tiers = [a.tier, b.tier].sort().join('+');
-      const validPairs = ['HIGH+MEDIUM'];
-      if (validPairs.includes(tiers)) {
-        const pair = remainder.sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
-        const avgGpa = parseFloat(((pair[0].gpa + pair[1].gpa) / 2).toFixed(2));
-        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
-        console.log(`🏗️  Forming Group ${groupCounter} (2-member H+M): ${pair[0].name} (${pair[0].tier}) + ${pair[1].name} (${pair[1].tier})`);
+      const tiers = remainder.map((r) => r.tier).sort().join('+');
+      const sortedRemainder = [...remainder].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
+
+      const recomputeAvg = (members: StudentData[]) =>
+        parseFloat((members.reduce((s, m) => s + m.gpa, 0) / members.length).toFixed(2));
+
+      const sortByGpaDesc = (members: StudentData[]) => [...members].sort((a, b) => b.gpa - a.gpa);
+
+      const pickLowestByTier = (members: StudentData[], tier: 'HIGH' | 'MEDIUM' | 'LOW') => {
+        const candidates = members.filter((m) => m.tier === tier).sort((a, b) => a.gpa - b.gpa);
+        return candidates[0] || null;
+      };
+
+      if (tiers === 'HIGH+MEDIUM') {
+        const avgGpa = recomputeAvg(sortedRemainder);
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: sortedRemainder, avg_gpa: avgGpa, status: 'formed' });
+        console.log(`🏗️  Forming Group ${groupCounter} (2-member H+M): ${sortedRemainder[0].name} (${sortedRemainder[0].tier}) + ${sortedRemainder[1].name} (${sortedRemainder[1].tier})`);
+        groupCounter++;
+      } else if (tiers === 'HIGH+LOW') {
+        // Need: convert H+L → H+M by borrowing a MEDIUM from any existing 3-member group, and placing our LOW into that donor.
+        const donorGroup = groups.find((g) => g.members.length === 3 && g.members.some((m) => m.tier === 'MEDIUM'));
+        if (!donorGroup) {
+          throw new Error('Cannot form valid 2-member group from HIGH+LOW remainder: no 3-member donor group with a MEDIUM exists.');
+        }
+        const borrowedM = pickLowestByTier(donorGroup.members, 'MEDIUM');
+        const ourH = sortedRemainder.find((r) => r.tier === 'HIGH')!;
+        const ourL = sortedRemainder.find((r) => r.tier === 'LOW')!;
+        if (!borrowedM) {
+          throw new Error('Internal error: selected donor group has no MEDIUM.');
+        }
+
+        donorGroup.members = sortByGpaDesc(donorGroup.members.filter((m) => m !== borrowedM).concat([ourL]));
+        donorGroup.avg_gpa = recomputeAvg(donorGroup.members);
+
+        const pair = sortByGpaDesc([ourH, borrowedM]);
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
+        console.log(`🏗️  Rebalanced HIGH+LOW remainder: formed H+M, moved LOW into donor group (${donorGroup.name})`);
+        groupCounter++;
+      } else if (tiers === 'LOW+MEDIUM') {
+        // Need: convert M+L → H+M by borrowing a HIGH from any existing 3-member group, and placing our LOW into that donor.
+        const donorGroup = groups.find((g) => g.members.length === 3 && g.members.some((m) => m.tier === 'HIGH'));
+        if (!donorGroup) {
+          throw new Error('Cannot form valid 2-member group from MEDIUM+LOW remainder: no 3-member donor group with a HIGH exists.');
+        }
+        const borrowedH = pickLowestByTier(donorGroup.members, 'HIGH');
+        const ourM = sortedRemainder.find((r) => r.tier === 'MEDIUM')!;
+        const ourL = sortedRemainder.find((r) => r.tier === 'LOW')!;
+        if (!borrowedH) {
+          throw new Error('Internal error: selected donor group has no HIGH.');
+        }
+
+        donorGroup.members = sortByGpaDesc(donorGroup.members.filter((m) => m !== borrowedH).concat([ourL]));
+        donorGroup.avg_gpa = recomputeAvg(donorGroup.members);
+
+        const pair = sortByGpaDesc([borrowedH, ourM]);
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
+        console.log(`🏗️  Rebalanced MEDIUM+LOW remainder: formed H+M, moved LOW into donor group (${donorGroup.name})`);
+        groupCounter++;
+      } else if (tiers === 'LOW+LOW') {
+        // Convert L+L → H+L+L by borrowing a HIGH from a donor that will become a valid 2-member H+M after removal.
+        const donorGroup = groups.find(
+          (g) =>
+            g.members.length === 3 &&
+            g.members.filter((m) => m.tier === 'HIGH').length >= 2 &&
+            g.members.some((m) => m.tier === 'MEDIUM')
+        );
+        if (!donorGroup) {
+          throw new Error('Cannot form valid groups from LOW+LOW remainder: need a donor group with tiers H+H+M to safely borrow a HIGH.');
+        }
+        const borrowedH = pickLowestByTier(donorGroup.members, 'HIGH');
+        if (!borrowedH) {
+          throw new Error('Internal error: selected donor group has no HIGH.');
+        }
+
+        donorGroup.members = sortByGpaDesc(donorGroup.members.filter((m) => m !== borrowedH));
+        donorGroup.avg_gpa = recomputeAvg(donorGroup.members);
+
+        const trio = sortByGpaDesc([borrowedH, ...sortedRemainder]);
+        groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: trio, avg_gpa: recomputeAvg(trio), status: 'formed' });
+        console.log(`🏗️  Rebalanced LOW+LOW remainder: borrowed HIGH from ${donorGroup.name}, formed H+L+L (3-member)`);
         groupCounter++;
       } else {
-        // H+L, M+L, or L+L: must rebalance. Only H+M allowed for 2-member.
-        // H+L: borrow M from group with H+H+M, form H+M, add our L to donor -> H+H+L
-        // M+L: borrow H from group with 2+ H, form H+M
-        // L+L: borrow H from group with 2+ H, form H+L+L (3-member)
-        const isHL = tiers === 'HIGH+LOW' || tiers === 'LOW+HIGH';
-        const isLL = tiers === 'LOW+LOW';
-        let donorGroup = groups.find(g => g.members.filter(m => m.tier === 'HIGH').length >= 2 && g.members.some(m => m.tier === 'MEDIUM'));
-        if (isHL && donorGroup) {
-          const donorMembers = [...donorGroup.members];
-          const mIdx = donorMembers.findIndex(m => m.tier === 'MEDIUM');
-          const borrowedM = donorMembers.splice(mIdx, 1)[0];
-          const ourH = remainder.find(r => r.tier === 'HIGH')!;
-          const ourL = remainder.find(r => r.tier === 'LOW')!;
-          const pair = [ourH, borrowedM].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
-          const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
-          groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
-          groupCounter++;
-          donorMembers.push(ourL);
-          donorGroup.members = donorMembers.sort((x, y) => (y.gpa >= x.gpa ? 1 : -1));
-          donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
-          console.log(`🏗️  Rebalanced H+L: formed H+M, added L to donor -> H+H+L`);
-        } else {
-          donorGroup = groups.find(g => g.members.filter(m => m.tier === 'HIGH').length >= 2);
-          if (donorGroup) {
-            const donorMembers = [...donorGroup.members];
-            const hIdx = donorMembers.findIndex(m => m.tier === 'HIGH');
-            const borrowedH = donorMembers.splice(hIdx, 1)[0];
-            if (isLL) {
-              const trio = [borrowedH, ...remainder].sort((x, y) => (y.gpa >= x.gpa ? 1 : -1));
-              const avgGpa = parseFloat((trio.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
-              groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: trio, avg_gpa: avgGpa, status: 'formed' });
-              groupCounter++;
-              console.log(`🏗️  Rebalanced L+L: borrowed H, formed H+L+L (3-member)`);
-            } else {
-              const pair = [borrowedH, ...remainder].sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
-              const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
-              groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
-              groupCounter++;
-              console.log(`🏗️  Rebalanced M+L: formed H+M, donor now has 2`);
-            }
-            donorGroup.members = donorMembers;
-            donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
-          } else {
-            // Fallback: form 2-member group anyway (e.g. M+L, H+L) when no donor available
-            const pair = remainder.sort((x, y) => (x.gpa >= y.gpa ? -1 : 1));
-            const avgGpa = parseFloat((pair.reduce((s, m) => s + m.gpa, 0) / 2).toFixed(2));
-            groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: avgGpa, status: 'formed' });
-            groupCounter++;
-            console.log(`   ⚠️ Fallback 2-member group (${tiers}): ${pair[0].name} + ${pair[1].name}`);
-          }
-        }
+        throw new Error(`Unhandled 2-student remainder tier combination: ${tiers}`);
       }
     } else if (remainder.length === 1) {
       const solo = remainder[0];
