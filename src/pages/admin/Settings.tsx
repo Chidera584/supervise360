@@ -241,7 +241,11 @@ export function Settings() {
                   </label>
                 ))}
               </div>
-              <Button onClick={handleSaveAdminDepartments} disabled={savingDepts}>
+              <Button
+                onClick={handleSaveAdminDepartments}
+                disabled={savingDepts}
+                className="!rounded-[10px] !bg-[#000080] hover:!bg-[#00006b] !text-white border-0"
+              >
                 {savingDepts ? 'Saving...' : 'Save Department Scope'}
               </Button>
             </div>
@@ -322,7 +326,11 @@ export function Settings() {
                 </div>
               )}
 
-              <Button onClick={saveGlobalThresholds} disabled={saving || !validateThresholds(globalThresholds)}>
+              <Button
+                onClick={saveGlobalThresholds}
+                disabled={saving || !validateThresholds(globalThresholds)}
+                className="!rounded-[10px] !bg-[#000080] hover:!bg-[#00006b] !text-white border-0"
+              >
                 {saving ? "Saving..." : "Save Global Thresholds"}
               </Button>
             </div>
@@ -408,6 +416,7 @@ export function Settings() {
                     <Button
                       onClick={() => saveDepartmentThresholds(deptName)}
                       disabled={savingDept === deptName || (dept.useCustomThresholds && !validateThresholds(dept.thresholds))}
+                      className="!rounded-[10px] !bg-[#000080] hover:!bg-[#00006b] !text-white border-0"
                     >
                       {savingDept === deptName ? "Saving..." : `Save ${deptName}`}
                     </Button>

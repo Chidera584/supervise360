@@ -112,7 +112,7 @@ export function Reports() {
 
   return (
     <MainLayout title="Reports & submissions">
-      <div className="max-w-5xl mx-auto space-y-8 min-w-0">
+      <div className="space-y-8 min-w-0">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: TEAL }}>
             Student

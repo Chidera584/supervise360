@@ -48,8 +48,6 @@ export function SupervisorDashboard() {
   const [inboxCount, setInboxCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const termLabel = 'Fall 2023 Academic Session';
-
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -86,9 +84,11 @@ export function SupervisorDashboard() {
   }, []);
 
   const activeGroups = useMemo(
-    () => supervisorGroups.filter((g) => g.status === 'active').length,
+    () => supervisorGroups.filter((g) => (g.reportsTotal ?? 0) > 0).length,
     [supervisorGroups]
   );
+
+  const assignedGroups = supervisorGroups.length;
 
   if (loading) {
     return (
@@ -102,7 +102,7 @@ export function SupervisorDashboard() {
 
   return (
     <MainLayout title="Supervisor Dashboard">
-      <div className="max-w-6xl mx-auto space-y-6 min-w-0">
+      <div className="space-y-6 min-w-0">
         {/* Hero */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
@@ -113,16 +113,12 @@ export function SupervisorDashboard() {
               Department of {departmentText} · Managing {activeGroups} Active Groups
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">CURRENT TERM</p>
-            <p className="text-sm font-semibold text-slate-700 mt-1">{termLabel}</p>
-          </div>
         </div>
 
         {/* Metric cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard
-            value={activeGroups}
+            value={assignedGroups}
             label="Assigned Groups"
             icon={<Users className="w-5 h-5" />}
             accent="#1a4d3e"

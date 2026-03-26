@@ -22,6 +22,24 @@ import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
 
 const TEAL = '#006D6D';
 const PAGE_SIZE = 8;
+const COURSE_CODE_BY_NAME: Record<string, string> = {
+  'Software Engineering': 'SE',
+  'Computer Science': 'CS',
+  'Computer Information Systems': 'CIS',
+  'Computer Technology': 'CT',
+  'Information Technology': 'IT',
+};
+
+function getCourseCode(dept: { name?: string; code?: string; id?: number }) {
+  const name = dept.name?.trim();
+  if (name && COURSE_CODE_BY_NAME[name]) return COURSE_CODE_BY_NAME[name];
+  const code = dept.code?.toString().trim().toUpperCase();
+  if (code) {
+    const normalized = code.replace(/\s+/g, '');
+    if (normalized) return normalized;
+  }
+  return dept.id ? `ID ${dept.id}` : '—';
+}
 
 interface DepartmentStats {
   id: number;
@@ -144,7 +162,7 @@ export function Departments() {
         onChange: setHeaderSearch,
       }}
     >
-      <div className="max-w-6xl mx-auto space-y-8 min-w-0">
+      <div className="space-y-8 min-w-0">
         {/* Page header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div className="max-w-2xl">
@@ -193,7 +211,7 @@ export function Departments() {
                       <Icon className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
                     </div>
                     <span className="text-xs font-bold tabular-nums" style={{ color: TEAL }}>
-                      {dept.code || `ID ${dept.id}`}
+                      {getCourseCode(dept)}
                     </span>
                   </div>
                   <div>
@@ -305,7 +323,7 @@ export function Departments() {
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-[#1a1a1a] truncate">{dept.name}</p>
-                              <p className="text-xs text-slate-500 font-mono">{dept.code || '—'}</p>
+                              <p className="text-xs text-slate-500 font-mono">{getCourseCode(dept)}</p>
                             </div>
                           </div>
                         </td>

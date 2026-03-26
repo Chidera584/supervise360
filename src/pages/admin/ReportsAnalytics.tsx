@@ -48,17 +48,13 @@ export function ReportsAnalytics() {
   }, []);
 
   const sp = stats?.systemPerformance || {};
-  const gq = stats?.groupingQuality || {};
   const totalGroups = sp.totalGroups ?? 0;
   const totalProjects = sp.totalProjects ?? 0;
   const projectsSubmitted = sp.projectsSubmitted ?? 0;
   const totalReports = sp.totalReports ?? 0;
   const reviewedReports = sp.reviewedReports ?? 0;
-  const idealGroups = gq.idealGroups ?? 0;
-  const fallbackGroups = gq.fallbackGroups ?? 0;
 
   const completionPct = totalReports > 0 ? Math.round((reviewedReports / totalReports) * 100) : 0;
-  const qualityPct = totalGroups > 0 ? Math.round((idealGroups / totalGroups) * 100) : 0;
 
   const deptWorkload = useMemo(() => {
     const map: Record<string, { load: number; people: number }> = {};
@@ -81,7 +77,7 @@ export function ReportsAnalytics() {
     return [
       {
         id: '1',
-        type: 'Grouping quality summary',
+        type: 'Group formation summary',
         generatedBy: 'System',
         status: 'READY',
         at: new Date(now - 3600000),
@@ -121,17 +117,6 @@ export function ReportsAnalytics() {
     );
   }, [recentReports, headerSearch]);
 
-  const radarAxes = useMemo(() => {
-    const total = idealGroups + fallbackGroups || 1;
-    return [
-      { label: 'Tier mix', value: Math.round((idealGroups / total) * 100) },
-      { label: 'Balance', value: Math.min(100, qualityPct + 10) },
-      { label: 'Coverage', value: totalGroups > 0 ? Math.min(100, Math.round((projectsSubmitted / Math.max(totalProjects, 1)) * 100)) : 0 },
-      { label: 'Stability', value: Math.max(0, 100 - Math.min(fallbackGroups * 5, 80)) },
-      { label: 'Throughput', value: completionPct },
-    ];
-  }, [idealGroups, fallbackGroups, totalGroups, qualityPct, totalProjects, projectsSubmitted, completionPct]);
-
   const donutRadius = 44;
   const donutCirc = 2 * Math.PI * donutRadius;
 
@@ -144,7 +129,7 @@ export function ReportsAnalytics() {
         onChange: setHeaderSearch,
       }}
     >
-      <div className="max-w-6xl mx-auto space-y-8 min-w-0 pb-16">
+      <div className="space-y-8 min-w-0 pb-16">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] mb-2" style={{ color: TEAL }}>
@@ -215,22 +200,6 @@ export function ReportsAnalytics() {
                 <p className="text-2xl font-bold text-[#1a1a1a] tabular-nums mt-1">{projectsSubmitted.toLocaleString()}</p>
                 <p className="text-xs text-slate-500 mt-2">Pending through completed</p>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${TEAL}18` }}
-                  >
-                    <Award className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
-                  </div>
-                  <span className="text-xs font-semibold text-amber-800 bg-amber-50 px-2 py-1 rounded-full">
-                    Quality
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500 mt-4">Grouping quality</p>
-                <p className="text-2xl font-bold text-[#1a1a1a] tabular-nums mt-1">{qualityPct}%</p>
-                <p className="text-xs text-slate-500 mt-2">Ideal tier-mix groups / all groups</p>
-              </div>
               <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 flex flex-col sm:flex-row gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-500">Report completion</p>
@@ -265,7 +234,7 @@ export function ReportsAnalytics() {
             </div>
 
             {/* Charts row */}
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid lg:grid-cols-1 gap-6">
               <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
                 <h2 className="text-lg font-bold text-[#1a1a1a] mb-1">Supervisor workload by department</h2>
                 <p className="text-sm text-slate-500 mb-6">Group assignments aggregated across supervisors</p>
@@ -294,33 +263,6 @@ export function ReportsAnalytics() {
                     ))}
                   </ul>
                 )}
-              </div>
-
-              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
-                <h2 className="text-lg font-bold text-[#1a1a1a] mb-1">Grouping quality indicators</h2>
-                <p className="text-sm text-slate-500 mb-6">Derived metrics from tier distribution and reports</p>
-                <div className="grid grid-cols-5 gap-2 sm:gap-3 items-end min-h-[160px]">
-                  {radarAxes.map((ax) => (
-                    <div key={ax.label} className="flex flex-col items-center gap-2">
-                      <div className="w-full flex flex-col justify-end h-28 bg-slate-50 rounded-t-lg overflow-hidden border border-slate-100">
-                        <div
-                          className="w-full rounded-t-md transition-all"
-                          style={{
-                            height: `${Math.max(8, ax.value)}%`,
-                            background: `linear-gradient(180deg, ${TEAL} 0%, rgba(0,109,109,0.45) 100%)`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] sm:text-xs text-center text-slate-600 font-medium leading-tight px-0.5">
-                        {ax.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-                  {idealGroups} ideal groups with balanced tiers; {fallbackGroups} other groups may need reassignment
-                  for better mix.
-                </p>
               </div>
             </div>
 

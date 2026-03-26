@@ -10,7 +10,7 @@ import {
   FileText,
   UserCheck,
   Shield,
-  Sparkles,
+  Clock,
   ArrowRight,
   CheckCircle2,
   Lock,
@@ -65,13 +65,12 @@ export function StudentDashboard() {
     const has = (t: string) =>
       reportsList.some((r) => String(r.report_type || '').toLowerCase() === t.toLowerCase());
     const proposalDone = has('proposal');
-    const progressDone = has('progress');
     const finalDone = has('final');
-    const interimDone = has('other');
+    const progressN = reportsList.filter((r) => String(r.report_type || '').toLowerCase() === 'progress').length;
     const steps = [
       { id: 'proposal', label: 'Proposal', done: proposalDone },
-      { id: 'progress', label: 'Progress report', done: progressDone },
-      { id: 'interim', label: 'Interim demo', done: interimDone },
+      { id: 'progress1', label: 'Progress #1', done: progressN >= 1 },
+      { id: 'progress2', label: 'Progress #2', done: progressN >= 2 },
       { id: 'final', label: 'Final submission', done: finalDone },
     ];
     const firstIncomplete = steps.findIndex((s) => !s.done);
@@ -94,7 +93,7 @@ export function StudentDashboard() {
 
   return (
     <MainLayout title="Student Dashboard">
-      <div className="max-w-6xl mx-auto space-y-8 min-w-0">
+      <div className="space-y-8 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Student dashboard</h1>
@@ -283,7 +282,7 @@ export function StudentDashboard() {
                       {m.state === 'done' ? (
                         <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       ) : m.state === 'current' ? (
-                        <Sparkles className="w-5 h-5" style={{ color: PURPLE }} />
+                        <Clock className="w-5 h-5" style={{ color: PURPLE }} />
                       ) : (
                         <Lock className="w-5 h-5 text-slate-400" />
                       )}

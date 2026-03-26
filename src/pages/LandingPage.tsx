@@ -1,12 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Menu,
   X,
-  Bell,
-  Globe,
   GraduationCap,
-  UserCircle,
   LayoutGrid,
   BarChart3,
   ShieldCheck,
@@ -26,6 +23,29 @@ export function LandingPage() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const slideImages = ['/landing-slide-1.png', '/landing-slide-2.png', '/landing-slide-3.png'];
+
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll<HTMLElement>('[data-animate]'));
+    if (els.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const el = entry.target as HTMLElement;
+          const anim = el.getAttribute('data-animate');
+          if (anim === 'fade-up') el.classList.add('animate-fade-up');
+          if (anim === 'fade-in') el.classList.add('animate-fade-in');
+          el.classList.remove('opacity-0');
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   const goToStudentLogin = () => {
     navigate('/login?role=student');
@@ -77,26 +97,6 @@ export function LandingPage() {
               ))}
             </nav>
 
-            {/* Utility row (desktop) */}
-            <div className="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
-              <span className="flex items-center gap-0" aria-hidden>
-                <span className="p-2 rounded-lg text-slate-400">
-                  <Bell className="w-5 h-5" strokeWidth={1.75} />
-                </span>
-                <span className="p-2 rounded-lg text-slate-400">
-                  <Globe className="w-5 h-5" strokeWidth={1.75} />
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={goToStudentLogin}
-                className="flex items-center justify-center w-9 h-9 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white transition-colors"
-                aria-label="Sign in"
-              >
-                <UserCircle className="w-5 h-5" strokeWidth={1.75} />
-              </button>
-            </div>
-
             {/* Mobile menu button */}
             <button
               type="button"
@@ -144,7 +144,9 @@ export function LandingPage() {
                   backgroundImage: `url(${src})`,
                   animation: 'fadeSlide 12s infinite',
                   animationDelay: `${idx * 4}s`,
-                  opacity: 0.22,
+                  opacity: 0.32,
+                  filter: 'saturate(1.12) contrast(1.08) brightness(1.02)',
+                  transform: 'scale(1.04)',
                 }}
               />
             ))}
@@ -171,25 +173,32 @@ export function LandingPage() {
 
           <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-20 pb-16 sm:pb-20 text-center">
             <p
-              className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] mb-4 animate-fade-in opacity-0"
+              className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] mb-4 opacity-0"
+              data-animate="fade-in"
               style={{ color: TEAL, animationDelay: '0.1s', animationFillMode: 'forwards' }}
             >
               Academic supervision platform
             </p>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-bold text-[#1a1a1a] leading-tight max-w-4xl mx-auto animate-fade-up opacity-0" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
+            <h1
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-bold text-[#1a1a1a] leading-tight max-w-4xl mx-auto opacity-0"
+              data-animate="fade-up"
+              style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}
+            >
               Academic excellence through
               <br className="hidden sm:block" />
               <span className="sm:ml-2 font-['Playfair_Display',serif] italic font-medium text-[#006D6D]">Streamlined</span>
               <span className="sm:ml-2">supervision</span>
             </h1>
             <p
-              className="mt-5 sm:mt-6 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed animate-fade-up opacity-0"
+              className="mt-5 sm:mt-6 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed opacity-0"
+              data-animate="fade-up"
               style={{ color: MUTED, animationDelay: '0.35s', animationFillMode: 'forwards' }}
             >
               Connect students and supervisors, manage submissions, and keep milestones visible—in one calm, structured workspace.
             </p>
             <div
-              className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-fade-up opacity-0"
+              className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 opacity-0"
+              data-animate="fade-up"
               style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}
             >
               <button
@@ -223,11 +232,12 @@ export function LandingPage() {
             <p className="text-center max-w-xl mx-auto mb-10 sm:mb-14" style={{ color: MUTED }}>
               Choose the path that matches your role. You will sign in with your institutional credentials.
             </p>
-            <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+              <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
               <button
                 type="button"
                 onClick={goToStudentLogin}
-                className="text-left rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm hover:shadow-md hover:border-slate-300/80 transition-all group relative overflow-hidden"
+                  className="text-left rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm hover:shadow-md hover:border-slate-300/80 transition-all group relative overflow-hidden opacity-0"
+                  data-animate="fade-up"
               >
                 <div
                   className="inline-flex items-center justify-center w-12 h-12 rounded-lg mb-5"
@@ -249,7 +259,8 @@ export function LandingPage() {
               <button
                 type="button"
                 onClick={goToSupervisorLogin}
-                className="text-left rounded-xl p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow text-white"
+                  className="text-left rounded-xl p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow text-white opacity-0"
+                  data-animate="fade-up"
                 style={{ backgroundColor: TEAL }}
               >
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-white/15 mb-5 border border-white/20">
@@ -259,8 +270,11 @@ export function LandingPage() {
                 <p className="text-sm sm:text-base leading-relaxed text-white/90 mb-6">
                   Review submissions, guide groups, and keep supervision work organized in one portfolio-style view.
                 </p>
-                <span className="inline-flex items-center justify-center px-5 py-2.5 rounded-[10px] bg-white text-sm font-semibold w-full sm:w-auto" style={{ color: TEAL }}>
-                  Access portfolio
+                <span
+                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-[10px] bg-white text-sm font-semibold w-full sm:w-auto"
+                  style={{ color: TEAL }}
+                >
+                  Explore Supervisor Portal
                 </span>
               </button>
             </div>
@@ -328,9 +342,6 @@ export function LandingPage() {
                 </div>
                 <div className="absolute -bottom-4 left-4 sm:left-8 bg-white rounded-xl shadow-xl px-4 py-3 max-w-[240px]">
                   <p className="text-2xl font-bold" style={{ color: TEAL }}>98%</p>
-                  <p className="text-xs text-slate-600 leading-snug mt-1">
-                    Teams report clearer visibility into supervision tasks after centralizing workflows.
-                  </p>
                 </div>
               </div>
               <div>

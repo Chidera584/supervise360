@@ -84,7 +84,7 @@ export function ReportReviews() {
 
   return (
     <MainLayout title="Report Reviews">
-      <div className="max-w-6xl mx-auto space-y-6 min-w-0">
+      <div className="space-y-6 min-w-0">
         <Card className="border border-slate-200/90 rounded-2xl p-4 sm:p-6">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
             <div>
@@ -119,9 +119,6 @@ export function ReportReviews() {
                 <div className="flex gap-2">
                   <div className="text-xs font-semibold px-3 py-1 rounded-full bg-[#006D6D]/10 text-[#006D6D] border border-[#006D6D]/20">
                     All Projects
-                  </div>
-                  <div className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
-                    Urgent
                   </div>
                 </div>
               </div>

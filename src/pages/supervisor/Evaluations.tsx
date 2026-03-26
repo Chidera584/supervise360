@@ -207,7 +207,7 @@ export function Evaluations() {
 
   return (
     <MainLayout title="Evaluations">
-      <div className="max-w-6xl mx-auto space-y-6 min-w-0">
+      <div className="space-y-6 min-w-0">
         {/* Header */}
         <Card className="border border-slate-200/90 rounded-2xl p-6">
           <div className="flex items-center gap-3">
@@ -388,26 +388,6 @@ export function Evaluations() {
                     value={scores.feedback}
                     onChange={(e) => setScores((s) => ({ ...s, feedback: e.target.value }))}
                   />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                    <SmallField
-                      label="Strengths (optional)"
-                      value={scores.strengths}
-                      onChange={(v) => setScores((s) => ({ ...s, strengths: v }))}
-                    />
-                    <SmallField
-                      label="Areas for improvement (optional)"
-                      value={scores.weaknesses}
-                      onChange={(v) => setScores((s) => ({ ...s, weaknesses: v }))}
-                    />
-                    <div className="sm:col-span-2">
-                      <SmallField
-                        label="Recommendations (optional)"
-                        value={scores.recommendations}
-                        onChange={(v) => setScores((s) => ({ ...s, recommendations: v }))}
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 {/* Actions */}
@@ -497,35 +477,17 @@ function ScoreSlider({
       </div>
 
       <input
-        type="range"
+        type="number"
         min={0}
         max={max}
         step={1}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-3 w-full accent-[#006D6D]"
-      />
-    </div>
-  );
-}
-
-function SmallField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={2}
-        className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#006D6D]/30"
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          if (Number.isNaN(next)) return onChange(0);
+          onChange(Math.max(0, Math.min(max, next)));
+        }}
+        className="mt-3 w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#006D6D]/30 focus:border-transparent"
       />
     </div>
   );

@@ -50,15 +50,27 @@ export function MyGroups() {
   const [filter, setFilter] = useState<'all' | 'pending'>('all');
 
   useEffect(() => {
-    const fetch = async () => {
+    let alive = true;
+
+    const fetchGroups = async () => {
       const res = await apiClient.getSupervisorMyGroups();
+      if (!alive) return;
       if (res.success && res.data) {
         const raw = res.data as SupervisorGroup[];
         setGroups(sortGroupsByNumber(raw));
       }
       setLoading(false);
     };
-    fetch();
+
+    fetchGroups();
+    const id = window.setInterval(fetchGroups, 30000);
+    window.addEventListener('focus', fetchGroups);
+
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+      window.removeEventListener('focus', fetchGroups);
+    };
   }, []);
 
   // Scroll to group when navigated from Dashboard with state.groupId
@@ -74,7 +86,7 @@ export function MyGroups() {
   }, [loading, location.state]);
 
   const activeGroupsCount = useMemo(
-    () => groups.filter((g) => g.status === 'active').length,
+    () => groups.filter((g) => (g.reportsTotal ?? 0) > 0).length,
     [groups]
   );
   const pendingReportsCount = useMemo(
@@ -127,7 +139,7 @@ export function MyGroups() {
 
   return (
     <MainLayout title="My Groups">
-      <div className="max-w-6xl mx-auto space-y-6 min-w-0">
+      <div className="space-y-6 min-w-0">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
@@ -220,7 +232,13 @@ export function MyGroups() {
                             className="text-xs px-2 py-0.5 rounded-full font-semibold"
                             style={{ backgroundColor: 'rgba(0,109,109,0.10)', color: TEAL }}
                           >
-                            {group.project.progress_percentage}% progress
+                            {(() => {
+                              const apiPctRaw = group.project?.progress_percentage ?? 0;
+                              const apiPct = apiPctRaw <= 1 ? apiPctRaw * 100 : apiPctRaw;
+                              const derivedPct = group.reportsTotal ? Math.min(100, Math.round((group.reportsTotal / 4) * 100)) : 0;
+                              const pctToShow = apiPctRaw && apiPct > 0 ? apiPct : derivedPct;
+                              return `${pctToShow.toFixed(2)}%`;
+                            })()} progress
                           </span>
                         )}
                       </div>

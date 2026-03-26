@@ -260,7 +260,7 @@ export function Users() {
         onChange: setHeaderSearch,
       }}
     >
-      <div className="max-w-6xl mx-auto space-y-6 min-w-0">
+      <div className="space-y-6 min-w-0">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center justify-between gap-3">
             <span className="text-sm">{error}</span>
@@ -515,26 +515,7 @@ export function Users() {
               )}
             </ul>
           </Card>
-          <Card className="!p-5 !rounded-xl border border-slate-200/90 !shadow-sm">
-            <h3 className="font-semibold text-[#1a1a1a] mb-1">Directory health</h3>
-            <p className="text-3xl font-bold text-[#1a1a1a] tabular-nums mt-2">{inactiveInScope}</p>
-            <p className="text-sm text-slate-600 mt-1">Deactivated accounts in your scope</p>
-            <p className="text-xs text-slate-400 mt-3">Use status filters to audit inactive profiles.</p>
-          </Card>
-          <div className="rounded-xl border border-amber-200/90 bg-amber-50/95 p-5 shadow-sm flex flex-col justify-between">
-            <div>
-              <h3 className="font-semibold text-amber-950">Attention required</h3>
-              <p className="text-sm text-amber-900/90 mt-2 leading-relaxed">
-                Supervisors and cohorts can fall out of balance when enrollments shift. Review assignment queues often.
-              </p>
-            </div>
-            <Link
-              to="/supervisor-assignment"
-              className="mt-4 inline-flex justify-center px-4 py-2.5 rounded-[10px] text-sm font-semibold bg-amber-800 text-white hover:bg-amber-900 transition-colors"
-            >
-              Review assignments
-            </Link>
-          </div>
+          {/* Removed: Directory health + Attention required blocks */}
         </div>
       </div>
 

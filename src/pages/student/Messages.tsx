@@ -218,15 +218,7 @@ export function Messages() {
         onChange: setHeaderSearch,
       }}
     >
-      <div className="max-w-6xl mx-auto min-w-0 space-y-6">
-        {navState?.groupName && (
-          <div
-            className="rounded-xl border px-4 py-3 text-sm"
-            style={{ backgroundColor: `${TEAL}10`, borderColor: `${TEAL}33`, color: '#0f4a4a' }}
-          >
-            Messaging from: <strong>{navState.groupName}</strong>
-          </div>
-        )}
+      <div className="min-w-0 space-y-6">
 
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>

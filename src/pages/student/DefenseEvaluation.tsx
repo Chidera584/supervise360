@@ -54,13 +54,15 @@ export function DefenseEvaluation() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 mt-0.5 rounded-full bg-amber-200 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-amber-800 font-medium">Status</p>
-                    <p className="font-semibold text-gray-900">{defense?.status || 'Pending'}</p>
+                {defense?.status && defense.status !== 'Pending' && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 mt-0.5 rounded-full bg-amber-200 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-amber-800 font-medium">Status</p>
+                      <p className="font-semibold text-gray-900">{defense.status}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {assessors.length > 0 ? (
