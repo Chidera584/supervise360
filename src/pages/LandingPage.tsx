@@ -266,7 +266,7 @@ export function LandingPage() {
                   </div>
                   <div className="relative">
                     <img
-                      src={slideImages[1]}
+                      src={slideImages[0]}
                       alt="Supervise360 preview"
                       className="w-full h-[320px] sm:h-[380px] object-cover"
                       style={{ filter: 'saturate(1.05) contrast(1.05)' }}
@@ -421,7 +421,7 @@ export function LandingPage() {
                     <p className="text-lg font-bold text-slate-900 mt-1">A calmer workspace</p>
                   </div>
                   <img
-                    src={slideImages[0]}
+                    src={slideImages[1]}
                     alt="Workspace preview"
                     className="w-full h-[320px] sm:h-[380px] object-cover"
                     loading="lazy"
