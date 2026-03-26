@@ -232,31 +232,6 @@ export function LandingPage() {
                   Manage groups, submissions, feedback, and defense scheduling in one workspace.
                 </p>
 
-                <div
-                  className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 opacity-0"
-                  data-animate="fade-up"
-                  style={{ transitionDelay: '320ms' }}
-                >
-                  <button
-                    type="button"
-                    onClick={goToStudentLogin}
-                    className="px-7 py-3.5 rounded-xl text-white font-semibold shadow-sm hover:shadow-md transition-all"
-                    style={{ backgroundColor: TEAL }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = TEAL_HOVER; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = TEAL; }}
-                  >
-                    Open student portal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goToSupervisorLogin}
-                    className="px-7 py-3.5 rounded-xl font-semibold border-2 bg-white hover:bg-slate-50 transition-colors"
-                    style={{ borderColor: `${TEAL}55`, color: TEAL }}
-                  >
-                    Supervisor portal
-                  </button>
-                </div>
-
                 <div className="hidden sm:grid mt-6 grid-cols-2 gap-4 text-sm" data-animate="fade-in" style={{ transitionDelay: '420ms' }}>
                   <div className="flex gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}14` }}>
