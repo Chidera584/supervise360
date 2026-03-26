@@ -48,7 +48,7 @@ export default {
         },
         /** Accent: actions, links, focus */
         accent: {
-          DEFAULT: '#4f46e5',
+          DEFAULT: '#000080',
           hover: '#4338ca',
           soft: '#eef2ff',
           muted: '#a5b4fc',
