@@ -185,91 +185,131 @@ export function LandingPage() {
 
       <main className="flex-1 flex flex-col">
         {/* Hero */}
-        <section className="relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none">
-            {slideImages.map((src, idx) => (
-              <div
-                key={src}
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                style={{
-                  backgroundImage: `url(${src})`,
-                  animation: 'fadeSlide 12s infinite',
-                  animationDelay: `${idx * 4}s`,
-                  opacity: 0.55,
-                  filter: 'saturate(1.12) contrast(1.08) brightness(1.02)',
-                  transform: 'scale(1.04)',
-                }}
-              />
-            ))}
+        <section className="relative overflow-hidden bg-white border-b border-slate-100">
+          <div className="absolute inset-0 pointer-events-none" aria-hidden>
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(180deg, rgba(248,249,250,0.78) 0%, rgba(255,255,255,0.88) 45%, rgba(242,244,247,0.93) 100%)',
+                  'radial-gradient(1200px 520px at 12% 0%, rgba(0,109,109,0.10) 0%, rgba(255,255,255,0) 60%), radial-gradient(900px 420px at 90% 20%, rgba(88,101,195,0.10) 0%, rgba(255,255,255,0) 60%)',
               }}
             />
-            <div className="absolute -top-24 -right-24 w-[min(420px,50vw)] h-[min(420px,50vw)] rounded-full bg-[#006D6D]/[0.06] blur-3xl" />
-            <div className="absolute -bottom-32 -left-16 w-80 h-80 rounded-full bg-[#5865C3]/[0.08] blur-3xl" />
           </div>
 
-          <style>{`
-            @keyframes fadeSlide {
-              0% { opacity: 0.18; }
-              8% { opacity: 0.66; }
-              30% { opacity: 0.66; }
-              40% { opacity: 0.22; }
-              100% { opacity: 0.22; }
-            }
-          `}</style>
+          <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 lg:pt-16 pb-14 sm:pb-18 lg:pb-20">
+            <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+              <div className="lg:col-span-6">
+                <p
+                  className="text-xs sm:text-sm font-semibold uppercase tracking-[0.22em] opacity-0"
+                  data-animate="fade-in"
+                  style={{ color: TEAL }}
+                >
+                  For modern supervision teams
+                </p>
+                <h1
+                  className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold text-[#0f172a] leading-[1.05] opacity-0"
+                  data-animate="fade-up"
+                  style={{ transitionDelay: '120ms' }}
+                >
+                  Supervision, reporting, and feedback—kept in one place.
+                </h1>
+                <p
+                  className="mt-5 text-base sm:text-lg leading-relaxed opacity-0"
+                  data-animate="fade-up"
+                  style={{ color: MUTED, transitionDelay: '200ms' }}
+                >
+                  Built for real campus workflows: groups, submissions, reviews, messaging, and defense scheduling—without the
+                  spreadsheet chaos.
+                </p>
 
-          <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-20 pb-16 sm:pb-20 text-center">
-            <p
-              className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] mb-4 opacity-0"
-              data-animate="fade-in"
-              style={{ color: TEAL, animationDelay: '0.1s', animationFillMode: 'forwards' }}
-            >
-              Academic supervision platform
-            </p>
-            <h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-bold text-[#1a1a1a] leading-tight max-w-4xl mx-auto opacity-0"
-              data-animate="fade-up"
-              style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}
-            >
-              Academic excellence through
-              <br className="hidden sm:block" />
-              <span className="sm:ml-2 font-['Playfair_Display',serif] italic font-medium text-[#006D6D]">Streamlined</span>
-              <span className="sm:ml-2">supervision</span>
-            </h1>
-            <p
-              className="mt-5 sm:mt-6 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed opacity-0"
-              data-animate="fade-up"
-              style={{ color: MUTED, animationDelay: '0.35s', animationFillMode: 'forwards' }}
-            >
-              Connect students and supervisors, manage submissions, and keep milestones visible in one calm, structured workspace.
-            </p>
-            <div
-              className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 opacity-0"
-              data-animate="fade-up"
-              style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}
-            >
-              <button
-                type="button"
-                onClick={goToStudentLogin}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-[10px] text-white font-semibold text-sm sm:text-base shadow-sm hover:shadow-md transition-all"
-                style={{ backgroundColor: TEAL }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = TEAL_HOVER; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = TEAL; }}
-              >
-                Get started
-              </button>
-              <button
-                type="button"
-                onClick={goAdmin}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-[10px] font-semibold text-sm sm:text-base border-2 bg-white transition-colors hover:bg-slate-50"
-                style={{ borderColor: TEAL, color: TEAL }}
-              >
-                Admin login
-              </button>
+                <div
+                  className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 opacity-0"
+                  data-animate="fade-up"
+                  style={{ transitionDelay: '320ms' }}
+                >
+                  <button
+                    type="button"
+                    onClick={goToStudentLogin}
+                    className="px-7 py-3.5 rounded-xl text-white font-semibold shadow-sm hover:shadow-md transition-all"
+                    style={{ backgroundColor: TEAL }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = TEAL_HOVER; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = TEAL; }}
+                  >
+                    Open student portal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToSupervisorLogin}
+                    className="px-7 py-3.5 rounded-xl font-semibold border-2 bg-white hover:bg-slate-50 transition-colors"
+                    style={{ borderColor: `${TEAL}55`, color: TEAL }}
+                  >
+                    Supervisor portal
+                  </button>
+                </div>
+
+                <div className="mt-8 grid grid-cols-2 gap-5 text-sm" data-animate="fade-in" style={{ transitionDelay: '420ms' }}>
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}14` }}>
+                      <ShieldCheck className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">Audit-ready</p>
+                      <p className="text-slate-600 mt-0.5">Clear records for submissions and reviews.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${SLATE_BLUE}14` }}>
+                      <BarChart3 className="w-5 h-5" style={{ color: SLATE_BLUE }} strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">Progress visible</p>
+                      <p className="text-slate-600 mt-0.5">Milestones stay close to the work.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6" data-animate="slide-right" style={{ transitionDelay: '120ms' }}>
+                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-rose-300" />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500">Campus overview</span>
+                  </div>
+                  <div className="relative">
+                    <img
+                      src={slideImages[1]}
+                      alt="Supervise360 preview"
+                      className="w-full h-[320px] sm:h-[380px] object-cover"
+                      style={{ filter: 'saturate(1.05) contrast(1.05)' }}
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 -120px 140px rgba(15,23,42,0.35)' }} />
+                    <div className="absolute left-5 right-5 bottom-5 rounded-2xl bg-white/90 backdrop-blur border border-white/60 p-4">
+                      <p className="text-sm font-semibold text-slate-900">From proposal to final defense</p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        Centralize supervision tasks across students, supervisors, and administrators.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+                  {[
+                    { label: 'Submissions', value: 'Reports' },
+                    { label: 'Feedback', value: 'Reviews' },
+                    { label: 'Coordination', value: 'Messages' },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-2xl border border-slate-200 bg-white px-3 py-4 shadow-sm">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{s.label}</p>
+                      <p className="text-sm font-bold text-slate-900 mt-1">{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -281,7 +321,7 @@ export function LandingPage() {
               className="text-2xl sm:text-3xl font-bold text-center text-[#1a1a1a] mb-3"
               data-animate="fade-up"
             >
-              Select your journey
+              Choose your portal
             </h2>
             <p
               className="text-center max-w-xl mx-auto mb-10 sm:mb-14"
@@ -317,7 +357,7 @@ export function LandingPage() {
               <button
                 type="button"
                 onClick={goToSupervisorLogin}
-                  className="text-left rounded-xl p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow text-white opacity-0"
+                  className="text-left rounded-xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow text-white opacity-0"
                   data-animate="slide-right"
                 style={{ backgroundColor: TEAL }}
               >
@@ -342,51 +382,74 @@ export function LandingPage() {
         {/* Features */}
         <section id="features" className="border-t border-slate-100" style={{ backgroundColor: BG_SOFT }}>
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
-            <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-14">
+            <div className="max-w-2xl mx-auto mb-12 sm:mb-14 text-center">
               <div className="h-1 w-12 rounded-full mx-auto mb-5" style={{ backgroundColor: TEAL }} />
               <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" data-animate="fade-up">
-                Designed for academic clarity
+                Designed around how campuses actually work
               </h2>
               <p className="mt-3 text-base sm:text-lg" style={{ color: MUTED }} data-animate="fade-in">
-                Fewer handoffs, clearer expectations, and reporting that stays close to the work.
+                Move faster with clearer roles, stronger follow-through, and fewer handoffs.
               </p>
             </div>
-            <div className="grid sm:grid-cols-3 gap-8 sm:gap-10">
-              {[
-                {
-                  icon: LayoutGrid,
-                  title: 'Structured allocation',
-                  body: 'Groups and roles stay visible so supervision load and assignments are easier to track.',
-                },
-                {
-                  icon: BarChart3,
-                  title: 'Real-time progress',
-                  body: 'Reports and milestones surface in one timeline—less chasing, more teaching.',
-                },
-                {
-                  icon: ShieldCheck,
-                  title: 'Accountable workflows',
-                  body: 'Structured reviews and records help uphold integrity without slowing people down.',
-                },
-              ].map((f, i) => (
-                <div
-                  key={f.title}
-                  className="text-center sm:text-left"
-                  data-animate={i % 2 === 0 ? 'slide-left' : 'slide-right'}
-                  style={{ transitionDelay: `${i * 120}ms` }}
-                >
+            <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+              <div className="lg:col-span-6 space-y-5">
+                {[
+                  {
+                    icon: LayoutGrid,
+                    title: 'Groups stay structured',
+                    body: 'Assignments, membership, and milestones stay visible for everyone who needs them.',
+                  },
+                  {
+                    icon: FileText,
+                    title: 'Submissions feel organized',
+                    body: 'Track progress reports and final deliverables with clear states and review history.',
+                  },
+                  {
+                    icon: ShieldCheck,
+                    title: 'Feedback is accountable',
+                    body: 'Review notes and decisions are recorded without slowing down supervision.',
+                  },
+                ].map((f, i) => (
                   <div
-                    className="inline-flex items-center justify-center w-11 h-11 rounded-lg mb-4 mx-auto sm:mx-0"
-                    style={{ backgroundColor: `${TEAL}18` }}
+                    key={f.title}
+                    className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm"
+                    data-animate="fade-up"
+                    style={{ transitionDelay: `${i * 120}ms` }}
                   >
-                    <f.icon className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}14` }}>
+                        <f.icon className="w-6 h-6" style={{ color: TEAL }} strokeWidth={1.75} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-lg font-bold text-slate-900">{f.title}</p>
+                        <p className="text-sm text-slate-600 mt-1 leading-relaxed">{f.body}</p>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold text-[#1a1a1a] mb-2">{f.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
-                    {f.body}
-                  </p>
+                ))}
+              </div>
+
+              <div className="lg:col-span-6" data-animate="slide-right">
+                <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Preview</p>
+                    <p className="text-lg font-bold text-slate-900 mt-1">A calmer workspace</p>
+                  </div>
+                  <img
+                    src={slideImages[0]}
+                    alt="Workspace preview"
+                    className="w-full h-[320px] sm:h-[380px] object-cover"
+                    loading="lazy"
+                  />
                 </div>
-              ))}
+
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-animate="fade-in">
+                  <p className="text-sm font-semibold text-slate-900">
+                    “Our students stopped asking what’s next — the milestones and feedback were finally visible.”
+                  </p>
+                  <p className="text-xs text-slate-500 mt-2">Department coordinator</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -396,30 +459,29 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
               <div className="relative" data-animate="slide-left" style={{ transitionDelay: '60ms' }}>
-                <div className="aspect-[4/3] max-w-md mx-auto lg:mx-0 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <GraduationCap className="w-14 h-14 mx-auto text-white/80 mb-4" strokeWidth={1.25} />
-                    <p className="text-sm font-medium text-white/80 uppercase tracking-widest">Institutions</p>
-                    <p className="text-2xl sm:text-3xl font-bold mt-2">Built for modern campuses</p>
-                  </div>
+                <div className="rounded-3xl bg-white/10 border border-white/15 overflow-hidden">
+                  <img src={slideImages[2]} alt="Campus workflow" className="w-full h-[320px] object-cover opacity-90" loading="lazy" />
                 </div>
               </div>
               <div data-animate="slide-right" style={{ transitionDelay: '140ms' }}>
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight mb-6" data-animate="fade-up">
-                  Empowering teams to run supervision with confidence
+                  Built for modern campuses
                 </h2>
                 <p className="text-white/85 text-base sm:text-lg leading-relaxed mb-10" data-animate="fade-in">
-                  Whether you coordinate dozens of groups or hundreds, Supervise360 keeps the academic narrative coherent—for students, supervisors, and administrators.
+                  Whether you coordinate a handful of groups or an entire department, Supervise360 keeps the supervision narrative coherent—for students, supervisors, and administrators.
                 </p>
-                <div className="grid grid-cols-2 gap-6 sm:gap-8">
-                  <div>
-                    <p className="text-3xl sm:text-4xl font-bold tabular-nums">12k+</p>
-                    <p className="text-sm text-white/80 mt-1">Supervision touchpoints tracked</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl sm:text-4xl font-bold tabular-nums">450k+</p>
-                    <p className="text-sm text-white/80 mt-1">Milestones and submissions logged</p>
-                  </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {[
+                    { t: 'Department-ready', d: 'Scales from a course to a faculty-wide program.' },
+                    { t: 'Clarity for everyone', d: 'Students know what to submit; supervisors know what to review.' },
+                    { t: 'Designed for focus', d: 'Less noise—more follow-through and feedback quality.' },
+                    { t: 'Consistent records', d: 'Submissions, reviews, and evaluation history are preserved.' },
+                  ].map((x) => (
+                    <div key={x.t} className="rounded-2xl bg-white/10 border border-white/15 p-4">
+                      <p className="font-semibold">{x.t}</p>
+                      <p className="text-sm text-white/80 mt-1 leading-relaxed">{x.d}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
