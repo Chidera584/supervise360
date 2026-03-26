@@ -106,8 +106,9 @@ export function Departments() {
   const totalPages = Math.max(1, Math.ceil(sortedForTable.length / PAGE_SIZE));
   const pageRows = sortedForTable.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const topThree = useMemo(() => {
-    return [...stats].sort((a, b) => b.studentCount - a.studentCount).slice(0, 3);
+  const spotlightDepartments = useMemo(() => {
+    // Keep all departments; sort by enrollment for a meaningful order.
+    return [...stats].sort((a, b) => b.studentCount - a.studentCount);
   }, [stats]);
 
   const handleAddDepartment = async (e: React.FormEvent) => {
@@ -191,16 +192,17 @@ export function Departments() {
           </div>
         )}
 
-        {/* Spotlight cards (top departments by enrollment) */}
-        {!loading && topThree.length > 0 && (
-          <div className="grid md:grid-cols-3 gap-4">
-            {topThree.map((dept, idx) => {
+        {/* Spotlight cards (scrollable) */}
+        {!loading && spotlightDepartments.length > 0 && (
+          <div className="-mx-4 sm:-mx-8 lg:-mx-10 px-4 sm:px-8 lg:px-10">
+            <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+              {spotlightDepartments.map((dept, idx) => {
               const Icon = deptAccentIcons[idx % deptAccentIcons.length];
               const unassigned = dept.unassignedCount ?? 0;
               return (
                 <div
                   key={dept.id}
-                  className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 flex flex-col gap-3"
+                  className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 flex flex-col gap-3 snap-start shrink-0 w-[280px] sm:w-[320px]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div
@@ -231,6 +233,7 @@ export function Departments() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 
