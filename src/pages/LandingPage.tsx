@@ -329,7 +329,7 @@ export function LandingPage() {
                   <GraduationCap className="w-6 h-6" style={{ color: TEAL }} strokeWidth={1.75} />
                 </div>
                 <h3 className="text-xl font-bold text-[#1a1a1a] mb-2">For students</h3>
-                <p className="text-sm sm:text-base leading-relaxed mb-6" style={{ color: MUTED }}>
+                <p className="hidden sm:block text-sm sm:text-base leading-relaxed mb-6" style={{ color: MUTED }}>
                   Submit reports, track milestones, and receive feedback.
                 </p>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: TEAL }}>
@@ -350,7 +350,7 @@ export function LandingPage() {
                   <LayoutGrid className="w-6 h-6 text-white" strokeWidth={1.75} />
                 </div>
                 <h3 className="text-xl font-bold mb-2">For supervisors</h3>
-                <p className="text-sm sm:text-base leading-relaxed text-white/90 mb-6">
+                <p className="hidden sm:block text-sm sm:text-base leading-relaxed text-white/90 mb-6">
                   Review submissions, guide groups, and manage evaluations.
                 </p>
                 <span
@@ -407,7 +407,7 @@ export function LandingPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-lg font-bold text-slate-900">{f.title}</p>
-                        <p className="text-sm text-slate-600 mt-1 leading-relaxed">{f.body}</p>
+                        <p className="hidden sm:block text-sm text-slate-600 mt-1 leading-relaxed">{f.body}</p>
                       </div>
                     </div>
                   </div>
