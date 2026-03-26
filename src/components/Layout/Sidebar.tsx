@@ -117,7 +117,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const adminBranding = (
     <div className="px-1 pt-2 pb-4 border-b border-white/15">
       <div className="flex items-center gap-3">
-        <img src="/logo.png" alt="Supervise360" className="h-9 w-9 object-contain rounded-xl shrink-0" />
+        <img src="/logo-shell-white.png" alt="Supervise360" className="h-9 w-9 object-contain shrink-0" />
         <div className="min-w-0">
           <p className="text-lg font-bold tracking-tight truncate text-white">Supervise360</p>
         </div>
@@ -127,14 +127,14 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
   const defaultBranding = (
     <div className="p-6 border-b border-white/15 flex items-center gap-3">
-      <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl" />
+      <img src="/logo-shell-white.png" alt="Supervise360" className="h-8 w-8 object-contain" />
       <h1 className="text-xl font-bold text-white">Supervise360</h1>
     </div>
   );
 
   const studentBranding = (
     <div className="px-1 pt-2 pb-4 border-b border-white/15 flex items-center gap-3">
-      <img src="/logo.png" alt="" className="h-9 w-9 object-contain rounded-xl shrink-0" />
+      <img src="/logo-shell-white.png" alt="" className="h-9 w-9 object-contain shrink-0" />
       <div className="min-w-0">
         <p className="text-lg font-bold tracking-tight truncate text-white">Supervise360</p>
         <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/70 mt-0.5">
@@ -320,7 +320,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           {!isLightShell && (
             <>
               <div className="flex items-center gap-3 min-w-0">
-                <img src="/logo.png" alt="Supervise360" className="h-8 w-8 object-contain rounded-xl shrink-0" />
+                <img src="/logo-shell-white.png" alt="Supervise360" className="h-8 w-8 object-contain shrink-0" />
                 <h1 className="text-xl font-bold truncate">Supervise360</h1>
               </div>
               <button
@@ -335,11 +335,11 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           )}
           {isLightShell && (
             <>
-              <span className="text-sm font-semibold text-slate-800">Menu</span>
+              <span className="text-sm font-semibold text-white">Menu</span>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="p-2 hover:bg-slate-200 rounded-lg shrink-0 text-slate-600"
+                className="p-2 hover:bg-white/10 rounded-lg shrink-0 text-white/90"
                 aria-label="Close menu"
               >
                 <X size={22} />

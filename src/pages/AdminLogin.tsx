@@ -33,9 +33,9 @@ export function AdminLogin() {
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="Supervise360" className="h-9 w-auto object-contain rounded-xl" />
-              <span className="text-lg font-bold bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] bg-clip-text text-transparent">
-                SUPERVISE360
+              <img src="/logo-auth-teal.png" alt="Supervise360" className="h-10 w-auto object-contain" />
+              <span className="text-lg font-bold" style={{ color: '#006d6d' }}>
+                Supervise360
               </span>
             </div>
             <span className="text-sm font-medium text-slate-500">Administrator Portal</span>
@@ -46,9 +46,11 @@ export function AdminLogin() {
       <div className="flex items-center justify-center py-12 px-4 min-h-[calc(100vh-140px)]">
         <div className="w-full max-w-xl animate-slide-up opacity-0" style={{ animationFillMode: 'forwards' }}>
           <div className="text-center mb-8 animate-fade-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#022B3A] to-[#1e4d8b] shadow-lg shadow-slate-900/25 mb-5 p-2">
-              <img src="/logo.png" alt="Supervise360" className="w-full h-full object-contain rounded-xl" />
-            </div>
+            <img
+              src="/logo-auth-teal.png"
+              alt="Supervise360"
+              className="mx-auto w-16 h-16 object-contain mb-5"
+            />
             <h1 className="text-2xl font-bold text-slate-800 mb-1">Administrator Login</h1>
             <p className="text-slate-500">Access the admin dashboard</p>
           </div>

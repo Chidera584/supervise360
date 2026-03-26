@@ -22,8 +22,10 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src="/logo.png" alt="Supervise360" className="h-8 w-auto object-contain rounded-xl" />
-              <span className="text-xl font-semibold text-[#333333]">Supervise360</span>
+              <img src="/logo-auth-teal.png" alt="Supervise360" className="h-10 w-auto object-contain" />
+              <span className="text-xl font-semibold" style={{ color: '#006d6d' }}>
+                Supervise360
+              </span>
             </div>
             <div className="text-sm text-[#666666]">
               Student Project Management System
@@ -69,7 +71,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
                   w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center p-2 transition-colors overflow-hidden
                   ${selectedRole === 'student' ? 'bg-accent' : 'bg-gray-100 group-hover:bg-accent-soft'}
                 `}>
-                  <img src="/logo.png" alt="" className="w-full h-full object-contain rounded-xl" />
+                  <img src="/logo-auth-teal.png" alt="" className="w-full h-full object-contain" />
                 </div>
                 
                 <h3 className="text-2xl font-bold text-[#333333] mb-4">Student</h3>
@@ -122,7 +124,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
                   w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center p-2 transition-colors overflow-hidden
                   ${selectedRole === 'supervisor' ? 'bg-accent' : 'bg-gray-100 group-hover:bg-accent-soft'}
                 `}>
-                  <img src="/logo.png" alt="" className="w-full h-full object-contain rounded-xl" />
+                  <img src="/logo-auth-teal.png" alt="" className="w-full h-full object-contain" />
                 </div>
                 
                 <h3 className="text-2xl font-bold text-[#333333] mb-4">Supervisor</h3>

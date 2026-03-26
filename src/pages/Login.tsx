@@ -16,14 +16,14 @@ function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => vo
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="Supervise360" className="h-9 w-auto object-contain rounded-xl" />
-            <span className="text-lg font-bold bg-gradient-to-r from-[#1e4d8b] to-[#163d6b] bg-clip-text text-transparent">
-              SUPERVISE360
+            <img src="/logo-auth-teal.png" alt="Supervise360" className="h-10 w-auto object-contain" />
+            <span className="text-lg font-bold" style={{ color: '#006d6d' }}>
+              Supervise360
             </span>
           </div>
           <button
             onClick={onBackToRoleSelection}
-            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-[#1e4d8b] hover:bg-slate-100 rounded-lg transition-all duration-200 font-medium"
+            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-[#006d6d] hover:bg-slate-100 rounded-lg transition-all duration-200 font-medium"
           >
             <ArrowLeft size={18} />
             Back to Home
@@ -37,9 +37,11 @@ function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => vo
 function RoleBadge({ title, subtitle, selectedRole }: { title: string; subtitle: string; selectedRole: 'student' | 'supervisor' }) {
   return (
     <div className="text-center mb-8 animate-fade-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1e4d8b] to-[#163d6b] shadow-lg shadow-blue-900/25 mb-5 p-2">
-        <img src="/logo.png" alt="Supervise360" className="w-full h-full object-contain rounded-xl" />
-      </div>
+      <img
+        src="/logo-auth-teal.png"
+        alt="Supervise360"
+        className="mx-auto w-16 h-16 object-contain mb-5"
+      />
       <h1 className="text-2xl font-bold text-slate-800 mb-1">{title}</h1>
       <p className="text-slate-500">{subtitle}</p>
     </div>

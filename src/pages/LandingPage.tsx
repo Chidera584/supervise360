@@ -110,7 +110,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--landing-bg)]" style={{ ['--landing-bg' as string]: BG_SOFT }}>
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-slate-200/80">
+      <header className="sticky top-0 z-50 bg-[#006d6d] border-b border-white/15">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-6 py-3.5 sm:py-4 min-w-0">
             <button
@@ -118,9 +118,9 @@ export function LandingPage() {
               onClick={() => navigate('/')}
               className="flex items-center gap-2.5 sm:gap-3 group shrink-0 min-w-0 text-left"
             >
-              <img src="/logo.png" alt="" className="h-9 sm:h-10 w-auto object-contain rounded-xl shrink-0" />
-              <span className="text-base sm:text-lg font-bold tracking-tight text-[#1a1a1a] truncate">
-                Supervise<span style={{ color: TEAL }}>360</span>
+              <img src="/logo-shell-white.png" alt="" className="h-9 sm:h-10 w-auto object-contain shrink-0" />
+              <span className="text-base sm:text-lg font-bold tracking-tight text-white truncate">
+                Supervise360
               </span>
             </button>
 
@@ -134,8 +134,8 @@ export function LandingPage() {
                   className={[
                     'px-3 lg:px-4 py-2 text-sm font-medium tracking-wide rounded-lg transition-colors',
                     item.label === 'Home' && location.pathname === '/'
-                      ? 'bg-[#006d6d]/12 border border-[#006d6d]/25 text-[#006d6d] font-semibold hover:bg-[#006d6d]/15 hover:text-[#004f4f]'
-                      : 'text-slate-600 hover:text-[#1a1a1a] hover:bg-slate-50',
+                      ? 'bg-white/15 text-white font-semibold border border-white/20'
+                      : 'text-white/90 hover:text-white hover:bg-white/10',
                   ].join(' ')}
                 >
                   {item.label}
@@ -147,7 +147,7 @@ export function LandingPage() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 -mr-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="md:hidden p-2 -mr-2 text-white/90 hover:bg-white/10 rounded-lg transition-colors"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             >
               {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -155,7 +155,7 @@ export function LandingPage() {
           </div>
 
           {mobileMenuOpen && (
-            <nav className="md:hidden pb-4 border-t border-slate-100 flex flex-col gap-0.5 pt-3">
+            <nav className="md:hidden pb-4 border-t border-white/15 flex flex-col gap-0.5 pt-3">
               {navItems.map((item) => (
                 <button
                   key={item.label}
@@ -164,8 +164,8 @@ export function LandingPage() {
                   className={[
                     'w-full text-left px-4 py-3 rounded-lg transition-colors',
                     item.label === 'Home' && location.pathname === '/'
-                      ? 'text-[#006d6d] font-semibold bg-[#006d6d]/10 border border-[#006d6d]/20'
-                      : 'text-slate-600 font-medium hover:bg-slate-50',
+                      ? 'text-white font-semibold bg-white/15 border border-white/20'
+                      : 'text-white/90 font-medium hover:bg-white/10',
                   ].join(' ')}
                 >
                   {item.label}
@@ -174,7 +174,7 @@ export function LandingPage() {
               <button
                 type="button"
                 onClick={goAdmin}
-                className="w-full text-left px-4 py-3 text-sm font-medium rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+                className="w-full text-left px-4 py-3 text-sm font-medium rounded-lg text-white/80 hover:bg-white/10 transition-colors"
               >
                 Admin Login
               </button>
@@ -468,7 +468,7 @@ export function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
             <div className="sm:col-span-2 lg:col-span-1" data-animate="slide-left">
               <div className="flex items-center gap-2 mb-3">
-                <img src="/logo.png" alt="" className="h-9 w-auto object-contain rounded-lg" />
+                <img src="/logo-auth-teal.png" alt="" className="h-9 w-auto object-contain" />
                 <span className="font-bold text-[#1a1a1a]">
                   Supervise<span style={{ color: TEAL }}>360</span>
                 </span>
