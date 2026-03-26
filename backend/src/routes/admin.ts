@@ -388,6 +388,43 @@ export function createAdminRouter(db: Pool) {
         }
         await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [g2, r1.id]);
         await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [g1, r2.id]);
+
+        // Keep each affected group internally consistent after cross-group swap:
+        // 1) normalize member_order to avoid duplicate order slots
+        // 2) recompute avg_gpa so group summaries reflect the new members immediately
+        for (const groupId of [g1, g2]) {
+          const [orderedRows] = await conn.execute(
+            `SELECT id
+             FROM group_members
+             WHERE group_id = ?
+             ORDER BY
+               CASE
+                 WHEN gpa_tier = 'HIGH' THEN 1
+                 WHEN gpa_tier = 'MEDIUM' THEN 2
+                 WHEN gpa_tier = 'LOW' THEN 3
+                 ELSE 4
+               END ASC,
+               student_gpa DESC,
+               id ASC`,
+            [groupId]
+          );
+
+          const members = orderedRows as any[];
+          for (let i = 0; i < members.length; i++) {
+            await conn.execute(
+              'UPDATE group_members SET member_order = ? WHERE id = ?',
+              [i + 1, members[i].id]
+            );
+          }
+
+          const [avgRows] = await conn.execute(
+            'SELECT AVG(student_gpa) AS avg_gpa FROM group_members WHERE group_id = ?',
+            [groupId]
+          );
+          const avg = Number((avgRows as any[])[0]?.avg_gpa ?? 0);
+          await conn.execute('UPDATE project_groups SET avg_gpa = ? WHERE id = ?', [avg, groupId]);
+        }
+
         await conn.commit();
         res.json({ success: true, message: 'Students swapped successfully' });
       } catch (e) {

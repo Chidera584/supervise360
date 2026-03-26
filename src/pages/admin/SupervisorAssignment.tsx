@@ -39,6 +39,8 @@ export function SupervisorAssignment() {
   const [editSwapModal, setEditSwapModal] = useState(false);
   const [swapMember1, setSwapMember1] = useState<{ groupId: number; memberId: number; name: string; tier?: string } | null>(null);
   const [swapMember2, setSwapMember2] = useState<{ groupId: number; memberId: number; name: string; tier?: string } | null>(null);
+  const [swapSearch1, setSwapSearch1] = useState('');
+  const [swapSearch2, setSwapSearch2] = useState('');
   const [swapping, setSwapping] = useState(false);
   const [clearAllModal, setClearAllModal] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -343,6 +345,53 @@ export function SupervisorAssignment() {
       setSwapping(false);
     }
   };
+
+  const normalizeText = (value: string) => value.toLowerCase().trim();
+  const getMemberLabel = (groupName: string, member: any) =>
+    `${member.name} (${groupName})${member.tier ? ` - ${member.tier}` : ''}`;
+
+  const swapOptionsA = departmentGroups.flatMap((g) =>
+    Array.isArray(g.members)
+      ? g.members
+          .filter((m: any) => {
+            const q = normalizeText(swapSearch1);
+            if (!q) return true;
+            const haystack = normalizeText(`${m.name} ${m.matricNumber || ''} ${g.name}`);
+            return haystack.includes(q);
+          })
+          .map((m: any) => ({
+            groupId: g.id,
+            memberId: m.id,
+            label: getMemberLabel(g.name, m),
+            name: m.name,
+            tier: m.tier
+          }))
+      : []
+  );
+
+  const swapOptionsB = swapMember1
+    ? departmentGroups.flatMap((g) =>
+        Array.isArray(g.members)
+          ? g.members
+              .filter((m: any) => {
+                const sameTier = (m.tier || '') === (swapMember1.tier || '');
+                const notSameMember = !(g.id === swapMember1.groupId && m.id === swapMember1.memberId);
+                if (!sameTier || !notSameMember) return false;
+                const q = normalizeText(swapSearch2);
+                if (!q) return true;
+                const haystack = normalizeText(`${m.name} ${m.matricNumber || ''} ${g.name}`);
+                return haystack.includes(q);
+              })
+              .map((m: any) => ({
+                groupId: g.id,
+                memberId: m.id,
+                label: `${m.name} (${g.name})`,
+                name: m.name,
+                tier: m.tier
+              }))
+          : []
+      )
+    : [];
 
   if (loading) {
     return (
@@ -822,6 +871,13 @@ export function SupervisorAssignment() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Student A</label>
+                    <input
+                      type="text"
+                      value={swapSearch1}
+                      onChange={(e) => setSwapSearch1(e.target.value)}
+                      placeholder="Search by name, matric, or group..."
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"
+                    />
                     <select
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                       value={swapMember1 ? `${swapMember1.groupId}-${swapMember1.memberId}` : ''}
@@ -841,17 +897,26 @@ export function SupervisorAssignment() {
                       }}
                     >
                       <option value="">Select student...</option>
-                      {departmentGroups.map(g =>
-                        Array.isArray(g.members) ? g.members.map((m: any) => (
-                          <option key={`${g.id}-${m.id}`} value={`${g.id}-${m.id}`}>
-                            {m.name} ({g.name}){m.tier ? ` - ${m.tier}` : ''}
-                          </option>
-                        )) : null
-                      )}
+                      {swapOptionsA.map((opt) => (
+                        <option key={`${opt.groupId}-${opt.memberId}`} value={`${opt.groupId}-${opt.memberId}`}>
+                          {opt.label}
+                        </option>
+                      ))}
                     </select>
+                    {swapSearch1 && (
+                      <p className="text-xs text-slate-500 mt-1">{swapOptionsA.length} match(es)</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Student B (same tier only)</label>
+                    <input
+                      type="text"
+                      value={swapSearch2}
+                      onChange={(e) => setSwapSearch2(e.target.value)}
+                      placeholder={swapMember1 ? 'Search by name, matric, or group...' : 'Select Student A first'}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"
+                      disabled={!swapMember1}
+                    />
                     <select
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                       value={swapMember2 ? `${swapMember2.groupId}-${swapMember2.memberId}` : ''}
@@ -866,20 +931,15 @@ export function SupervisorAssignment() {
                       disabled={!swapMember1}
                     >
                       <option value="">{swapMember1 ? `Select ${swapMember1.tier || 'same tier'} student...` : 'Select Student A first'}</option>
-                      {swapMember1 && departmentGroups.map(g =>
-                        Array.isArray(g.members) ? g.members
-                          .filter((m: any) => {
-                            const sameTier = (m.tier || '') === (swapMember1.tier || '');
-                            const notSameMember = !(g.id === swapMember1.groupId && m.id === swapMember1.memberId);
-                            return sameTier && notSameMember;
-                          })
-                          .map((m: any) => (
-                            <option key={`${g.id}-${m.id}`} value={`${g.id}-${m.id}`}>
-                              {m.name} ({g.name})
-                            </option>
-                          )) : null
-                      )}
+                      {swapOptionsB.map((opt) => (
+                        <option key={`${opt.groupId}-${opt.memberId}`} value={`${opt.groupId}-${opt.memberId}`}>
+                          {opt.label}
+                        </option>
+                      ))}
                     </select>
+                    {swapMember1 && swapSearch2 && (
+                      <p className="text-xs text-slate-500 mt-1">{swapOptionsB.length} match(es)</p>
+                    )}
                   </div>
                 </div>
                 {swapMember1 && swapMember2 && swapMember1.groupId === swapMember2.groupId && (
