@@ -26,7 +26,9 @@ export function Header({ title, onToggleSidebar, topBarSearch }: HeaderProps) {
   const { user, signOut } = useAuth();
   const isAdmin = user?.role === 'admin';
   const isStudent = user?.role === 'student';
-  const isLightShell = isAdmin || isStudent;
+  const isSupervisor =
+    user?.role === 'supervisor' || user?.role === 'external_supervisor';
+  const isLightShell = isAdmin || isStudent || isSupervisor;
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);

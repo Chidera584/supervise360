@@ -38,7 +38,9 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
   const isStudent = user?.role === 'student';
-  const isLightShell = isAdmin || isStudent;
+  const isSupervisor =
+    user?.role === 'supervisor' || user?.role === 'external_supervisor';
+  const isLightShell = isAdmin || isStudent || isSupervisor;
 
   useEffect(() => {
     setMobileOpen(false);

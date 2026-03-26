@@ -1,14 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
-import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
-import { useAuth } from '../../contexts/AuthContext';
+import { Card } from '../../components/UI/Card';
 import { apiClient } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Users, Calendar, MessageCircle, FileText, 
-  Star, Clock, CheckCircle, AlertCircle 
-} from 'lucide-react';
+import { Users, MessageSquare, FileText, Star, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { stripGroupName, stripProjectTitle, sortGroupsByNumber } from '../../utils/supervisorDisplay';
 
 interface SupervisorGroup {
@@ -19,11 +16,28 @@ interface SupervisorGroup {
   avg_gpa?: number;
   supervisor?: string;
   members: { id: number; name: string; gpa?: number; matricNumber?: string }[];
-  project: { id: number; title: string; status?: string; progress_percentage?: number; submitted_at?: string } | null;
+  project: {
+    id: number;
+    title: string;
+    status?: string;
+    progress_percentage?: number;
+    submitted_at?: string;
+  } | null;
   reportsTotal: number;
   reportsReviewed: number;
   reportsPending: number;
 }
+
+const TEAL = '#006D6D';
+
+const initials = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
 export function MyGroups() {
   const { user, supervisor } = useAuth();
@@ -32,6 +46,8 @@ export function MyGroups() {
   const [groups, setGroups] = useState<SupervisorGroup[]>([]);
   const hasScrolledToGroup = useRef(false);
   const [loading, setLoading] = useState(true);
+
+  const [filter, setFilter] = useState<'all' | 'pending'>('all');
 
   useEffect(() => {
     const fetch = async () => {
@@ -57,188 +73,273 @@ export function MyGroups() {
     }
   }, [loading, location.state]);
 
-  const totalReportsPending = groups.reduce((s, g) => s + g.reportsPending, 0);
+  const activeGroupsCount = useMemo(
+    () => groups.filter((g) => g.status === 'active').length,
+    [groups]
+  );
+  const pendingReportsCount = useMemo(
+    () => groups.reduce((s, g) => s + (g.reportsPending ?? 0), 0),
+    [groups]
+  );
+  const reviewedReportsCount = useMemo(
+    () => groups.reduce((s, g) => s + (g.reportsReviewed ?? 0), 0),
+    [groups]
+  );
 
-  if (loading) {
-    return (
-      <MainLayout title="My Groups">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading groups...</div>
-        </div>
-      </MainLayout>
-    );
-  }
+  const filteredGroups = useMemo(() => {
+    if (filter === 'pending') return groups.filter((g) => (g.reportsPending ?? 0) > 0);
+    return groups;
+  }, [groups, filter]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusChip = (status: string) => {
     switch (status) {
-      case 'active': return 'text-green-600 bg-green-100';
-      case 'planning': return 'text-blue-600 bg-blue-100';
-      case 'completed': return 'text-gray-600 bg-gray-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'active':
+        return { label: 'Active', bg: 'rgba(16,185,129,0.12)', fg: '#059669' };
+      case 'planning':
+        return { label: 'Planning', bg: 'rgba(59,130,246,0.12)', fg: '#2563eb' };
+      case 'completed':
+        return { label: 'Completed', bg: 'rgba(148,163,184,0.25)', fg: '#475569' };
+      default:
+        return { label: status || 'Group', bg: 'rgba(148,163,184,0.25)', fg: '#475569' };
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return <CheckCircle size={16} className="text-green-600" />;
-      case 'planning': return <Clock size={16} className="text-blue-600" />;
-      case 'completed': return <Star size={16} className="text-gray-600" />;
-      default: return <AlertCircle size={16} className="text-gray-600" />;
+      case 'active':
+        return <CheckCircle size={16} className="text-emerald-600" />;
+      case 'planning':
+        return <Clock size={16} className="text-blue-600" />;
+      case 'completed':
+        return <Star size={16} className="text-slate-600" />;
+      default:
+        return <AlertCircle size={16} className="text-slate-600" />;
     }
   };
 
+  if (loading) {
+    return (
+      <MainLayout title="My Groups">
+        <div className="flex items-center justify-center h-64 text-slate-500">Loading groups…</div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="My Groups">
-      <div className="space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6 min-w-0">
         {/* Page header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">My Supervised Groups</h1>
-            <p className="text-slate-600 mt-0.5">Manage and monitor your assigned project groups</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">
+              My Supervised Groups
+            </h1>
+            <p className="text-slate-500 mt-1">
+              Manage academic group progress, review submissions, and provide feedback.
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm text-slate-500">Assigned groups</p>
-              <p className="text-2xl font-bold text-slate-900">{groups.length}</p>
-            </div>
+          <div className="text-right">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Assigned groups</p>
+            <p className="text-2xl font-bold text-[#1a1a1a] mt-1">{groups.length}</p>
           </div>
         </div>
 
-        {/* Summary stats */}
+        {/* Metric cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="p-5 border border-slate-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-brand-600/10 flex items-center justify-center">
-                <Users className="text-brand-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Active groups</p>
-                <p className="text-xl font-bold text-slate-900">{groups.filter(g => g.status === 'active').length}</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-5 border border-slate-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
-                <FileText className="text-amber-700" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Reports pending review</p>
-                <p className="text-xl font-bold text-slate-900">{totalReportsPending}</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-5 border border-slate-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <CheckCircle className="text-emerald-700" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Reports reviewed</p>
-                <p className="text-xl font-bold text-slate-900">{groups.reduce((s, g) => s + g.reportsReviewed, 0)}</p>
-              </div>
-            </div>
-          </Card>
+          <MetricCard
+            icon={<Users className="w-5 h-5 text-[#006D6D]" />}
+            title="Active groups"
+            value={activeGroupsCount}
+            accent={TEAL}
+            bg="rgba(0,109,109,0.08)"
+          />
+          <MetricCard
+            icon={<FileText className="w-5 h-5 text-amber-700" />}
+            title="Reports pending review"
+            value={pendingReportsCount}
+            accent="#b45309"
+            bg="rgba(180,83,9,0.10)"
+          />
+          <MetricCard
+            icon={<CheckCircle className="w-5 h-5 text-emerald-700" />}
+            title="Reports reviewed"
+            value={reviewedReportsCount}
+            accent="#059669"
+            bg="rgba(5,150,105,0.10)"
+          />
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <FilterPill active={filter === 'all'} label="All Groups" onClick={() => setFilter('all')} />
+            <FilterPill
+              active={filter === 'pending'}
+              label="Pending Review"
+              onClick={() => setFilter('pending')}
+            />
+          </div>
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#006D6D]" />
+              {filteredGroups.length} shown
+            </span>
+          </div>
         </div>
 
         {/* Groups list */}
-        <div className="space-y-5">
-          <h2 className="text-lg font-semibold text-slate-900">Groups</h2>
-          {groups.map((group) => (
-            <Card key={group.id} id={`group-card-${group.id}`} className="border border-slate-200 overflow-hidden">
-              {/* Group header row */}
-              <div className="p-5 pb-4 border-b border-slate-100 bg-slate-50/50">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-semibold text-slate-900">{stripGroupName(group.name)}</h3>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(group.status)}`}>
-                        {getStatusIcon(group.status)}
-                        {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600 mt-1">{group.project ? stripProjectTitle(group.project.title, group.name) : 'No project yet'}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {group.members.length} members
-                      {group.project?.submitted_at && ` · Submitted ${new Date(group.project.submitted_at).toLocaleDateString()}`}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    <Button size="sm" onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}>
-                      <MessageCircle className="mr-2" size={14} />
-                      Message
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => navigate('/report-reviews', { state: { groupId: group.id } })}>
-                      <FileText className="mr-2" size={14} />
-                      Reports {group.reportsPending > 0 && `(${group.reportsPending})`}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => navigate('/evaluations', { state: { groupId: group.id, groupName: group.name } })}>
-                      <Star className="mr-2" size={14} />
-                      Grade Work
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Report stats inline */}
-              <div className="px-5 py-3 flex flex-wrap gap-6 border-b border-slate-100 text-sm">
-                <span className="flex items-center gap-1.5">
-                  <FileText size={16} className="text-slate-400" />
-                  <span className="text-slate-600">{group.reportsTotal} submitted</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle size={16} className="text-emerald-500" />
-                  <span className="text-slate-600">{group.reportsReviewed} reviewed</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock size={16} className="text-amber-500" />
-                  <span className="text-slate-600">{group.reportsPending} pending</span>
-                </span>
-              </div>
-
-              {/* Members */}
-              <div className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Members</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {Array.isArray(group.members) ? group.members.map((member, index) => (
-                    <div
-                      key={member.id ?? index}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50/50"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center shrink-0">
-                        <span className="text-white font-medium text-sm">
-                          {member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+        {groups.length === 0 ? (
+          <div className="py-14 text-center">
+            <Users className="mx-auto h-14 w-14 text-slate-300 mb-3" />
+            <h3 className="text-xl font-semibold text-[#1a1a1a] mb-1">No groups assigned</h3>
+            <p className="text-slate-600">Your administrator will assign groups when available.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredGroups.map((group) => {
+              const chip = getStatusChip(group.status);
+              return (
+                <div
+                  key={group.id}
+                  id={`group-card-${group.id}`}
+                  className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold text-[#1a1a1a]">{stripGroupName(group.name)}</h3>
+                        <span
+                          className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full text-xs font-semibold"
+                          style={{ backgroundColor: chip.bg, color: chip.fg }}
+                        >
+                          {getStatusIcon(group.status)}
+                          {chip.label}
                         </span>
+                        {group.project?.progress_percentage != null && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ backgroundColor: 'rgba(0,109,109,0.10)', color: TEAL }}
+                          >
+                            {group.project.progress_percentage}% progress
+                          </span>
+                        )}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">{member.name}</p>
-                        <p className="text-xs text-slate-500">{member.matricNumber || '—'}</p>
-                        {member.gpa != null && <p className="text-xs text-slate-600">GPA: {member.gpa}</p>}
+
+                      <p className="text-sm text-slate-600 mt-1 line-clamp-1">
+                        {group.project ? stripProjectTitle(group.project.title, group.name) : 'No project yet'}
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-4">
+                        <div className="flex items-center">
+                          {group.members.slice(0, 4).map((m, idx) => (
+                            <div
+                              key={m.id ?? idx}
+                              className="w-8 h-8 rounded-full bg-[#1F7A8C] text-white flex items-center justify-center text-xs font-bold border-2 border-white -ml-1 first:ml-0"
+                              title={m.name}
+                            >
+                              {initials(m.name)}
+                            </div>
+                          ))}
+                          {group.members.length > 4 && (
+                            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-semibold text-slate-600 -ml-1">
+                              +{group.members.length - 4}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {group.members.length} members
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {group.reportsPending} pending · {group.reportsReviewed} reviewed
+                        </div>
                       </div>
                     </div>
-                  )) : (
-                    <p className="col-span-full text-sm text-slate-500">No members data</p>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
 
-        {/* Empty state */}
-        {groups.length === 0 && (
-          <Card>
-            <div className="text-center py-12">
-              <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Groups Assigned</h3>
-              <p className="text-gray-600 mb-6">
-                You haven't been assigned any groups yet. Groups will appear here once assigned by the administrator.
-              </p>
-              <Button variant="outline">Contact Administrator</Button>
-            </div>
-          </Card>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <Button
+                        variant="primary"
+                        className="!rounded-[10px] !px-3 !py-2 !bg-[#006D6D] !text-white hover:!bg-[#005a5a] border-0"
+                        onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Message
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="!rounded-[10px] !px-3 !py-2 !border-slate-200"
+                        onClick={() => navigate('/report-reviews', { state: { groupId: group.id } })}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Reports {group.reportsPending > 0 ? `(${group.reportsPending})` : ''}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="!rounded-[10px] !px-3 !py-2 !border-slate-200"
+                        onClick={() => navigate('/evaluations', { state: { groupId: group.id, groupName: group.name } })}
+                      >
+                        <Star className="w-4 h-4 mr-2" />
+                        Grade Work
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </MainLayout>
   );
 }
+
+function MetricCard({
+  icon,
+  title,
+  value,
+  accent,
+  bg,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: number;
+  accent: string;
+  bg: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: bg, color: accent }}>
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-slate-500">{title}</p>
+          <p className="text-2xl font-bold text-[#1a1a1a] mt-1 tabular-nums">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterPill({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+        active ? 'text-white border-transparent' : 'text-slate-600 bg-white border-slate-200 hover:border-slate-300'
+      }`}
+      style={active ? { backgroundColor: TEAL } : undefined}
+    >
+      {label}
+    </button>
+  );
+}
+

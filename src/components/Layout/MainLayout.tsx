@@ -18,7 +18,11 @@ interface MainLayoutProps {
 export function MainLayout({ children, title, topBarSearch }: MainLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
-  const isLightShell = user?.role === 'admin' || user?.role === 'student';
+  const isLightShell =
+    user?.role === 'admin' ||
+    user?.role === 'student' ||
+    user?.role === 'supervisor' ||
+    user?.role === 'external_supervisor';
 
   return (
     <div className={`min-h-screen flex ${isLightShell ? 'bg-[#F8F9FA]' : 'bg-slate-50'}`}>
