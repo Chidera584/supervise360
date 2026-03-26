@@ -225,7 +225,7 @@ export function LandingPage() {
                   Supervision made simple.
                 </h1>
                 <p
-                  className="mt-4 text-base sm:text-lg leading-relaxed opacity-0"
+                  className="hidden sm:block mt-4 text-base sm:text-lg leading-relaxed opacity-0"
                   data-animate="fade-up"
                   style={{ color: MUTED, transitionDelay: '200ms' }}
                 >
