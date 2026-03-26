@@ -37,17 +37,20 @@ export function DefenseEvaluation() {
     <MainLayout title="Defense & Evaluation">
       <div className="space-y-6">
         <Card>
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Defense Schedule</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Defense Schedule</h2>
           {hasDefensePanel ? (
-            <div className="space-y-2 text-sm text-gray-700">
-              {defense.defense_date && (
-                <>
-                  <div>Date: {new Date(defense.defense_date).toLocaleDateString()}</div>
-                  <div>Time: {new Date(defense.defense_date).toLocaleTimeString()}</div>
-                </>
-              )}
-              <div>Location: {defense.location}</div>
-              <div>Status: {defense.status}</div>
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3 text-sm">
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">Venue</p>
+                  <p className="font-semibold text-gray-900">{defense.location || 'Venue to be announced'}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-amber-800/90 font-medium">Status</p>
+                <p className="text-sm text-gray-800">{defense.status || 'Scheduled'}</p>
+              </div>
             </div>
           ) : hasAllocationSchedule ? (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
@@ -81,14 +84,14 @@ export function DefenseEvaluation() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Supervisor Evaluation (out of 60)</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Supervisor Evaluation (out of 60)</h2>
           {evaluations.length > 0 ? (
             <div className="space-y-4">
               {evaluations.map((evalItem: any) => (
                 <div key={evalItem.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
                   <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
                     <div>
-                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-brand-600/15 text-brand-600 capitalize">
+                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C] capitalize">
                         {evalItem.evaluation_type || 'Evaluation'}
                       </span>
                       {evalItem.evaluated_at && (
@@ -98,7 +101,7 @@ export function DefenseEvaluation() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-slate-900">
+                      <p className="text-2xl font-bold text-[#022B3A]">
                         {evalItem.total_score != null ? `${evalItem.total_score} / 60` : '—'}
                       </p>
                       <p className="text-sm text-slate-600">Total score</p>
