@@ -207,8 +207,8 @@ export function LandingPage() {
             />
           </div>
 
-          <div className="relative z-10 w-full px-4 sm:px-8 lg:px-12 pt-10 sm:pt-14 lg:pt-16 pb-14 sm:pb-18 lg:pb-20">
-            <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          <div className="relative z-10 w-full px-4 sm:px-8 lg:px-12 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-12 lg:pb-14">
+            <div className="grid lg:grid-cols-12 gap-7 lg:gap-9 items-center">
               <div className="lg:col-span-6">
                 <p
                   className="text-xs sm:text-sm font-semibold uppercase tracking-[0.22em] opacity-0"
@@ -218,14 +218,14 @@ export function LandingPage() {
                   For modern supervision teams
                 </p>
                 <h1
-                  className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold text-[#0f172a] leading-[1.05] opacity-0"
+                  className="mt-3 text-3xl sm:text-4xl md:text-5xl font-bold text-[#0f172a] leading-[1.05] opacity-0"
                   data-animate="fade-up"
                   style={{ transitionDelay: '120ms' }}
                 >
                   Supervision, reporting, and feedback, kept in one place.
                 </h1>
                 <p
-                  className="mt-5 text-base sm:text-lg leading-relaxed opacity-0"
+                  className="mt-4 text-base sm:text-lg leading-relaxed opacity-0"
                   data-animate="fade-up"
                   style={{ color: MUTED, transitionDelay: '200ms' }}
                 >
@@ -234,7 +234,7 @@ export function LandingPage() {
                 </p>
 
                 <div
-                  className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 opacity-0"
+                  className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 opacity-0"
                   data-animate="fade-up"
                   style={{ transitionDelay: '320ms' }}
                 >
@@ -258,7 +258,7 @@ export function LandingPage() {
                   </button>
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 gap-5 text-sm" data-animate="fade-in" style={{ transitionDelay: '420ms' }}>
+                <div className="mt-6 grid grid-cols-2 gap-4 text-sm" data-animate="fade-in" style={{ transitionDelay: '420ms' }}>
                   <div className="flex gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${TEAL}14` }}>
                       <ShieldCheck className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
@@ -308,7 +308,7 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                   {[
                     { label: 'Submissions', value: 'Reports' },
                     { label: 'Feedback', value: 'Reviews' },
@@ -327,7 +327,7 @@ export function LandingPage() {
 
         {/* Journey */}
         <section id="journey" className="bg-white border-t border-slate-100">
-          <div className="w-full px-4 sm:px-8 lg:px-12 py-14 sm:py-20">
+          <div className="w-full px-4 sm:px-8 lg:px-12 py-10 sm:py-14">
             <h2
               className="text-2xl sm:text-3xl font-bold text-center text-[#1a1a1a] mb-3"
               data-animate="fade-up"
@@ -335,13 +335,13 @@ export function LandingPage() {
               Choose your portal
             </h2>
             <p
-              className="text-center max-w-xl mx-auto mb-10 sm:mb-14"
+              className="text-center max-w-xl mx-auto mb-7 sm:mb-10"
               style={{ color: MUTED }}
               data-animate="fade-in"
             >
               Choose the path that matches your role. You will sign in with your institutional credentials.
             </p>
-              <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+              <div className="grid md:grid-cols-2 gap-5 lg:gap-6">
               <button
                 type="button"
                 onClick={goToStudentLogin}
@@ -392,8 +392,8 @@ export function LandingPage() {
 
         {/* Features */}
         <section id="features" className="border-t border-slate-100" style={{ backgroundColor: BG_SOFT }}>
-          <div className="w-full px-4 sm:px-8 lg:px-12 py-14 sm:py-20">
-            <div className="max-w-2xl mx-auto mb-12 sm:mb-14 text-center">
+          <div className="w-full px-4 sm:px-8 lg:px-12 py-10 sm:py-14">
+            <div className="max-w-2xl mx-auto mb-9 sm:mb-10 text-center">
               <div className="h-1 w-12 rounded-full mx-auto mb-5" style={{ backgroundColor: TEAL }} />
               <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" data-animate="fade-up">
                 Designed around how campuses actually work
@@ -402,7 +402,7 @@ export function LandingPage() {
                 Move faster with clearer roles, stronger follow-through, and fewer handoffs.
               </p>
             </div>
-            <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            <div className="grid lg:grid-cols-12 gap-6 lg:gap-8 items-start">
               <div className="lg:col-span-6 space-y-5">
                 {[
                   {
@@ -454,7 +454,7 @@ export function LandingPage() {
                   />
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-animate="fade-in">
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-animate="fade-in">
                   <p className="text-sm font-semibold text-slate-900">
                     “Our students stopped asking what’s next. The milestones and feedback were finally visible.”
                   </p>
@@ -466,9 +466,9 @@ export function LandingPage() {
         </section>
 
         {/* Stats */}
-        <section className="py-14 sm:py-20 text-white" style={{ backgroundColor: SLATE_BLUE }}>
+        <section className="py-10 sm:py-14 text-white" style={{ backgroundColor: SLATE_BLUE }}>
           <div className="w-full px-4 sm:px-8 lg:px-12">
-            <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div className="grid lg:grid-cols-2 gap-7 lg:gap-10 items-center">
               <div className="relative" data-animate="slide-left" style={{ transitionDelay: '60ms' }}>
                 <div className="rounded-3xl bg-white/10 border border-white/15 overflow-hidden">
                   <img src={slideImages[2]} alt="Campus workflow" className="w-full h-[320px] object-cover opacity-90" loading="lazy" />
@@ -502,7 +502,7 @@ export function LandingPage() {
         {/* Final CTA */}
         <section className="relative overflow-hidden border-t border-slate-100 bg-[#f2f4f7]">
           <div className="absolute -right-20 top-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-[#006D6D]/[0.07] pointer-events-none" />
-          <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-center">
+          <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 text-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] mb-4" data-animate="fade-up">
               Ready to elevate your academic management?
             </h2>
@@ -537,7 +537,7 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200">
-        <div className="w-full px-4 sm:px-8 lg:px-12 py-12 sm:py-14">
+        <div className="w-full px-4 sm:px-8 lg:px-12 py-10 sm:py-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
             <div className="sm:col-span-2 lg:col-span-1" data-animate="slide-left">
               <div className="flex items-center gap-2 mb-3">
