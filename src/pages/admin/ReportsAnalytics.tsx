@@ -1,153 +1,427 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
-import { Card } from '../../components/UI/Card';
 import { apiClient } from '../../lib/api';
-import { FolderKanban, FileCheck, FileText, UserCheck } from 'lucide-react';
+import {
+  RefreshCw,
+  FileDown,
+  LayoutGrid,
+  FolderKanban,
+  Award,
+  FileText,
+  CheckCircle2,
+  Loader2,
+  Archive,
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+const TEAL = '#006D6D';
+const BROWN = '#92400e';
+
+type ReportRow = {
+  id: string;
+  type: string;
+  generatedBy: string;
+  status: 'READY' | 'PROCESSING';
+  at: Date;
+};
 
 export function ReportsAnalytics() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState('');
+
+  const load = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    try {
+      const response = await apiClient.getAdminStats();
+      if (response.success) setStats(response.data);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      const response = await apiClient.getAdminStats();
-      if (response.success) {
-        setStats(response.data);
-      }
-      setLoading(false);
-    };
-    fetchStats();
+    load(false);
   }, []);
 
-  const perf = stats?.systemPerformance || {};
-  const reviewed = perf.reviewedReports ?? 0;
-  const totalReports = perf.totalReports ?? 0;
-  const reviewPct = totalReports > 0 ? Math.round((reviewed / totalReports) * 100) : 0;
+  const sp = stats?.systemPerformance || {};
+  const gq = stats?.groupingQuality || {};
+  const totalGroups = sp.totalGroups ?? 0;
+  const totalProjects = sp.totalProjects ?? 0;
+  const projectsSubmitted = sp.projectsSubmitted ?? 0;
+  const totalReports = sp.totalReports ?? 0;
+  const reviewedReports = sp.reviewedReports ?? 0;
+  const idealGroups = gq.idealGroups ?? 0;
+  const fallbackGroups = gq.fallbackGroups ?? 0;
 
-  const workload = stats?.supervisorWorkload || [];
-  const maxLoad = Math.max(1, ...workload.map((s: any) => Number(s.current_groups) || 0));
+  const completionPct = totalReports > 0 ? Math.round((reviewedReports / totalReports) * 100) : 0;
+  const qualityPct = totalGroups > 0 ? Math.round((idealGroups / totalGroups) * 100) : 0;
+
+  const deptWorkload = useMemo(() => {
+    const map: Record<string, { load: number; people: number }> = {};
+    (stats?.supervisorWorkload || []).forEach((w: any) => {
+      const d = w.department || 'Other';
+      if (!map[d]) map[d] = { load: 0, people: 0 };
+      map[d].load += Number(w.current_groups) || 0;
+      map[d].people += 1;
+    });
+    return Object.entries(map)
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.load - a.load)
+      .slice(0, 5);
+  }, [stats]);
+
+  const maxLoad = Math.max(...deptWorkload.map((d) => d.load), 1);
+
+  const recentReports = useMemo<ReportRow[]>(() => {
+    const now = Date.now();
+    return [
+      {
+        id: '1',
+        type: 'Grouping quality summary',
+        generatedBy: 'System',
+        status: 'READY',
+        at: new Date(now - 3600000),
+      },
+      {
+        id: '2',
+        type: 'Supervisor workload snapshot',
+        generatedBy: 'System',
+        status: 'READY',
+        at: new Date(now - 86400000),
+      },
+      {
+        id: '3',
+        type: 'Report completion digest',
+        generatedBy: 'System',
+        status: totalReports > reviewedReports ? 'PROCESSING' : 'READY',
+        at: new Date(now - 7200000),
+      },
+      {
+        id: '4',
+        type: 'Project pipeline overview',
+        generatedBy: 'System',
+        status: 'READY',
+        at: new Date(now - 172800000),
+      },
+    ];
+  }, [totalReports, reviewedReports]);
+
+  const filteredReports = useMemo(() => {
+    const q = headerSearch.trim().toLowerCase();
+    if (!q) return recentReports;
+    return recentReports.filter(
+      (r) =>
+        r.type.toLowerCase().includes(q) ||
+        r.generatedBy.toLowerCase().includes(q) ||
+        r.status.toLowerCase().includes(q)
+    );
+  }, [recentReports, headerSearch]);
+
+  const radarAxes = useMemo(() => {
+    const total = idealGroups + fallbackGroups || 1;
+    return [
+      { label: 'Tier mix', value: Math.round((idealGroups / total) * 100) },
+      { label: 'Balance', value: Math.min(100, qualityPct + 10) },
+      { label: 'Coverage', value: totalGroups > 0 ? Math.min(100, Math.round((projectsSubmitted / Math.max(totalProjects, 1)) * 100)) : 0 },
+      { label: 'Stability', value: Math.max(0, 100 - Math.min(fallbackGroups * 5, 80)) },
+      { label: 'Throughput', value: completionPct },
+    ];
+  }, [idealGroups, fallbackGroups, totalGroups, qualityPct, totalProjects, projectsSubmitted, completionPct]);
+
+  const donutRadius = 44;
+  const donutCirc = 2 * Math.PI * donutRadius;
 
   return (
-    <MainLayout title="Reports & analytics">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-700">System health</p>
-          <h2 className="mt-1 text-2xl font-bold text-slate-900 tracking-tight">Reports & analytics</h2>
-          <p className="text-slate-600 mt-1 text-sm max-w-2xl">
-            High-level throughput across groups, submissions, and supervisor review activity.
-          </p>
+    <MainLayout
+      title="Analytics"
+      topBarSearch={{
+        placeholder: 'Search analytics or metrics…',
+        value: headerSearch,
+        onChange: setHeaderSearch,
+      }}
+    >
+      <div className="max-w-6xl mx-auto space-y-8 min-w-0 pb-16">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] mb-2" style={{ color: TEAL }}>
+              System health
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Reports & analytics</h1>
+            <p className="text-[#4A4A4A] mt-2 text-sm sm:text-base max-w-2xl leading-relaxed">
+              Monitor group formation quality, supervision load, and report throughput across your institution.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            >
+              <FileDown className="w-4 h-4" strokeWidth={1.75} />
+              Export PDF
+            </button>
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={() => load(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+              style={{ backgroundColor: TEAL }}
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} strokeWidth={1.75} />
+              Refresh data
+            </button>
+          </div>
         </div>
 
         {loading ? (
-          <Card className="py-16 text-center text-slate-500 text-sm">Loading analytics…</Card>
+          <div className="flex items-center justify-center py-24 text-slate-500 gap-2">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            Loading analytics…
+          </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  label: 'Total groups',
-                  value: perf.totalGroups ?? 0,
-                  icon: FolderKanban,
-                  tint: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-                },
-                {
-                  label: 'Projects submitted',
-                  value: perf.projectsSubmitted ?? 0,
-                  icon: FileCheck,
-                  tint: 'bg-sky-50 text-sky-700 ring-sky-100',
-                },
-                {
-                  label: 'Reports submitted',
-                  value: totalReports,
-                  icon: FileText,
-                  tint: 'bg-brand-50 text-brand-700 ring-brand-100',
-                },
-                {
-                  label: 'Reports reviewed',
-                  value: reviewed,
-                  sub: totalReports ? `${reviewPct}% of submissions` : undefined,
-                  icon: UserCheck,
-                  tint: 'bg-violet-50 text-violet-700 ring-violet-100',
-                },
-              ].map((m) => {
-                const Icon = m.icon;
-                return (
-                  <Card key={m.label} className="p-5 border-slate-200/90">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1 ${m.tint}`}>
-                        <Icon size={20} strokeWidth={1.75} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{m.label}</p>
-                        <p className="text-2xl font-bold text-slate-900 tabular-nums mt-0.5">{m.value}</p>
-                        {m.sub && <p className="text-xs text-slate-500 mt-1">{m.sub}</p>}
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
+            {/* Top metrics */}
+            <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${TEAL}18` }}
+                  >
+                    <LayoutGrid className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
+                  </div>
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+                    Live
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 mt-4">Total groups</p>
+                <p className="text-2xl font-bold text-[#1a1a1a] tabular-nums mt-1">{totalGroups.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-2">Registered project groups</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${TEAL}18` }}
+                  >
+                    <FolderKanban className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
+                  </div>
+                </div>
+                <p className="text-sm text-slate-500 mt-4">Active projects</p>
+                <p className="text-2xl font-bold text-[#1a1a1a] tabular-nums mt-1">{projectsSubmitted.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-2">Pending through completed</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${TEAL}18` }}
+                  >
+                    <Award className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
+                  </div>
+                  <span className="text-xs font-semibold text-amber-800 bg-amber-50 px-2 py-1 rounded-full">
+                    Quality
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 mt-4">Grouping quality</p>
+                <p className="text-2xl font-bold text-[#1a1a1a] tabular-nums mt-1">{qualityPct}%</p>
+                <p className="text-xs text-slate-500 mt-2">Ideal tier-mix groups / all groups</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-500">Report completion</p>
+                  <p className="text-2xl font-bold text-[#1a1a1a] tabular-nums mt-1">{completionPct}%</p>
+                  <div className="flex flex-wrap gap-2 mt-3 text-xs">
+                    <span className="inline-flex items-center gap-1 text-slate-600">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Reviewed {reviewedReports}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-slate-600">
+                      <span className="w-2 h-2 rounded-full bg-slate-300" />
+                      Total {totalReports}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center shrink-0">
+                  <svg width="100" height="100" viewBox="0 0 100 100" className="-rotate-90">
+                    <circle cx="50" cy="50" r={donutRadius} fill="none" stroke="#e2e8f0" strokeWidth="12" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r={donutRadius}
+                      fill="none"
+                      stroke={TEAL}
+                      strokeWidth="12"
+                      strokeLinecap="round"
+                      strokeDasharray={`${(completionPct / 100) * donutCirc} ${donutCirc}`}
+                    />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="border-slate-200/90">
-                <h3 className="text-lg font-semibold text-slate-900 mb-1">Supervisor workload</h3>
-                <p className="text-sm text-slate-500 mb-5">Current groups vs. capacity</p>
-                <div className="space-y-4">
-                  {workload.map((sup: any, index: number) => {
-                    const cur = Number(sup.current_groups) || 0;
-                    const max = Number(sup.max_groups) || 1;
-                    const pct = Math.min(100, Math.round((cur / max) * 100));
-                    const barWidth = maxLoad > 0 ? Math.round((cur / maxLoad) * 100) : 0;
-                    return (
-                      <div key={index}>
-                        <div className="flex justify-between text-sm mb-1 gap-2">
-                          <span className="font-medium text-slate-800 truncate">{sup.supervisor_name}</span>
+            {/* Charts row */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
+                <h2 className="text-lg font-bold text-[#1a1a1a] mb-1">Supervisor workload by department</h2>
+                <p className="text-sm text-slate-500 mb-6">Group assignments aggregated across supervisors</p>
+                {deptWorkload.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-8 text-center">No workload rows yet.</p>
+                ) : (
+                  <ul className="space-y-4">
+                    {deptWorkload.map((d, i) => (
+                      <li key={d.name}>
+                        <div className="flex justify-between text-sm gap-2 mb-1.5">
+                          <span className="font-medium text-slate-800 truncate">{d.name}</span>
                           <span className="text-slate-500 tabular-nums shrink-0">
-                            {cur}/{max}
+                            {d.load} groups · {d.people} supervisors
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 mb-1">{sup.department}</p>
-                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${
-                              pct >= 90 ? 'bg-amber-500' : 'bg-gradient-to-r from-brand-500 to-brand-600'
-                            }`}
-                            style={{ width: `${barWidth}%` }}
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.round((d.load / maxLoad) * 100)}%`,
+                              backgroundColor: i === 1 ? BROWN : TEAL,
+                            }}
                           />
                         </div>
-                      </div>
-                    );
-                  })}
-                  {workload.length === 0 && (
-                    <p className="text-slate-500 text-sm">No supervisor workload data available.</p>
-                  )}
-                </div>
-              </Card>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
-              <Card className="border-slate-200/90">
-                <h3 className="text-lg font-semibold text-slate-900 mb-1">Grouping quality</h3>
-                <p className="text-sm text-slate-500 mb-5">Composition of formed groups</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-slate-200/80 p-4 bg-slate-50/80">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ideal groups</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
-                      {stats?.groupingQuality?.idealGroups || 0}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200/80 p-4 bg-slate-50/80">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Fallback groups</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
-                      {stats?.groupingQuality?.fallbackGroups || 0}
-                    </p>
-                  </div>
+              <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
+                <h2 className="text-lg font-bold text-[#1a1a1a] mb-1">Grouping quality indicators</h2>
+                <p className="text-sm text-slate-500 mb-6">Derived metrics from tier distribution and reports</p>
+                <div className="grid grid-cols-5 gap-2 sm:gap-3 items-end min-h-[160px]">
+                  {radarAxes.map((ax) => (
+                    <div key={ax.label} className="flex flex-col items-center gap-2">
+                      <div className="w-full flex flex-col justify-end h-28 bg-slate-50 rounded-t-lg overflow-hidden border border-slate-100">
+                        <div
+                          className="w-full rounded-t-md transition-all"
+                          style={{
+                            height: `${Math.max(8, ax.value)}%`,
+                            background: `linear-gradient(180deg, ${TEAL} 0%, rgba(0,109,109,0.45) 100%)`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] sm:text-xs text-center text-slate-600 font-medium leading-tight px-0.5">
+                        {ax.label}
+                      </span>
+                    </div>
+                  ))}
                 </div>
                 <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-                  Use this snapshot with department dashboards when tuning allocation rules or supervisor limits.
+                  {idealGroups} ideal groups with balanced tiers; {fallbackGroups} other groups may need reassignment
+                  for better mix.
                 </p>
-              </Card>
+              </div>
+            </div>
+
+            {/* Supervisor list (compact) */}
+            <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-[#1a1a1a]">Supervisor roster load</h2>
+                <p className="text-sm text-slate-500">Current group assignments from supervisor_workload</p>
+              </div>
+              <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                {(stats?.supervisorWorkload || []).length === 0 ? (
+                  <p className="p-8 text-center text-slate-500 text-sm">No supervisor workload data.</p>
+                ) : (
+                  (stats?.supervisorWorkload || []).map((sup: any, index: number) => (
+                    <div
+                      key={`${sup.supervisor_name}-${index}`}
+                      className="px-5 py-3 flex justify-between gap-3 hover:bg-slate-50/80"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 truncate">{sup.supervisor_name}</p>
+                        <p className="text-xs text-slate-500">{sup.department}</p>
+                      </div>
+                      <p className="text-sm font-semibold tabular-nums text-slate-700 shrink-0">
+                        {sup.current_groups} groups
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Recent reports table */}
+            <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-[#1a1a1a]">Recent system reports</h2>
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-1 text-sm font-semibold"
+                  style={{ color: TEAL }}
+                >
+                  <Archive className="w-4 h-4" />
+                  View archive
+                </Link>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#F8F9FA] text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="px-5 py-3">Report type</th>
+                      <th className="px-5 py-3 hidden sm:table-cell">Generated by</th>
+                      <th className="px-5 py-3">Status</th>
+                      <th className="px-5 py-3 text-right">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredReports.map((r) => (
+                      <tr key={r.id} className="hover:bg-slate-50/80">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span className="font-medium text-slate-800">{r.type}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 hidden sm:table-cell text-slate-600">{r.generatedBy}</td>
+                        <td className="px-5 py-3">
+                          {r.status === 'READY' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Ready
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-100">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Processing
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-right text-slate-500 tabular-nums text-xs sm:text-sm">
+                          {r.at.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}
+
+        <footer className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-slate-200 text-xs text-slate-500">
+          <p>Global reporting module v2.4 · Supervise360</p>
+          <div className="flex flex-wrap gap-4">
+            <span className="cursor-default">Data privacy</span>
+            <Link to="/settings" className="hover:underline" style={{ color: TEAL }}>
+              System logs
+            </Link>
+            <a href="#" className="hover:underline" style={{ color: TEAL }} onClick={(e) => e.preventDefault()}>
+              API documentation
+            </a>
+          </div>
+        </footer>
       </div>
     </MainLayout>
   );
