@@ -526,10 +526,10 @@ export function DefenseScheduling() {
 
         {/* Tab: Allocation */}
         {activeTab === 'allocation' && (
-          <Card className="border border-slate-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+          <Card className="border border-slate-200 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Final Allocation</h3>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {allocations && allocations.length > 0 && (
                   <>
                     <span className="text-sm text-slate-500">{allocations.length} allocations</span>
@@ -606,13 +606,14 @@ export function DefenseScheduling() {
                       chunks.push(allocations.slice(i, i + ALLOCATION_COLUMNS_PER_ROW));
                     }
                     return chunks.map((chunk, chunkIdx) => (
-                      <div key={chunkIdx} className="overflow-x-auto">
+                      <div key={chunkIdx} className="overflow-x-auto -mx-4 sm:mx-0">
+                        <div className="px-4 sm:px-0">
                         {chunks.length > 1 && (
                           <p className="text-xs text-slate-500 mb-2">
                             Venues {chunkIdx * ALLOCATION_COLUMNS_PER_ROW + 1}–{chunkIdx * ALLOCATION_COLUMNS_PER_ROW + chunk.length}
                           </p>
                         )}
-                        <table className="w-full border-collapse text-sm">
+                        <table className="min-w-max border-collapse text-sm">
                           <thead>
                             <tr>
                               {chunk.map((col, i) => (
@@ -643,6 +644,7 @@ export function DefenseScheduling() {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     ));
                   })()}
