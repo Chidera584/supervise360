@@ -275,7 +275,7 @@ export function MyGroups() {
                     <div className="flex flex-wrap gap-2 shrink-0">
                       <Button
                         variant="primary"
-                        className="!rounded-[10px] !px-3 !py-2 !bg-[#006D6D] !text-white hover:!bg-[#005a5a] border-0"
+                        className="!rounded-[10px] !px-3 !py-2 !bg-[#000080] !text-white hover:!bg-[#00006b] border-0"
                         onClick={() => navigate('/messages', { state: { groupId: group.id, groupName: group.name } })}
                       >
                         <MessageSquare className="w-4 h-4 mr-2" />
