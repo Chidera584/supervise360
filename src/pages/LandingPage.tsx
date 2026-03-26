@@ -112,7 +112,7 @@ export function LandingPage() {
     <div className="min-h-screen flex flex-col bg-[var(--landing-bg)]" style={{ ['--landing-bg' as string]: BG_SOFT }}>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#006d6d] border-b border-white/15">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-8 lg:px-12">
           <div className="flex items-center justify-between gap-6 py-3.5 sm:py-4 min-w-0">
             <button
               type="button"
@@ -197,7 +197,7 @@ export function LandingPage() {
             />
           </div>
 
-          <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 lg:pt-16 pb-14 sm:pb-18 lg:pb-20">
+          <div className="relative z-10 w-full px-4 sm:px-8 lg:px-12 pt-10 sm:pt-14 lg:pt-16 pb-14 sm:pb-18 lg:pb-20">
             <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
               <div className="lg:col-span-6">
                 <p
@@ -317,7 +317,7 @@ export function LandingPage() {
 
         {/* Journey */}
         <section id="journey" className="bg-white border-t border-slate-100">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+          <div className="w-full px-4 sm:px-8 lg:px-12 py-14 sm:py-20">
             <h2
               className="text-2xl sm:text-3xl font-bold text-center text-[#1a1a1a] mb-3"
               data-animate="fade-up"
@@ -382,7 +382,7 @@ export function LandingPage() {
 
         {/* Features */}
         <section id="features" className="border-t border-slate-100" style={{ backgroundColor: BG_SOFT }}>
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+          <div className="w-full px-4 sm:px-8 lg:px-12 py-14 sm:py-20">
             <div className="max-w-2xl mx-auto mb-12 sm:mb-14 text-center">
               <div className="h-1 w-12 rounded-full mx-auto mb-5" style={{ backgroundColor: TEAL }} />
               <h2 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" data-animate="fade-up">
@@ -457,7 +457,7 @@ export function LandingPage() {
 
         {/* Stats */}
         <section className="py-14 sm:py-20 text-white" style={{ backgroundColor: SLATE_BLUE }}>
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="w-full px-4 sm:px-8 lg:px-12">
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
               <div className="relative" data-animate="slide-left" style={{ transitionDelay: '60ms' }}>
                 <div className="rounded-3xl bg-white/10 border border-white/15 overflow-hidden">
@@ -527,7 +527,7 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-14">
+        <div className="w-full px-4 sm:px-8 lg:px-12 py-12 sm:py-14">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
             <div className="sm:col-span-2 lg:col-span-1" data-animate="slide-left">
               <div className="flex items-center gap-2 mb-3">
