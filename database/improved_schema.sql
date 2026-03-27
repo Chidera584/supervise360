@@ -156,6 +156,7 @@ CREATE TABLE reports (
     reviewed_by INT NULL,
     reviewed_at TIMESTAMP NULL,
     review_comments TEXT,
+    approved TINYINT(1) NULL DEFAULT NULL COMMENT '1=approved, 0=changes required, NULL=legacy',
     
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY (group_id) REFERENCES student_groups(id) ON DELETE CASCADE,

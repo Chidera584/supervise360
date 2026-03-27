@@ -63,6 +63,27 @@ export async function ensureProjectGroupsSchema(db: Pool): Promise<void> {
 }
 
 /**
+ * Report review UI expects `reports.approved` (1 = approved, 0 = changes required).
+ * Older databases created from improved_schema.sql before this column existed will 500 on POST /reports/:id/review.
+ */
+export async function ensureReportsApprovedColumn(db: Pool): Promise<void> {
+  try {
+    const [cols] = await db.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reports' AND COLUMN_NAME = 'approved'`
+    );
+    if ((cols as any[]).length > 0) return;
+
+    await db.execute(
+      `ALTER TABLE reports ADD COLUMN approved TINYINT(1) NULL DEFAULT NULL AFTER review_comments`
+    );
+    console.log('✅ Added reports.approved column (report review)');
+  } catch (err) {
+    console.warn('Schema fix reports.approved (non-fatal):', (err as Error).message);
+  }
+}
+
+/**
  * Create project records for groups that don't have one.
  */
 export async function backfillProjectsForGroups(db: Pool): Promise<number> {
