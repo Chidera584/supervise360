@@ -229,8 +229,43 @@ export function createReportsRouter(db: Pool) {
       const [rows] = await db.execute('SELECT file_path, file_name FROM reports WHERE id = ?', [req.params.id]);
       const report = (rows as any[])[0];
       if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
-      const fullPath = path.join(__dirname, '../../', report.file_path);
-      return res.download(fullPath, report.file_name);
+
+      const candidatePaths: string[] = [];
+      if (report.file_path) {
+        candidatePaths.push(path.join(__dirname, '../../', report.file_path));
+        // In case file_path is only a partial path, also try reportsDir directly.
+        candidatePaths.push(path.join(reportsDir, report.file_path));
+      }
+      if (report.file_name) {
+        candidatePaths.push(path.join(reportsDir, report.file_name));
+      }
+
+      const foundPath = candidatePaths.find((p) => {
+        try {
+          return fs.existsSync(p);
+        } catch {
+          return false;
+        }
+      });
+
+      if (!foundPath) {
+        const debug =
+          process.env.NODE_ENV === 'development'
+            ? {
+                reportFilePath: report.file_path,
+                reportFileName: report.file_name,
+                candidatePaths,
+              }
+            : undefined;
+
+        return res.status(404).json({
+          success: false,
+          message: 'Report file not found on server',
+          ...(debug ? { _debug: debug } : {}),
+        });
+      }
+
+      return res.download(foundPath, report.file_name);
     } catch (error) {
       console.error('Download report error:', error);
       res.status(500).json({ success: false, message: 'Failed to download report' });
