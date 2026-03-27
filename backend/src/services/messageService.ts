@@ -45,6 +45,114 @@ export class MessageService {
     }
   }
 
+  /**
+   * Resolve the registered supervisor user for a group's messaging recipient.
+   * Prefer project_groups.supervisor_id → supervisors.user_id; otherwise match name only among
+   * users linked to the supervisors table (never arbitrary non-supervisor users).
+   */
+  private async resolveSupervisorUserForGroup(
+    groupId: number
+  ): Promise<{ id: number; first_name: string; last_name: string; email: string } | null> {
+    const [pgRows] = await this.db.execute(
+      `SELECT supervisor_name, supervisor_id, department FROM project_groups WHERE id = ? LIMIT 1`,
+      [groupId]
+    );
+    const pg = (pgRows as any[])[0];
+    if (!pg) return null;
+
+    const sidRaw = pg.supervisor_id;
+    if (sidRaw != null && sidRaw !== '' && !Number.isNaN(Number(sidRaw))) {
+      const sid = Number(sidRaw);
+      if (sid > 0) {
+        const [bySupPk] = await this.db.execute(
+          `SELECT u.id, u.first_name, u.last_name, u.email
+           FROM supervisors s INNER JOIN users u ON u.id = s.user_id WHERE s.id = ? LIMIT 1`,
+          [sid]
+        );
+        const u1 = (bySupPk as any[])[0];
+        if (u1) return u1;
+        const [byUserId] = await this.db.execute(
+          `SELECT u.id, u.first_name, u.last_name, u.email
+           FROM users u
+           INNER JOIN supervisors s ON s.user_id = u.id
+           WHERE u.id = ? LIMIT 1`,
+          [sid]
+        );
+        const u2 = (byUserId as any[])[0];
+        if (u2) return u2;
+      }
+    }
+
+    const supervisorName = pg.supervisor_name;
+    if (!supervisorName || !String(supervisorName).trim()) return null;
+
+    let sn = String(supervisorName).trim();
+    if (sn.includes(',')) {
+      const commaParts = sn.split(',').map((s: string) => s.trim());
+      if (commaParts.length >= 2 && commaParts[0] && commaParts[1]) {
+        sn = `${commaParts[1]} ${commaParts[0]}`;
+      }
+    }
+    const snNorm = sn.replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '').trim();
+
+    const [exactRows] = await this.db.execute(
+      `SELECT u.id, u.first_name, u.last_name, u.email
+       FROM users u
+       INNER JOIN supervisors s ON s.user_id = u.id
+       WHERE TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?)
+          OR TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?)
+       LIMIT 1`,
+      [sn, snNorm]
+    );
+    let u = (exactRows as any[])[0];
+    if (u) return u;
+
+    const dept = pg.department ? String(pg.department).trim() : '';
+    if (dept) {
+      const [deptRows] = await this.db.execute(
+        `SELECT u.id, u.first_name, u.last_name, u.email
+         FROM users u
+         INNER JOIN supervisors s ON s.user_id = u.id
+         WHERE (TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?)
+            OR TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?))
+           AND TRIM(COALESCE(s.department,'')) = TRIM(?)
+         LIMIT 1`,
+        [sn, snNorm, dept]
+      );
+      u = (deptRows as any[])[0];
+      if (u) return u;
+    }
+
+    const [likeRows] = await this.db.execute(
+      `SELECT u.id, u.first_name, u.last_name, u.email
+       FROM users u
+       INNER JOIN supervisors s ON s.user_id = u.id
+       WHERE TRIM(COALESCE(u.first_name,'')) != '' AND TRIM(COALESCE(u.last_name,'')) != ''
+         AND ? LIKE CONCAT('%', TRIM(u.first_name), '%')
+         AND ? LIKE CONCAT('%', TRIM(u.last_name), '%')
+       ORDER BY
+         CASE WHEN TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?) THEN 0 ELSE 1 END,
+         CASE WHEN TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?) THEN 0 ELSE 1 END,
+         u.id ASC
+       LIMIT 1`,
+      [sn, sn, sn, snNorm]
+    );
+    u = (likeRows as any[])[0];
+    if (u) return u;
+
+    // Account exists as supervisor role but no row in supervisors table (exact name only)
+    const [roleRows] = await this.db.execute(
+      `SELECT u.id, u.first_name, u.last_name, u.email FROM users u
+       WHERE u.role IN ('supervisor', 'external_supervisor')
+         AND (TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?)
+           OR TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) = TRIM(?))
+       LIMIT 1`,
+      [sn, snNorm]
+    );
+    u = (roleRows as any[])[0];
+    return u || null;
+  }
+
   /** Get user IDs for all members of a group (students with user accounts) */
   async getGroupMemberUserIds(groupId: number): Promise<number[]> {
     const [memberRows] = await this.db.execute(
@@ -139,102 +247,14 @@ export class MessageService {
       }
       if (!group || group.id == null) return contacts;
 
-      const [pgRows] = await this.db.execute('SELECT supervisor_name FROM project_groups WHERE id = ?', [group.id]);
-      const supervisorName = (pgRows as any[])[0]?.supervisor_name;
-      if (supervisorName) {
-        let sn = String(supervisorName).trim();
-        // Handle "LastName, FirstName" or "LastName, FirstName" format -> "FirstName LastName"
-        if (sn.includes(',')) {
-          const [a, b] = sn.split(',').map((s: string) => s.trim());
-          if (a && b) sn = `${b} ${a}`;
-        }
-        // Strip common title prefixes for matching
-        const snNormalized = sn.replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '').trim();
-        const parts = sn.split(/\s+/).filter(Boolean);
-        const partsNorm = snNormalized.split(/\s+/).filter(Boolean);
-        const params: any[] = [sn, snNormalized];
-        // Use last two parts for name matching (handles "Dr. Jane Doe" -> Jane, Doe)
-        const firstPart = parts.length >= 3 ? parts[parts.length - 2] : parts[0];
-        const lastPart = parts[parts.length - 1];
-        const bothClause = parts.length >= 2
-          ? " OR (u.first_name LIKE CONCAT('%', ?, '%') AND u.last_name LIKE CONCAT('%', ?, '%'))"
-          : '';
-        const normClause = partsNorm.length >= 2
-          ? " OR TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')))= TRIM(?)"
-          : '';
-        if (parts.length >= 2) params.push(firstPart, lastPart);
-        if (partsNorm.length >= 2) params.push(snNormalized);
-        let [supRows] = await this.db.execute(
-          `SELECT id, first_name, last_name, email FROM users u
-           WHERE TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')))= TRIM(?)
-             OR TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')))= TRIM(?)${bothClause}${normClause}`,
-          params
+      const resolved = await this.resolveSupervisorUserForGroup(group.id);
+      if (resolved) {
+        addUser(
+          resolved.id,
+          `${resolved.first_name || ''} ${resolved.last_name || ''}`.trim(),
+          resolved.email || '',
+          'Supervisor'
         );
-        let sup = (supRows as any[])[0];
-        // Fallback 1: supervisor_name from upload - match users in supervisors table
-        if (!sup) {
-          [supRows] = await this.db.execute(
-            `SELECT u.id, u.first_name, u.last_name, u.email FROM users u
-             INNER JOIN supervisors s ON s.user_id = u.id
-             WHERE ? LIKE CONCAT('%', TRIM(COALESCE(u.first_name,'')), '%')
-               AND ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%')
-               AND COALESCE(u.first_name,'') != '' AND COALESCE(u.last_name,'') != ''`,
-            [sn, sn]
-          );
-          sup = (supRows as any[])[0];
-        }
-        // Fallback 2: match any user with supervisor role
-        if (!sup) {
-          [supRows] = await this.db.execute(
-            `SELECT u.id, u.first_name, u.last_name, u.email FROM users u
-             WHERE ? LIKE CONCAT('%', TRIM(COALESCE(u.first_name,'')), '%')
-               AND ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%')
-               AND COALESCE(u.first_name,'') != '' AND COALESCE(u.last_name,'') != ''
-               AND (u.role IN ('supervisor', 'external_supervisor') OR EXISTS (SELECT 1 FROM supervisors s WHERE s.user_id = u.id))`,
-            [sn, sn]
-          );
-          sup = (supRows as any[])[0];
-        }
-        // Fallback 3: match by last name only (handles "Dr. X" or "Prof. LastName" formats)
-        if (!sup && lastPart) {
-          [supRows] = await this.db.execute(
-            `SELECT u.id, u.first_name, u.last_name, u.email FROM users u
-             WHERE (u.last_name = ? OR TRIM(u.last_name) = ? OR ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%'))
-               AND (EXISTS (SELECT 1 FROM supervisors s WHERE s.user_id = u.id) OR u.role IN ('supervisor', 'external_supervisor'))
-             LIMIT 1`,
-            [lastPart, lastPart, sn]
-          );
-          sup = (supRows as any[])[0];
-        }
-        // Fallback 4: any user whose full name appears in supervisor_name (no role filter)
-        if (!sup) {
-          [supRows] = await this.db.execute(
-            `SELECT u.id, u.first_name, u.last_name, u.email FROM users u
-             WHERE ? LIKE CONCAT('%', TRIM(COALESCE(u.first_name,'')), '%')
-               AND ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%')
-               AND COALESCE(u.first_name,'') != '' AND COALESCE(u.last_name,'') != ''
-             LIMIT 1`,
-            [sn, sn]
-          );
-          sup = (supRows as any[])[0];
-        }
-        // Fallback 5: programmatic match - get all supervisor users, match in code (handles encoding/whitespace)
-        if (!sup && parts.length >= 2) {
-          const [allSupRows] = await this.db.execute(
-            `SELECT u.id, u.first_name, u.last_name, u.email FROM users u
-             WHERE EXISTS (SELECT 1 FROM supervisors s WHERE s.user_id = u.id)
-                OR u.role IN ('supervisor', 'external_supervisor')`
-          );
-          const snLower = sn.toLowerCase().replace(/\s+/g, ' ');
-          sup = (allSupRows as any[]).find(
-            (u: any) =>
-              u.first_name &&
-              u.last_name &&
-              snLower.includes(String(u.first_name).toLowerCase().trim()) &&
-              snLower.includes(String(u.last_name).toLowerCase().trim())
-          );
-        }
-        if (sup) addUser(sup.id, `${sup.first_name || ''} ${sup.last_name || ''}`.trim(), sup.email || '', 'Supervisor');
       }
     } else if (role === 'supervisor') {
       // Supervisor: groups as contacts (message goes to all in group) + "All My Groups" broadcast
