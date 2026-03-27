@@ -234,13 +234,18 @@ export class EvaluationService {
          se.evaluated_at
        FROM project_groups pg
        INNER JOIN group_members gm ON gm.group_id = pg.id
-       INNER JOIN students s 
-         ON (
-           s.matric_number = gm.matric_number
-           OR TRIM(s.matric_number) = TRIM(gm.matric_number)
-           OR REPLACE(s.matric_number, '/', '') = REPLACE(gm.matric_number, '/', '')
-         )
-       INNER JOIN users u ON u.id = s.user_id
+       INNER JOIN users u 
+         ON u.role = 'student' AND COALESCE(u.is_active, TRUE) = TRUE
+       INNER JOIN students s
+         ON s.user_id = u.id
+        AND (
+          s.matric_number = gm.matric_number
+          OR TRIM(COALESCE(s.matric_number, '')) = TRIM(COALESCE(gm.matric_number, ''))
+          OR REPLACE(COALESCE(s.matric_number, ''), '/', '') = REPLACE(COALESCE(gm.matric_number, ''), '/', '')
+          OR TRIM(COALESCE(gm.student_name, '')) = TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')))
+          OR gm.student_name LIKE CONCAT('%', COALESCE(u.first_name, ''), '%', COALESCE(u.last_name, ''), '%')
+          OR gm.student_name LIKE CONCAT('%', COALESCE(u.last_name, ''), '%', COALESCE(u.first_name, ''), '%')
+        )
        LEFT JOIN projects p ON p.group_id = pg.id
        LEFT JOIN student_evaluations se 
          ON se.student_user_id = u.id AND se.supervisor_id = ?
