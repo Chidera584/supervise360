@@ -166,7 +166,7 @@ export function Departments() {
         {/* Page header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div className="max-w-2xl">
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Department governance</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Departments</h1>
             <p className="text-[#4A4A4A] mt-2 text-sm sm:text-base leading-relaxed">
               Centralized oversight for academic units. Monitor workload distribution, student placement, and
               organizational health across your scope.
