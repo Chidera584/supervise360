@@ -295,7 +295,7 @@ export function DefenseScheduling() {
 
   return (
     <MainLayout title="Defense Scheduling">
-      <div className="space-y-4">
+      <div className="space-y-4 min-w-0 max-w-full">
         {/* Header */}
         <Card className="border border-slate-200 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -526,7 +526,7 @@ export function DefenseScheduling() {
 
         {/* Tab: Allocation */}
         {activeTab === 'allocation' && (
-          <Card className="border border-slate-200 p-4 sm:p-6">
+          <Card className="border border-slate-200 p-4 sm:p-6 min-w-0 max-w-full">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Final Allocation</h3>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -599,15 +599,18 @@ export function DefenseScheduling() {
                     {excludedCount} staff excluded (HOD/Dean).
                   </p>
                 )}
-                <div className="space-y-6">
+                <div
+                  className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain touch-pan-x rounded-lg border border-slate-200 bg-white shadow-inner"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                  <div className="space-y-6 p-1 sm:p-2 min-w-max">
                   {(() => {
                     const chunks: AllocationColumn[][] = [];
                     for (let i = 0; i < allocations.length; i += ALLOCATION_COLUMNS_PER_ROW) {
                       chunks.push(allocations.slice(i, i + ALLOCATION_COLUMNS_PER_ROW));
                     }
                     return chunks.map((chunk, chunkIdx) => (
-                      <div key={chunkIdx} className="overflow-x-auto -mx-4 sm:mx-0">
-                        <div className="px-4 sm:px-0">
+                      <div key={chunkIdx}>
                         {chunks.length > 1 && (
                           <p className="text-xs text-slate-500 mb-2">
                             Venues {chunkIdx * ALLOCATION_COLUMNS_PER_ROW + 1}–{chunkIdx * ALLOCATION_COLUMNS_PER_ROW + chunk.length}
@@ -644,10 +647,10 @@ export function DefenseScheduling() {
                             ))}
                           </tbody>
                         </table>
-                        </div>
                       </div>
                     ));
                   })()}
+                  </div>
                 </div>
               </>
             ) : (
