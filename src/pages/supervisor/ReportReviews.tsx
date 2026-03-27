@@ -52,7 +52,8 @@ export function ReportReviews() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      setMessage({ type: 'error', text: 'Failed to download document. It may have been deleted or missing.' });
+      const detail = e instanceof Error ? e.message : 'Unknown error';
+      setMessage({ type: 'error', text: `Failed to download document. ${detail}` });
     } finally {
       setLoadingDocId(null);
     }
