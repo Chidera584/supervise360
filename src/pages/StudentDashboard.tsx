@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { MainLayout } from '../components/Layout/MainLayout';
 import { Button } from '../components/UI/Button';
 import { useAuth } from '../contexts/AuthContext';
-import { useGroups } from '../contexts/GroupsContext';
 import { apiClient } from '../lib/api';
 import { Link } from 'react-router-dom';
 import {
@@ -22,26 +21,29 @@ const PURPLE = '#7c3aed';
 
 export function StudentDashboard() {
   const { user, student } = useAuth();
-  const { groups, syncWithDatabase } = useGroups();
   const [loading, setLoading] = useState(true);
   const [reportsList, setReportsList] = useState<any[]>([]);
   const [reportsCount, setReportsCount] = useState(0);
   const [reportsReviewedCount, setReportsReviewedCount] = useState(0);
   const [inboxPreview, setInboxPreview] = useState<any[]>([]);
-
-  const studentGroup = groups.find((group) =>
-    group.members.some((member) => {
-      const matric = member.matricNumber ?? (member as any).matric;
-      return matric === student?.matric_number;
-    })
-  );
+  const [studentGroup, setStudentGroup] = useState<any | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        await syncWithDatabase();
-        const [reportsRes, inboxRes] = await Promise.all([apiClient.getMyReports(), apiClient.getInbox()]);
+        const [myGroupRes, reportsRes, inboxRes] = await Promise.all([
+          apiClient.getMyGroup(),
+          apiClient.getMyReports(),
+          apiClient.getInbox(),
+        ]);
+
+        if (myGroupRes.success && myGroupRes.data) {
+          setStudentGroup(myGroupRes.data);
+        } else {
+          setStudentGroup(null);
+        }
+
         if (reportsRes.success && Array.isArray(reportsRes.data)) {
           const reports = reportsRes.data as any[];
           setReportsList(reports);
@@ -59,7 +61,7 @@ export function StudentDashboard() {
       }
     };
     loadData();
-  }, [syncWithDatabase]);
+  }, []);
 
   const milestones = useMemo(() => {
     const hasSubmitted = (t: string) =>
