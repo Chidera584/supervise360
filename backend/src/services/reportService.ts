@@ -4,9 +4,20 @@ export class ReportService {
   constructor(private db: Pool) {}
 
   async getGroupIdByMatric(matricNumber: string) {
+    const raw = String(matricNumber || '').trim();
+    if (!raw) return null;
+    const compact = raw.replace(/\s+/g, '');
+    const compactNoSlash = compact.replace(/\//g, '');
     const [rows] = await this.db.execute(
-      'SELECT group_id FROM group_members WHERE matric_number = ? LIMIT 1',
-      [matricNumber]
+      `SELECT group_id
+       FROM group_members
+       WHERE
+         matric_number = ?
+         OR TRIM(COALESCE(matric_number, '')) = ?
+         OR REPLACE(TRIM(COALESCE(matric_number, '')), ' ', '') = ?
+         OR REPLACE(REPLACE(TRIM(COALESCE(matric_number, '')), ' ', ''), '/', '') = ?
+       LIMIT 1`,
+      [raw, raw, compact, compactNoSlash]
     );
     return (rows as any[])[0]?.group_id || null;
   }
