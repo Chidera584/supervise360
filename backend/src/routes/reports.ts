@@ -233,8 +233,8 @@ export function createReportsRouter(db: Pool) {
       const candidatePaths: string[] = [];
       if (report.file_path) {
         candidatePaths.push(path.join(__dirname, '../../', report.file_path));
-        // In case file_path is only a partial path, also try reportsDir directly.
-        candidatePaths.push(path.join(reportsDir, report.file_path));
+        // In case file_path is only a partial path, also try reportsDir + basename.
+        candidatePaths.push(path.join(reportsDir, path.basename(report.file_path)));
       }
       if (report.file_name) {
         candidatePaths.push(path.join(reportsDir, report.file_name));
