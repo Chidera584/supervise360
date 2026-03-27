@@ -232,9 +232,28 @@ export function createReportsRouter(db: Pool) {
 
       const candidatePaths: string[] = [];
       if (report.file_path) {
-        candidatePaths.push(path.join(__dirname, '../../', report.file_path));
+        // Normalize Windows/Unix separators so uploads created on Windows still resolve on Linux.
+        const normalizedPath = String(report.file_path).replace(/\\/g, '/').trim();
+        const trimmedRelative = normalizedPath.replace(/^\.?\//, '');
+
+        // If DB already stores an absolute path, try it directly.
+        if (path.isAbsolute(normalizedPath)) {
+          candidatePaths.push(normalizedPath);
+        }
+
+        // Common relative forms from DB (e.g. uploads/reports/file.pdf).
+        candidatePaths.push(path.resolve(__dirname, '../../', trimmedRelative));
+
+        // If path includes "/reports/", keep only file part under reportsDir.
+        const reportsSegment = trimmedRelative.includes('/reports/')
+          ? trimmedRelative.split('/reports/').pop()
+          : trimmedRelative.split('reports/').pop();
+        if (reportsSegment) {
+          candidatePaths.push(path.join(reportsDir, reportsSegment));
+        }
+
         // In case file_path is only a partial path, also try reportsDir + basename.
-        candidatePaths.push(path.join(reportsDir, path.basename(report.file_path)));
+        candidatePaths.push(path.join(reportsDir, path.basename(trimmedRelative)));
       }
       if (report.file_name) {
         candidatePaths.push(path.join(reportsDir, report.file_name));
