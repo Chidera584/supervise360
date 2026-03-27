@@ -204,7 +204,22 @@ export class EvaluationService {
     await this.ensureStudentEvaluationsTable();
     const fullName = await this.getSupervisorFullName(userId);
     const supervisorId = await this.getSupervisorId(userId);
-    if (!fullName || !supervisorId) return [];
+    if (!fullName) return [];
+
+    const [nameRows] = await this.db.execute(
+      'SELECT first_name, last_name FROM users WHERE id = ? LIMIT 1',
+      [userId]
+    );
+    const nameUser = (nameRows as any[])[0];
+    const firstName = (nameUser?.first_name || '').trim();
+    const lastName = (nameUser?.last_name || '').trim();
+    const bothClause =
+      firstName && lastName
+        ? " OR (pg.supervisor_name LIKE CONCAT('%', ?, '%') AND pg.supervisor_name LIKE CONCAT('%', ?, '%'))"
+        : '';
+    const supervisorIdParam = supervisorId ?? -1;
+    const params: any[] = [supervisorIdParam, supervisorIdParam, fullName, fullName];
+    if (firstName && lastName) params.push(firstName, lastName);
 
     const [rows] = await this.db.execute(
       `SELECT 
@@ -219,14 +234,24 @@ export class EvaluationService {
          se.evaluated_at
        FROM project_groups pg
        INNER JOIN group_members gm ON gm.group_id = pg.id
-       INNER JOIN students s ON s.matric_number = gm.matric_number
+       INNER JOIN students s 
+         ON (
+           s.matric_number = gm.matric_number
+           OR TRIM(s.matric_number) = TRIM(gm.matric_number)
+           OR REPLACE(s.matric_number, '/', '') = REPLACE(gm.matric_number, '/', '')
+         )
        INNER JOIN users u ON u.id = s.user_id
        LEFT JOIN projects p ON p.group_id = pg.id
        LEFT JOIN student_evaluations se 
          ON se.student_user_id = u.id AND se.supervisor_id = ?
-       WHERE TRIM(COALESCE(pg.supervisor_name, '')) = ?
+       WHERE (
+         pg.supervisor_id = ?
+         OR TRIM(COALESCE(pg.supervisor_name, '')) = ?
+         OR pg.supervisor_name LIKE CONCAT('%', ?, '%')
+         ${bothClause}
+       )
        ORDER BY pg.name ASC, u.last_name ASC, u.first_name ASC`,
-      [supervisorId, fullName]
+      params
     );
     return rows as any[];
   }
