@@ -450,7 +450,10 @@ class ApiClient {
     const res = await fetch(url, {
       headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
     });
-    if (!res.ok) throw new Error('Failed to fetch report document');
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Failed to fetch report document (HTTP ${res.status}): ${text || res.statusText}`);
+    }
     return res.blob();
   }
 
