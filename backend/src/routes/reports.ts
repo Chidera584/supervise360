@@ -15,6 +15,78 @@ import { backfillProjectsForGroups } from '../services/schemaFixService';
 
 const router = Router();
 
+/** Multer saves as `${timestamp}_${originalWithSpacesToUnderscores}` — try to find file on disk when DB path differs (deploy cwd, Windows paths, etc.). */
+function collectReportsDirectories(uploadDir: string, reportsDir: string): string[] {
+  const codeRoot = path.resolve(__dirname, '../../');
+  const dirs = [
+    reportsDir,
+    path.join(codeRoot, uploadDir, 'reports'),
+    path.join(codeRoot, 'uploads', 'reports'),
+    path.join(process.cwd(), uploadDir, 'reports'),
+    path.join(process.cwd(), 'uploads', 'reports'),
+    path.join(process.cwd(), 'backend', uploadDir, 'reports'),
+    path.join(process.cwd(), 'backend', 'uploads', 'reports'),
+  ];
+  const envRoot = process.env.UPLOADS_ROOT?.trim();
+  if (envRoot) {
+    dirs.push(path.join(envRoot, 'reports'));
+    dirs.push(path.join(envRoot, uploadDir, 'reports'));
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const d of dirs) {
+    const n = path.normalize(d);
+    if (seen.has(n)) continue;
+    seen.add(n);
+    out.push(n);
+  }
+  return out;
+}
+
+function findReportFileByScanning(
+  dirs: string[],
+  fileName: string | null | undefined,
+  storedRelativePath: string | null | undefined
+): string | null {
+  const safeOriginal = String(fileName || '')
+    .trim()
+    .replace(/\s+/g, '_');
+  const basenameFromDb = storedRelativePath
+    ? path.basename(String(storedRelativePath).replace(/\\/g, '/'))
+    : '';
+
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    let files: string[];
+    try {
+      files = fs.readdirSync(dir);
+    } catch {
+      continue;
+    }
+    if (basenameFromDb && files.includes(basenameFromDb)) {
+      const full = path.join(dir, basenameFromDb);
+      if (fs.statSync(full).isFile()) return full;
+    }
+    if (safeOriginal) {
+      const match = files.find(
+        (f) =>
+          f === safeOriginal ||
+          f.endsWith(`_${safeOriginal}`) ||
+          f.endsWith(safeOriginal)
+      );
+      if (match) {
+        const full = path.join(dir, match);
+        try {
+          if (fs.statSync(full).isFile()) return full;
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export function createReportsRouter(db: Pool) {
   const reportService = new ReportService(db);
   const uploadDir = process.env.UPLOAD_DIR || 'uploads';
@@ -230,7 +302,13 @@ export function createReportsRouter(db: Pool) {
       const report = (rows as any[])[0];
       if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
 
+      const allReportDirs = collectReportsDirectories(uploadDir, reportsDir);
       const candidatePaths: string[] = [];
+      const push = (p: string) => {
+        const n = path.normalize(p);
+        if (!candidatePaths.includes(n)) candidatePaths.push(n);
+      };
+
       if (report.file_path) {
         // Normalize Windows/Unix separators so uploads created on Windows still resolve on Linux.
         const normalizedPath = String(report.file_path).replace(/\\/g, '/').trim();
@@ -238,53 +316,61 @@ export function createReportsRouter(db: Pool) {
 
         // If DB already stores an absolute path, try it directly.
         if (path.isAbsolute(normalizedPath)) {
-          candidatePaths.push(normalizedPath);
+          push(normalizedPath);
         }
 
         // Common relative forms from DB (e.g. uploads/reports/file.pdf).
-        candidatePaths.push(path.resolve(__dirname, '../../', trimmedRelative));
+        push(path.resolve(__dirname, '../../', trimmedRelative));
 
-        // If path includes "/reports/", keep only file part under reportsDir.
-        const reportsSegment = trimmedRelative.includes('/reports/')
-          ? trimmedRelative.split('/reports/').pop()
-          : trimmedRelative.split('reports/').pop();
-        if (reportsSegment) {
-          candidatePaths.push(path.join(reportsDir, reportsSegment));
+        // Same relative path under every candidate reports root.
+        for (const dir of allReportDirs) {
+          push(path.join(dir, path.basename(trimmedRelative)));
+          const reportsSegment = trimmedRelative.includes('/reports/')
+            ? trimmedRelative.split('/reports/').pop()
+            : trimmedRelative.split('reports/').pop();
+          if (reportsSegment) push(path.join(dir, reportsSegment));
         }
-
-        // In case file_path is only a partial path, also try reportsDir + basename.
-        candidatePaths.push(path.join(reportsDir, path.basename(trimmedRelative)));
       }
       if (report.file_name) {
-        candidatePaths.push(path.join(reportsDir, report.file_name));
+        for (const dir of allReportDirs) {
+          push(path.join(dir, report.file_name));
+          const safe = String(report.file_name).trim().replace(/\s+/g, '_');
+          push(path.join(dir, safe));
+        }
       }
 
       const foundPath = candidatePaths.find((p) => {
         try {
-          return fs.existsSync(p);
+          return fs.existsSync(p) && fs.statSync(p).isFile();
         } catch {
           return false;
         }
       });
 
-      if (!foundPath) {
+      const scannedPath =
+        foundPath ||
+        findReportFileByScanning(allReportDirs, report.file_name, report.file_path);
+
+      if (!scannedPath) {
         const debug =
           process.env.NODE_ENV === 'development'
             ? {
                 reportFilePath: report.file_path,
                 reportFileName: report.file_name,
                 candidatePaths,
+                scannedDirs: allReportDirs,
               }
             : undefined;
 
         return res.status(404).json({
           success: false,
-          message: 'Report file not found on server',
+          message:
+            'Report file not found on server. If the app was redeployed, local uploads may have been cleared—use persistent storage (e.g. Railway volume) or ask the student to re-upload.',
           ...(debug ? { _debug: debug } : {}),
         });
       }
 
-      return res.download(foundPath, report.file_name);
+      return res.download(scannedPath, report.file_name);
     } catch (error) {
       console.error('Download report error:', error);
       res.status(500).json({ success: false, message: 'Failed to download report' });
