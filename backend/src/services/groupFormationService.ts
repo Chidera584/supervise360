@@ -1,4 +1,5 @@
 import { Pool } from 'mysql2/promise';
+import { tryGroupFormationWithClingo } from './asp/aspEncodings';
 
 export interface StudentData {
   name: string;
@@ -226,9 +227,19 @@ export class GroupFormationService {
     console.log('👥 MEDIUM tier students:', mediumTier.map(s => `${s.name} (${s.gpa})`));
     console.log('👥 LOW tier students:', lowTier.map(s => `${s.name} (${s.gpa})`));
 
+    const namePrefix = department ? `${department} - ` : '';
+    const clingoGroups = await tryGroupFormationWithClingo(students, namePrefix);
+    if (clingoGroups) {
+      const v = this.validateGroupFormation(clingoGroups);
+      if (v.isValid) {
+        console.log('✅ [ASP] Using Clingo answer set for group formation.');
+        return clingoGroups;
+      }
+      console.warn('⚠️  [ASP] Clingo grouping failed validation; using heuristic.', v.violations);
+    }
+
     const groups: GroupData[] = [];
     let groupCounter = 1;
-    const namePrefix = department ? `${department} - ` : '';
 
     // Sort students by GPA within each tier for optimal distribution
     highTier.sort((a, b) => b.gpa - a.gpa);

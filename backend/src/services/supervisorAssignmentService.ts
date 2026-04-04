@@ -1,8 +1,9 @@
 import { Pool } from 'mysql2/promise';
+import { trySupervisorAssignmentWithClingo } from './asp/aspEncodings';
 
 /**
- * ASP-based Supervisor Assignment Service
- * Uses Answer Set Programming principles for optimal supervisor-to-group assignment
+ * Supervisor assignment: uses Potassco Clingo (answer set programming) when available to minimize
+ * peak supervisor load; otherwise greedy same-department load balancing.
  */
 
 export interface SupervisorData {
@@ -93,8 +94,7 @@ export class SupervisorAssignmentService {
         };
       }
 
-      // Apply ASP-based assignment algorithm
-      const assignments = this.computeOptimalAssignment(unassignedGroups, supervisors);
+      const assignments = await this.computeOptimalAssignment(unassignedGroups, supervisors);
 
       console.log(`✅ Computed ${assignments.length} assignments`);
 
@@ -142,14 +142,16 @@ export class SupervisorAssignmentService {
   }
 
   /**
-   * Optimal assignment: no capacity limit. Always assign to the supervisor
-   * with the fewest groups in the same department. This minimizes variance;
-   * when uneven is unavoidable (odd groups, dept size), some get more than others.
+   * Prefer Potassco Clingo (answer set programming): minimize maximum total load per supervisor
+   * subject to same-department eligibility. Falls back to greedy load balancing if Clingo is unavailable.
    */
-  private computeOptimalAssignment(
+  private async computeOptimalAssignment(
     groups: GroupData[],
     supervisors: SupervisorData[]
-  ): AssignmentResult[] {
+  ): Promise<AssignmentResult[]> {
+    const asp = await trySupervisorAssignmentWithClingo(groups, supervisors);
+    if (asp) return asp;
+
     const assignments: AssignmentResult[] = [];
     
     // Create a working copy of supervisors to track assignments
