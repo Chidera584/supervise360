@@ -1,9 +1,9 @@
 /**
  * Defense Scheduling Service
- * ASP-style logic for:
- * - Assessor team formation (exclude HOD/Dean, leadership, role composition, even distribution)
- * - Venue assignment (1:1 team-venue)
- * - Group range assignment (no overlap)
+ * - Eligible staff: exclude HOD/Dean from assessor pools
+ * - Spread each eligible person across exactly one venue (no repeated assessors across venues)
+ * - Minimum 3 assessors per venue; sizes balanced as evenly as possible (extras round-robin)
+ * - Group ranges: no overlap within a department
  */
 
 const EXCLUDED_RANKS = ['HOD', 'Dean'];
@@ -112,113 +112,104 @@ export function filterEligibleStaff(staff: StaffMember[]): StaffMember[] {
   return staff.filter(s => !isExcluded(s.rank));
 }
 
-/** Target assessors per team (prefer 4 when staff available) */
-const TARGET_ASSESSORS_PER_TEAM = 4;
-
-/**
- * ASP-style assessor team formation:
- * - Leadership: at least 1 Prof or Assoc Prof per team
- * - Role: at least 1 Lecturer/Assistant Lecturer + at least 1 Lab Technician per team
- * - Target 4 assessors per team when staff available (uses more of 75 staff)
- * - Even distribution across teams
- */
-export function formAssessorTeams(eligibleStaff: StaffMember[]): AssessorTeam[] {
-  const leaders = eligibleStaff.filter(s => isLeader(s.rank));
-  const lecturers = eligibleStaff.filter(s => isLecturer(s.rank));
-  const labTechs = eligibleStaff.filter(s => isLabTech(s.rank));
-  const others = eligibleStaff.filter(s => !isLeader(s.rank) && !isLecturer(s.rank) && !isLabTech(s.rank));
-
-  if (leaders.length === 0) {
-    throw new Error('No Professor or Associate Professor available. Each team must have a leader.');
-  }
-  if (lecturers.length === 0) {
-    throw new Error('No Lecturer or Assistant Lecturer available. Each team must have at least one.');
-  }
-  if (labTechs.length === 0) {
-    throw new Error('No Lab Technician available. Each team must have at least one.');
-  }
-
-  const teamCount = Math.min(leaders.length, lecturers.length, labTechs.length);
-  if (teamCount === 0) {
-    throw new Error('Cannot form any valid teams. Need at least one Professor/Assoc Prof, one Lecturer, and one Lab Technician.');
-  }
-
-  const teams: AssessorTeam[] = [];
-  for (let t = 0; t < teamCount; t++) {
-    const leader = leaders[t];
-    const lecturer = lecturers[t % lecturers.length];
-    const labTech = labTechs[t % labTechs.length];
-
-    const members: StaffMember[] = [];
-    const addIfNew = (s: StaffMember) => { if (s && !members.some(m => (m.staff_id || m.name) === (s.staff_id || s.name))) members.push(s); };
-    addIfNew(leader);
-    addIfNew(lecturer);
-    addIfNew(labTech);
-
-    // Add 4th member: use surplus staff (lecturers, lab techs, or leaders) when available
-    if (members.length < TARGET_ASSESSORS_PER_TEAM) {
-      if (lecturers.length > teamCount) {
-        const idx = teamCount + t;
-        if (idx < lecturers.length) addIfNew(lecturers[idx]);
-      } else if (labTechs.length > teamCount) {
-        const idx = teamCount + t;
-        if (idx < labTechs.length) addIfNew(labTechs[idx]);
-      } else if (leaders.length > teamCount) {
-        const idx = teamCount + t;
-        if (idx < leaders.length) addIfNew(leaders[idx]);
-      }
-    }
-
-    const teamLeader = members.find(m => isLeader(m.rank)) || members[0];
-    teams.push({ id: t + 1, members, leader: teamLeader });
-  }
-
-  return balanceTeamSizes(teams, eligibleStaff);
-}
-
-function balanceTeamSizes(teams: AssessorTeam[], pool: StaffMember[]): AssessorTeam[] {
-  const used = new Set<string>();
-  teams.forEach(t => t.members.forEach(m => used.add(m.staff_id || m.name)));
-  const remaining = pool.filter(s => !used.has(s.staff_id || s.name));
-
-  // Phase 1: Add 4th member to each team when available
-  for (const team of teams) {
-    if (team.members.length < TARGET_ASSESSORS_PER_TEAM && remaining.length > 0) {
-      const extra = remaining.shift();
-      if (extra) team.members.push(extra);
-    }
-  }
-
-  // Phase 2: Distribute remaining staff evenly (5th, 6th, etc. as needed)
-  while (remaining.length > 0) {
-    const smallestTeam = teams.reduce((a, b) => a.members.length <= b.members.length ? a : b);
-    const extra = remaining.shift();
-    if (extra) smallestTeam.members.push(extra);
-    else break;
-  }
-
-  return teams;
+function sortByName(a: StaffMember, b: StaffMember): number {
+  return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
 }
 
 /**
- * Assign assessor teams to venues. Spreads teams across all venues:
- * - When teams < venues: cycles through teams so each venue gets a team
- * - When teams >= venues: assigns one team per venue (extra teams unused)
- * No strict 1:1 constraint - lecturers are distributed across all locations.
+ * Per-venue headcounts: at least 3 each, extras distributed one-by-one in venue order (round-robin)
+ * so sizes differ by at most 1 (only when remainder forces it).
  */
-export function assignTeamsToVenues(teams: AssessorTeam[], venues: Venue[]): VenueAllocation[] {
-  if (teams.length === 0) {
-    throw new Error('No assessor teams available. Add staff with Professor, Lecturer, and Lab Technician roles.');
+export function computeBalancedVenueSizes(totalStaff: number, venueCount: number): number[] {
+  if (venueCount === 0) {
+    throw new Error('No venues provided. Add at least one venue.');
   }
+  if (totalStaff < venueCount * 3) {
+    throw new Error(
+      `Need at least ${venueCount * 3} eligible staff for ${venueCount} venues (minimum 3 per venue). You have ${totalStaff}.`
+    );
+  }
+  const sizes = Array(venueCount).fill(3);
+  let extra = totalStaff - 3 * venueCount;
+  let i = 0;
+  while (extra > 0) {
+    sizes[i % venueCount]++;
+    extra--;
+    i++;
+  }
+  return sizes;
+}
+
+/**
+ * Interleave role buckets so venues filled in round-robin order get a mix of ranks when possible.
+ */
+function mergeStaffByRoleRoundRobin(
+  leaders: StaffMember[],
+  lecturers: StaffMember[],
+  labTechs: StaffMember[],
+  others: StaffMember[]
+): StaffMember[] {
+  const L = [...leaders].sort(sortByName);
+  const Le = [...lecturers].sort(sortByName);
+  const T = [...labTechs].sort(sortByName);
+  const O = [...others].sort(sortByName);
+  const out: StaffMember[] = [];
+  const maxLen = Math.max(L.length, Le.length, T.length, O.length);
+  for (let k = 0; k < maxLen; k++) {
+    if (k < L.length) out.push(L[k]);
+    if (k < Le.length) out.push(Le[k]);
+    if (k < T.length) out.push(T[k]);
+    if (k < O.length) out.push(O[k]);
+  }
+  return out;
+}
+
+/**
+ * One assessor appears at exactly one venue. Fill venues in round-robin order using balanced sizes.
+ */
+export function spreadStaffAcrossVenues(eligibleStaff: StaffMember[], venues: Venue[]): VenueAllocation[] {
   if (venues.length === 0) {
     throw new Error('No venues provided. Add at least one venue.');
   }
+  if (eligibleStaff.length === 0) {
+    throw new Error('No eligible staff after excluding HOD/Dean. Add assessors or adjust ranks.');
+  }
 
-  return venues.map((venue, i) => ({
-    venue,
-    team: teams[i % teams.length],
-    groupRange: undefined
-  }));
+  const sizes = computeBalancedVenueSizes(eligibleStaff.length, venues.length);
+
+  const leaders = eligibleStaff.filter(s => isLeader(s.rank));
+  const lecturers = eligibleStaff.filter(s => isLecturer(s.rank));
+  const labTechs = eligibleStaff.filter(s => isLabTech(s.rank));
+  const others = eligibleStaff.filter(
+    s => !isLeader(s.rank) && !isLecturer(s.rank) && !isLabTech(s.rank)
+  );
+
+  const merged = mergeStaffByRoleRoundRobin(leaders, lecturers, labTechs, others);
+  if (merged.length !== eligibleStaff.length) {
+    throw new Error('Internal error: staff list mismatch when spreading across venues.');
+  }
+
+  const buckets: StaffMember[][] = Array.from({ length: venues.length }, () => []);
+  let assigned = 0;
+  const total = eligibleStaff.length;
+  while (assigned < total) {
+    for (let v = 0; v < venues.length && assigned < total; v++) {
+      if (buckets[v].length < sizes[v]) {
+        buckets[v].push(merged[assigned]);
+        assigned++;
+      }
+    }
+  }
+
+  return venues.map((venue, i) => {
+    const members = buckets[i];
+    const leader = members.find(m => isLeader(m.rank)) || members[0];
+    return {
+      venue,
+      team: { id: i + 1, members, leader },
+      groupRange: undefined,
+    };
+  });
 }
 
 /**
@@ -275,8 +266,7 @@ export function computeAllocation(
   const eligible = filterEligibleStaff(staff);
   const excludedCount = staff.length - eligible.length;
 
-  const teams = formAssessorTeams(eligible);
-  let allocations = assignTeamsToVenues(teams, parseVenuesFromRows(venueRows));
+  let allocations = spreadStaffAcrossVenues(eligible, parseVenuesFromRows(venueRows));
 
   validateGroupRanges(groupRanges);
   allocations = applyGroupRanges(allocations, groupRanges);
