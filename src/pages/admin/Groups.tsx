@@ -26,6 +26,10 @@ export function Groups() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showFormationConfirm, setShowFormationConfirm] = useState(false);
+  const [pendingFormationStudents, setPendingFormationStudents] = useState<any[] | null>(null);
+  const [formationConfirmLoading, setFormationConfirmLoading] = useState(false);
+  const [formationConfirmError, setFormationConfirmError] = useState<string | null>(null);
   const [showThresholdNotice, setShowThresholdNotice] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -490,14 +494,9 @@ export function Groups() {
                 department: selectedDepartment
               }));
 
-              const result = await formGroupsFromStudents(studentsWithDepartment);
-
-              if (result.success) {
-                await syncWithDatabase();
-              } else {
-                console.error('Group formation failed:', result.error);
-                setError(result.error || 'Failed to form groups');
-              }
+              setFormationConfirmError(null);
+              setPendingFormationStudents(studentsWithDepartment);
+              setShowFormationConfirm(true);
             } catch (err) {
               console.error('File upload error:', err);
               
@@ -523,6 +522,49 @@ export function Groups() {
               }
             }
           }}
+        />
+
+        <ConfirmationModal
+          isOpen={showFormationConfirm}
+          onClose={() => {
+            if (formationConfirmLoading) return;
+            setShowFormationConfirm(false);
+            setPendingFormationStudents(null);
+            setFormationConfirmError(null);
+          }}
+          onConfirm={async () => {
+            if (!pendingFormationStudents?.length) return;
+            setFormationConfirmError(null);
+            setFormationConfirmLoading(true);
+            try {
+              const result = await formGroupsFromStudents(pendingFormationStudents);
+              if (!result.success) {
+                const msg = result.error || 'Failed to form groups';
+                setFormationConfirmError(msg);
+                throw new Error(msg);
+              }
+              await syncWithDatabase();
+              setPendingFormationStudents(null);
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : 'Failed to form groups';
+              setFormationConfirmError(msg);
+              throw e;
+            } finally {
+              setFormationConfirmLoading(false);
+            }
+          }}
+          title="Form groups with ASP algorithm?"
+          message={
+            pendingFormationStudents?.length
+              ? `You are about to form groups for ${selectedDepartment} from ${pendingFormationStudents.length} student record(s). The server will replace existing groups for this department and run the ASP-style formation (balanced HIGH / MEDIUM / LOW GPA tiers using current thresholds). Continue?`
+              : ''
+          }
+          confirmText="Form groups"
+          cancelText="Cancel"
+          type="info"
+          loading={formationConfirmLoading}
+          loadingText="Forming groups..."
+          error={formationConfirmError || undefined}
         />
 
         {/* Clear Confirmation Modal */}

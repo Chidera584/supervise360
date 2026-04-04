@@ -44,6 +44,9 @@ export function SupervisorAssignment() {
   const [swapping, setSwapping] = useState(false);
   const [clearAllModal, setClearAllModal] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [showAssignConfirm, setShowAssignConfirm] = useState(false);
+  const [assignConfirmKind, setAssignConfirmKind] = useState<'upload' | 'existing' | null>(null);
+  const [assignConfirmError, setAssignConfirmError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'workload' | 'groups' | 'upload'>('workload');
   const [groupsSearch, setGroupsSearch] = useState('');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -203,43 +206,17 @@ export function SupervisorAssignment() {
     }
   };
 
-  const handleAutoAssignSupervisors = async () => {
+  const openAssignConfirmFromUpload = () => {
     if (uploadedSupervisors.length === 0) {
       alert('Please upload supervisor data first');
       return;
     }
-
-    setAssigning(true);
-    
-    try {
-      // First upload the supervisors to database
-      const uploadResponse = await apiClient.uploadSupervisors(uploadedSupervisors);
-      if (!uploadResponse.success) {
-        throw new Error(uploadResponse.message || 'Failed to upload supervisors');
-      }
-
-      // Then auto-assign supervisors to groups
-      const assignResponse = await apiClient.autoAssignSupervisors();
-      if (!assignResponse.success) {
-        throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
-      }
-
-      // Sync workload counters from actual project_groups (fixes 0 groups display)
-      await apiClient.syncSupervisorWorkload();
-      await loadSupervisorWorkload();
-      await syncWithDatabase();
-      
-      setUploadedSupervisors([]);
-      setAssigning(false);
-    } catch (error) {
-      console.error('Error in auto-assignment:', error);
-      alert(error instanceof Error ? error.message : 'Failed to assign supervisors');
-      setAssigning(false);
-    }
+    setAssignConfirmError(null);
+    setAssignConfirmKind('upload');
+    setShowAssignConfirm(true);
   };
 
-  /** Auto-assign using existing supervisors in the system (no upload needed) - for when groups were reformed but supervisors already exist */
-  const handleAutoAssignFromExisting = async () => {
+  const openAssignConfirmFromExisting = () => {
     if (supervisors.length === 0) {
       alert('No supervisors in the system. Upload supervisor CSV in the Upload & Assign tab first.');
       return;
@@ -248,6 +225,46 @@ export function SupervisorAssignment() {
       alert('No groups awaiting assignment. All groups are already assigned.');
       return;
     }
+    setAssignConfirmError(null);
+    setAssignConfirmKind('existing');
+    setShowAssignConfirm(true);
+  };
+
+  const performAutoAssignSupervisors = async () => {
+    if (uploadedSupervisors.length === 0) {
+      setAssignConfirmError('No supervisor data to upload.');
+      throw new Error('No supervisor data');
+    }
+    setAssignConfirmError(null);
+    setAssigning(true);
+    try {
+      const uploadResponse = await apiClient.uploadSupervisors(uploadedSupervisors);
+      if (!uploadResponse.success) {
+        throw new Error(uploadResponse.message || 'Failed to upload supervisors');
+      }
+
+      const assignResponse = await apiClient.autoAssignSupervisors();
+      if (!assignResponse.success) {
+        throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
+      }
+
+      await apiClient.syncSupervisorWorkload();
+      await loadSupervisorWorkload();
+      await syncWithDatabase();
+
+      setUploadedSupervisors([]);
+    } catch (error) {
+      console.error('Error in auto-assignment:', error);
+      const msg = error instanceof Error ? error.message : 'Failed to assign supervisors';
+      setAssignConfirmError(msg);
+      throw error;
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const performAutoAssignFromExisting = async () => {
+    setAssignConfirmError(null);
     setAssigning(true);
     try {
       const assignResponse = await apiClient.autoAssignSupervisors();
@@ -257,10 +274,12 @@ export function SupervisorAssignment() {
       await apiClient.syncSupervisorWorkload();
       await loadSupervisorWorkload();
       await syncWithDatabase();
-      setAssigning(false);
     } catch (error) {
       console.error('Error in auto-assignment:', error);
-      alert(error instanceof Error ? error.message : 'Failed to assign supervisors');
+      const msg = error instanceof Error ? error.message : 'Failed to assign supervisors';
+      setAssignConfirmError(msg);
+      throw error;
+    } finally {
       setAssigning(false);
     }
   };
@@ -602,7 +621,7 @@ export function SupervisorAssignment() {
               )}
             </div>
             {departmentSupervisors.length > 0 && unassignedGroups.length > 0 && (
-              <Button onClick={handleAutoAssignFromExisting} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
+              <Button onClick={openAssignConfirmFromExisting} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
                 {assigning ? (
                   <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
                 ) : (
@@ -776,7 +795,7 @@ export function SupervisorAssignment() {
             <Card className="border border-slate-200 p-6 flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">Uploaded Supervisors ({uploadedSupervisors.length})</h3>
-                <Button onClick={handleAutoAssignSupervisors} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
+                <Button onClick={openAssignConfirmFromUpload} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
                   {assigning ? (
                     <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
                   ) : (
@@ -843,6 +862,37 @@ export function SupervisorAssignment() {
             </div>
           </div>
         )}
+
+        <ConfirmationModal
+          isOpen={showAssignConfirm}
+          onClose={() => {
+            if (assigning) return;
+            setShowAssignConfirm(false);
+            setAssignConfirmKind(null);
+            setAssignConfirmError(null);
+          }}
+          onConfirm={async () => {
+            if (assignConfirmKind === 'upload') {
+              await performAutoAssignSupervisors();
+            } else if (assignConfirmKind === 'existing') {
+              await performAutoAssignFromExisting();
+            }
+          }}
+          title="Run automatic supervisor assignment?"
+          message={
+            assignConfirmKind === 'upload'
+              ? `This will save ${uploadedSupervisors.length} supervisor record(s) to the database, then assign supervisors to every group that does not have one yet. Assignment uses the workload-balancing algorithm (same department only; spreads groups across supervisors). Continue?`
+              : assignConfirmKind === 'existing'
+                ? 'This will assign supervisors to every group in the system that does not have one yet, using supervisors already in the database and the same workload-balancing rules. Continue?'
+                : ''
+          }
+          confirmText="Assign supervisors"
+          cancelText="Cancel"
+          type="info"
+          loading={assigning}
+          loadingText="Assigning..."
+          error={assignConfirmError || undefined}
+        />
 
         {/* Clear All Confirmation */}
         <ConfirmationModal
