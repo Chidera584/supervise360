@@ -25,17 +25,10 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeGroups = async () => {
       try {
-        console.log('🚀 GroupsContext initializing...');
-        
-        // Clear any stale localStorage data first
-        console.log('🧹 Clearing stale localStorage data...');
         localStorage.removeItem(GROUPS_STORAGE_KEY);
         localStorage.removeItem(GROUPS_STORAGE_KEY + '_backup');
-        
-        // Don't immediately sync with database - let components request it
-        console.log('✅ GroupsContext initialized (no immediate sync)');
       } catch (error) {
-        console.error('❌ Failed to initialize GroupsContext:', error);
+        console.error('Failed to initialize GroupsContext:', error);
         // Only load from localStorage if database sync fails
         loadGroupsFromStorage();
       }
@@ -56,7 +49,6 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         try {
           const backup = JSON.parse(backupData);
           savedGroups = JSON.stringify(backup.groups);
-          console.log('Restored groups from backup:', backup.groups.length, 'groups');
         } catch (error) {
           console.error('Error loading backup groups:', error);
         }
@@ -67,7 +59,6 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       try {
         const parsedGroups = JSON.parse(savedGroups);
         setGroupsState(parsedGroups);
-        console.log('Loaded groups from storage:', parsedGroups.length, 'groups');
       } catch (error) {
         console.error('Error loading saved groups:', error);
       }
@@ -77,15 +68,11 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   // Sync with database
   const syncWithDatabase = useCallback(async () => {
     try {
-      console.log('🔄 Syncing with database...');
       const response = await apiClient.getGroups();
-      console.log('📥 Database sync response:', response);
-      
+
       if (response.success && response.data) {
         // The backend now returns proper member objects with tier information
         const dbGroups = response.data.map((dbGroup: any) => {
-          console.log('🔍 Processing database group:', dbGroup);
-          
           // Parse members if it's a string (legacy format)
           let members = [];
           if (typeof dbGroup.members === 'string') {
@@ -130,12 +117,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
             avgGpa: avgGpa
           };
         });
-        
-        console.log('✅ Parsed database groups:', dbGroups.length, 'groups');
-        if (dbGroups.length > 0) {
-          console.log('📊 Sample group:', dbGroups[0]);
-        }
-        
+
         // CLIENT-SIDE SORTING: By department, then group number (1, 2, 3... n)
         // Handles "Group 1" and "Department - Group 1" formats
         const extractGroupNum = (name: string): number => {
@@ -148,28 +130,23 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
           if (deptA !== deptB) return deptA.localeCompare(deptB);
           return extractGroupNum(a.name) - extractGroupNum(b.name);
         });
-        
-        console.log('🔄 Applied client-side sorting for group order');
-        
+
         // Update state with sorted groups
         setGroupsState(sortedGroups);
-        
+
         // Also update localStorage for offline access
         localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(sortedGroups));
-        console.log('💾 Saved to localStorage');
-        
+
         return dbGroups;
       } else {
-        console.log('⚠️ No groups data in response or request failed');
         // If database has no data, clear localStorage too and set empty state
         setGroupsState([]);
         localStorage.removeItem(GROUPS_STORAGE_KEY);
         localStorage.removeItem(GROUPS_STORAGE_KEY + '_backup');
-        console.log('🧹 Cleared localStorage - no groups in database');
         return [];
       }
     } catch (error) {
-      console.error('❌ Failed to sync with database:', error);
+      console.error('Failed to sync with database:', error);
       // Re-throw error so the calling function can handle fallback
       throw error;
     }
@@ -177,11 +154,8 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
 
   // Save groups to localStorage whenever groups change
   useEffect(() => {
-    console.log('📊 Groups state changed:', groups.length, 'groups');
-    console.log('📋 Current groups:', groups);
     localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups));
-    console.log('💾 Saved groups to storage:', groups.length, 'groups');
-    
+
     // Also save to a backup key as additional protection
     localStorage.setItem(GROUPS_STORAGE_KEY + '_backup', JSON.stringify({
       groups,
@@ -191,12 +165,10 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   }, [groups]);
 
   const setGroups = (newGroups: Group[]) => {
-    console.log('Setting groups:', newGroups.length, 'groups');
     setGroupsState(newGroups);
   };
 
   const addGroups = useCallback((newGroups: Group[]) => {
-    console.log('Adding groups:', newGroups.length, 'new groups');
     setGroupsState(prevGroups => {
       // Assign new IDs to avoid conflicts
       const maxId = prevGroups.length > 0 ? Math.max(...prevGroups.map(g => g.id)) : 0;
@@ -209,14 +181,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearGroups = useCallback(async () => {
-    console.log('Clearing groups for current department - this action was initiated by admin');
-    
     try {
       // Clear from database first - this will clear all groups (backend handles department filtering)
-      const response = await apiClient.clearGroups();
-      if (response.success) {
-        console.log('Groups cleared from database');
-      }
+      await apiClient.clearGroups();
     } catch (error) {
       console.error('Failed to clear groups from database:', error);
     }
@@ -234,7 +201,6 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   }, [syncWithDatabase]);
 
   const updateGroup = (groupId: number, updates: Partial<Group>) => {
-    console.log('Updating group:', groupId, 'with updates:', updates);
     setGroupsState(prevGroups =>
       prevGroups.map(group =>
         group.id === groupId ? { ...group, ...updates } : group
@@ -244,19 +210,14 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
 
   const formGroupsFromStudents = useCallback(async (students: any[]): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log('🔍 formGroupsFromStudents called with:', students.length, 'students');
-      console.log('📊 Student data sample:', students[0]);
-      
       // Extract department from first student (all should have same department)
       const department = students[0]?.department;
-      
-      console.log('🚀 Making API call to formGroups with department:', department);
+
       const response = await apiClient.formGroups(students, department);
-      console.log('📥 API response:', response);
-      
+
       // Check if the response indicates an HTTP error
       if (!response.success) {
-        console.error('❌ API returned error response:', response);
+        console.error('API returned error response:', response);
         
         // Check for specific error patterns
         if (response.message && response.message.includes('500')) {
@@ -271,12 +232,8 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       }
       
       if (response.success && response.data && response.data.groups) {
-        console.log('✅ API call successful, processing', response.data.groups.length, 'groups');
-        
         // Convert API response to frontend format
         const newGroups = response.data.groups.map((group: any) => {
-          console.log('🔍 Processing API group:', group);
-          
           // Ensure members is an array
           let members = [];
           if (Array.isArray(group.members)) {
@@ -303,7 +260,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
               return { name: memberStr, gpa: 0, tier: 'LOW', matricNumber: 'N/A' };
             });
           } else {
-            console.warn('⚠️ Group members is not an array or string:', group.members);
+            console.warn('Group members is not an array or string:', group.members);
           }
           
           return {
@@ -316,9 +273,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
             avgGpa: group.avgGpa || group.avg_gpa // Handle both property names
           };
         });
-        
-        console.log('🔄 Converted groups:', newGroups);
-        
+
         // Add to existing groups
         addGroups(newGroups);
         
@@ -327,11 +282,11 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         
         return { success: true };
       } else {
-        console.error('❌ API call failed - invalid response structure:', response);
+        console.error('API call failed - invalid response structure:', response);
         return { success: false, error: 'Invalid response from server - no groups data received' };
       }
     } catch (error) {
-      console.error('❌ Exception in formGroupsFromStudents:', error);
+      console.error('Exception in formGroupsFromStudents:', error);
       
       // Handle different types of errors
       if (error instanceof TypeError && error.message.includes('fetch')) {
@@ -347,8 +302,6 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   // Force refresh function that clears cache and syncs with database
   const forceRefresh = useCallback(async () => {
     try {
-      console.log('🔄 Force refreshing groups data...');
-      
       // Clear localStorage cache
       localStorage.removeItem(GROUPS_STORAGE_KEY);
       localStorage.removeItem(GROUPS_STORAGE_KEY + '_backup');
@@ -358,10 +311,8 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       
       // Force sync with database
       await syncWithDatabase();
-      
-      console.log('✅ Force refresh completed');
     } catch (error) {
-      console.error('❌ Force refresh failed:', error);
+      console.error('Force refresh failed:', error);
       throw error;
     }
   }, [syncWithDatabase]);

@@ -3,8 +3,6 @@ import type { LoginRequest, RegisterRequest, AuthResponse, ApiResponse } from '.
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '') || 'http://localhost:5000';
 
-console.log('API Base URL:', API_BASE_URL); // Debug log
-
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
@@ -31,7 +29,6 @@ class ApiClient {
     };
 
     try {
-      console.log('Making API request to:', url);
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -51,7 +48,6 @@ class ApiClient {
       }
 
       const data = await response.json();
-      console.log('API Response:', data);
       return data;
     } catch (error) {
       console.error('API request failed:', error);
@@ -74,17 +70,13 @@ class ApiClient {
 
   // Auth endpoints
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    console.log('Attempting login with:', credentials.email);
     const response = await this.request<AuthResponse['data']>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
 
-    console.log('Login response received:', response);
-
     if (response.success && response.data?.token) {
       this.setToken(response.data.token);
-      console.log('Token set successfully');
     }
 
     return response as AuthResponse;

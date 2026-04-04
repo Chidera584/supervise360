@@ -4,8 +4,6 @@ import { useDepartment } from '../../contexts/DepartmentContext';
 import { apiClient } from '../../lib/api';
 import {
   Building2,
-  Users,
-  UserCheck,
   Plus,
   Trash2,
   Pencil,
@@ -418,10 +416,7 @@ export function Departments() {
           )}
         </div>
 
-        {/* Legacy quick actions — compact row */}
-
-        {/* Info callouts */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="max-w-2xl">
           <div
             className="rounded-xl border p-5 flex gap-4"
             style={{ backgroundColor: `${TEAL}08`, borderColor: `${TEAL}2a` }}
@@ -433,22 +428,10 @@ export function Departments() {
               <Shield className="w-5 h-5" strokeWidth={1.75} />
             </div>
             <div>
-              <h3 className="font-semibold text-[#1a1a1a]">Governance protocol</h3>
+              <h3 className="font-semibold text-[#1a1a1a]">Deleting departments</h3>
               <p className="text-sm text-[#4A4A4A] mt-1 leading-relaxed">
-                Departments with active students, supervisors, or groups cannot be deleted until those records are moved
-                or reassigned—protecting academic continuity.
-              </p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-5 flex gap-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white text-amber-700 shadow-sm">
-              <UserCheck className="w-5 h-5" strokeWidth={1.75} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-[#1a1a1a]">Smart assignments</h3>
-              <p className="text-sm text-[#4A4A4A] mt-1 leading-relaxed">
-                Unassigned counts highlight cohorts still awaiting a supervisor. Use Supervisor Assignment to balance
-                load and clear backlogs quickly.
+                You can only delete a department when it has no students, supervisors, or groups. Move or reassign those
+                records first.
               </p>
             </div>
           </div>

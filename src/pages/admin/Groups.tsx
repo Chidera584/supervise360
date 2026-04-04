@@ -30,16 +30,6 @@ export function Groups() {
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  console.log('🔍 Groups component rendering with full functionality...');
-  console.log('📊 Current GPA thresholds:', thresholds);
-  console.log('📊 Thresholds breakdown:', {
-    high: thresholds.high,
-    medium: thresholds.medium,
-    low: thresholds.low,
-    loading: thresholdsLoading,
-    department: selectedDepartment
-  });
-
   // Check if thresholds have changed and listen for updates
   useEffect(() => {
     const checkThresholdsChanged = () => {
@@ -54,7 +44,6 @@ export function Groups() {
 
     // Listen for threshold change events - FORCE IMMEDIATE REFETCH
     const handleThresholdChange = () => {
-      console.log('🔄 Groups page: Thresholds changed, FORCING immediate refetch...');
       checkThresholdsChanged();
       // Force immediate refetch - no delays
       setTimeout(() => {
@@ -130,11 +119,9 @@ export function Groups() {
       try {
         setIsLoading(true);
         setError(null);
-        console.log('🔄 Loading groups from database...');
         await syncWithDatabase();
-        console.log('✅ Groups loaded successfully');
       } catch (err) {
-        console.error('❌ Failed to load groups:', err);
+        console.error('Failed to load groups:', err);
         setError('Failed to load groups data');
       } finally {
         setIsLoading(false);
@@ -143,15 +130,6 @@ export function Groups() {
 
     loadGroups();
   }, [syncWithDatabase]);
-
-  // Debug: Log groups data structure
-  useEffect(() => {
-    console.log('📊 Current groups data:', groups);
-    if (departmentGroups.length > 0) {
-      console.log('📋 Sample group structure:', groups[0]);
-      console.log('👥 Sample group members:', groups[0].members);
-    }
-  }, [groups]);
 
   const filteredGroups = searchQuery.trim()
     ? departmentGroups.filter((group) => {
@@ -512,28 +490,16 @@ export function Groups() {
                 department: selectedDepartment
               }));
 
-              // Form groups using ASP algorithm
-              console.log('🔄 Calling formGroupsFromStudents with:', studentsWithDepartment.length, 'students');
               const result = await formGroupsFromStudents(studentsWithDepartment);
-              console.log('📥 formGroupsFromStudents result:', result);
-              
+
               if (result.success) {
-                console.log('✅ Group formation successful, refreshing data...');
-                // Refresh to show new groups
                 await syncWithDatabase();
-                console.log('✅ Data refresh completed');
               } else {
-                console.error('❌ Group formation failed:', result.error);
+                console.error('Group formation failed:', result.error);
                 setError(result.error || 'Failed to form groups');
               }
             } catch (err) {
-              console.error('❌ File upload error:', err);
-              console.error('❌ Error details:', {
-                message: err instanceof Error ? err.message : 'Unknown error',
-                stack: err instanceof Error ? err.stack : undefined,
-                type: typeof err,
-                err
-              });
+              console.error('File upload error:', err);
               
               // Check if it's a specific HTTP error
               if (err instanceof Error) {

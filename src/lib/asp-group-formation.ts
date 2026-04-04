@@ -78,14 +78,7 @@ export function processStudentData(
     throw new Error('No student data provided');
   }
 
-  console.log('Raw data received:', rawData);
-  console.log('Number of rows:', rawData.length);
-
   return rawData.map((student, index) => {
-    console.log(`Processing row ${index + 2}:`, student);
-    console.log('Available keys:', Object.keys(student));
-    console.log('Values:', Object.values(student));
-    
     // Try different possible column names for name (case insensitive)
     const nameKey = Object.keys(student).find(key => 
       key.toLowerCase().includes('name') || 
@@ -112,11 +105,7 @@ export function processStudentData(
     );
     
     const matricNumber = matricKey ? student[matricKey] : null;
-    
-    console.log(`Found name key: "${nameKey}" with value: "${name}"`);
-    console.log(`Found GPA key: "${gpaKey}" with value: "${gpaValue}"`);
-    console.log(`Found matric key: "${matricKey}" with value: "${matricNumber}"`);
-    
+
     if (!name || name.toString().trim() === '') {
       console.error(`Row ${index + 2} data:`, student);
       throw new Error(`Student at row ${index + 2} is missing a name. Found keys: [${Object.keys(student).join(', ')}]. Name key found: "${nameKey}", value: "${name}"`);
@@ -146,8 +135,7 @@ export function processStudentData(
       tier,
       department: student.department || student.Department || student.DEPARTMENT || 'Software Engineering'
     };
-    
-    console.log(`Processed student:`, result);
+
     return result;
   });
 }
@@ -164,8 +152,6 @@ export function formGroupsUsingASP(students: Student[]): Group[] {
   const lowTier = students.filter(s => s.tier === 'LOW');
   const noGpaTier = students.filter(s => !s.tier);
 
-  console.log(`Student distribution - HIGH: ${highTier.length}, MEDIUM: ${mediumTier.length}, LOW: ${lowTier.length}, NO GPA: ${noGpaTier.length}`);
-
   // Sort students by GPA within each tier for optimal distribution (handle undefined GPA)
   highTier.sort((a, b) => (b.gpa || 0) - (a.gpa || 0));
   mediumTier.sort((a, b) => (b.gpa || 0) - (a.gpa || 0));
@@ -176,8 +162,6 @@ export function formGroupsUsingASP(students: Student[]): Group[] {
   const groups: Group[] = [];
   let groupCounter = 0;
 
-  // Create a pool of all students for flexible assignment
-  const studentPool = [...students].sort((a, b) => (b.gpa || 0) - (a.gpa || 0));
   const usedStudents = new Set<string>();
 
   // Strategy 1: Form ideal groups (1 HIGH, 1 MEDIUM, 1 LOW) first if we have GPA data
@@ -210,7 +194,6 @@ export function formGroupsUsingASP(students: Student[]): Group[] {
 
   // Strategy 2: Form additional groups with remaining students
   const remainingStudents = students.filter(student => !usedStudents.has(student.name));
-  console.log(`Remaining students after ideal groups: ${remainingStudents.length}`);
 
   // Form groups of 3 with remaining students, trying to balance tiers when possible
   while (remainingStudents.length >= 3) {
@@ -220,8 +203,7 @@ export function formGroupsUsingASP(students: Student[]): Group[] {
     const remainingHigh = remainingStudents.filter(s => s.tier === 'HIGH');
     const remainingMedium = remainingStudents.filter(s => s.tier === 'MEDIUM');
     const remainingLow = remainingStudents.filter(s => s.tier === 'LOW');
-    const remainingNoGpa = remainingStudents.filter(s => !s.tier);
-    
+
     // Add one from each tier if available
     if (remainingHigh.length > 0) {
       groupMembers.push(remainingHigh[0]);
@@ -264,10 +246,6 @@ export function formGroupsUsingASP(students: Student[]): Group[] {
     }
   }
 
-  console.log(`Formed ${groups.length} groups from ${students.length} students`);
-  console.log(`Students placed in groups: ${groups.length * 3}`);
-  console.log(`Students not placed: ${students.length - (groups.length * 3)}`);
-
   if (groups.length === 0) {
     throw new Error('Could not form any groups with the provided students');
   }
@@ -282,7 +260,7 @@ export function validateGroupFormation(groups: Group[]): {
 } {
   const violations: string[] = [];
 
-  groups.forEach((group, index) => {
+  groups.forEach((group) => {
     // Check if group has exactly 3 members
     if (group.members.length !== 3) {
       violations.push(`Group ${group.name}: Must have exactly 3 members`);

@@ -5,8 +5,6 @@ export interface ParsedCSVData {
 }
 
 export function parseCSV(csvText: string): ParsedCSVData {
-  console.log('Raw CSV text:', csvText);
-  
   // Try different delimiters
   const delimiters = [',', ';', '\t', '|'];
   let bestDelimiter = ',';
@@ -23,11 +21,8 @@ export function parseCSV(csvText: string): ParsedCSVData {
       }
     }
   }
-  
-  console.log('Best delimiter found:', bestDelimiter, 'with', maxColumns, 'columns');
-  
+
   const lines = csvText.split(/\r?\n/).filter(line => line.trim());
-  console.log('Lines after splitting:', lines);
   
   if (lines.length === 0) {
     throw new Error('CSV file is empty');
@@ -35,10 +30,8 @@ export function parseCSV(csvText: string): ParsedCSVData {
 
   // Parse headers using the best delimiter
   const headerLine = lines[0];
-  console.log('Header line:', headerLine);
-  
+
   const headers = parseCSVLine(headerLine, bestDelimiter).map(h => h.trim());
-  console.log('Parsed headers:', headers);
   
   if (headers.length === 0) {
     throw new Error('CSV headers are missing');
@@ -53,26 +46,21 @@ export function parseCSV(csvText: string): ParsedCSVData {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue; // Skip empty lines
-    
-    console.log(`Processing line ${i + 1}:`, line);
-    
+
     const values = parseCSVLine(line, bestDelimiter);
-    console.log(`Parsed values:`, values);
-    
+
     // Only process rows that have the same number of columns as headers
     if (values.length === headers.length) {
       const row: any = {};
       headers.forEach((header, index) => {
         row[header] = values[index] ? values[index].trim() : '';
       });
-      console.log(`Created row object:`, row);
       rows.push(row);
     } else {
       console.warn(`Skipping line ${i + 1} - column count mismatch. Expected ${headers.length}, got ${values.length}`);
     }
   }
 
-  console.log('Final parsed data:', { headers, rows });
   return { headers, rows };
 }
 
