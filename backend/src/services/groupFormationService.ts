@@ -198,8 +198,8 @@ export class GroupFormationService {
     });
   }
 
-  // ASP-based group formation algorithm with flexible fallback strategies
-  // CRITICAL: No student is ever excluded. Leftover 2 → H+M or H+L only. Leftover 1 → HIGH tier only (rebalance if needed).
+  // Group formation: try Potassco Clingo (ASP) first; else heuristic below.
+  // CRITICAL (heuristic path): No student is ever excluded. 2-member groups → H+M only; 1-member → HIGH only (rebalance as needed).
   async formGroupsUsingASP(students: StudentData[], department?: string): Promise<GroupData[]> {
     console.log('🔍 ASP Group Formation - Input students:', students.length);
     
