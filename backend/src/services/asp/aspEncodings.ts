@@ -55,9 +55,18 @@ export async function tryGroupFormationWithClingo(
     '% 1-member groups: HIGH only',
     ':- cnt(G,1), in_group(S,G), not tier_h(S).',
     '',
-    '% Prefer as many ideal 3-member H+M+L groups as possible',
+    '% Optimize quality with lexicographic priorities',
+    '% 1) maximize ideal H+M+L groups',
     'ideal(G) :- cnt(G,3), h_in(G,1), m_in(G,1), l_in(G,1).',
-    '#maximize { 1,G : ideal(G) }.',
+    '#maximize { 1@4,G : ideal(G) }.',
+    '% 2) maximize number of 3-member groups (prefer full trios)',
+    'trio(G) :- cnt(G,3).',
+    '#maximize { 1@3,G : trio(G) }.',
+    '% 3) minimize number of 1-member groups (still allowed only for HIGH)',
+    'solo(G) :- cnt(G,1).',
+    '#minimize { 1@2,G : solo(G) }.',
+    '% 4) deterministic tie-break: prefer lower group labels for lower student ids',
+    '#minimize { S*1000+G@1 : in_group(S,G) }.',
     '',
     '#show in_group/2.',
   ];
@@ -101,7 +110,12 @@ export async function tryGroupFormationWithClingo(
   for (const gid of usedGroupIds) {
     const memberIdxs = (byGroup.get(gid) ?? []).sort((a, b) => a - b);
     const members = memberIdxs.map((i) => students[i - 1]);
-    members.sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
+    members.sort((a, b) => {
+      const byTier = tierOrder[a.tier] - tierOrder[b.tier];
+      if (byTier !== 0) return byTier;
+      if (b.gpa !== a.gpa) return b.gpa - a.gpa;
+      return a.name.localeCompare(b.name);
+    });
     const avg = parseFloat(
       (members.reduce((sum, m) => sum + m.gpa, 0) / Math.max(1, members.length)).toFixed(2)
     );
@@ -182,7 +196,12 @@ export async function trySupervisorAssignmentWithClingo(
     `gen(M) :- M = 0..${maxBound}.`,
     '{ maxb(M) : gen(M) } 1.',
     ':- supervisor(S), tot(S,T), maxb(M), T > M.',
-    '#minimize { M@0 : maxb(M) }.',
+    '#minimize { M@3 : maxb(M) }.',
+    '% Secondary objective: minimize overload above current load',
+    'over(S,O) :- supervisor(S), base(S,B), tot(S,T), O = T - B.',
+    '#minimize { O@2,S : over(S,O) }.',
+    '% Tertiary objective: deterministic tie-break by supervisor index',
+    '#minimize { S@1,G : assign(G,S) }.',
     '',
     '#show assign/2.'
   );

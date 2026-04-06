@@ -8,10 +8,37 @@ const execFileAsync = promisify(execFile);
 
 export type ClingoAtom = { name: string; args: string[] };
 
-function resolveClingoExecutable(): string {
+type ClingoInvocation = { exe: string; argsPrefix: string[]; label: string };
+
+function deriveCondaPythonFromClingoPath(clingoPath: string): string | null {
+  const normalized = path.normalize(clingoPath);
+  const suffix = `${path.sep}Library${path.sep}bin${path.sep}clingo.exe`;
+  if (!normalized.toLowerCase().endsWith(suffix.toLowerCase())) return null;
+  const envRoot = normalized.slice(0, normalized.length - suffix.length);
+  const py = path.join(envRoot, 'python.exe');
+  return fs.existsSync(py) ? py : null;
+}
+
+function resolveClingoInvocations(): ClingoInvocation[] {
+  const out: ClingoInvocation[] = [];
   const fromEnv = process.env.CLINGO_PATH?.trim();
-  if (fromEnv) return fromEnv;
-  return 'clingo';
+  if (fromEnv) {
+    out.push({ exe: fromEnv, argsPrefix: [], label: 'CLINGO_PATH executable' });
+    const condaPy = deriveCondaPythonFromClingoPath(fromEnv);
+    if (condaPy) {
+      out.push({
+        exe: condaPy,
+        argsPrefix: ['-m', 'clingo'],
+        label: 'derived conda python -m clingo',
+      });
+    }
+  }
+  const pyFromEnv = process.env.CLINGO_PYTHON_PATH?.trim();
+  if (pyFromEnv) {
+    out.push({ exe: pyFromEnv, argsPrefix: ['-m', 'clingo'], label: 'CLINGO_PYTHON_PATH -m clingo' });
+  }
+  out.push({ exe: 'clingo', argsPrefix: [], label: 'clingo on PATH' });
+  return out;
 }
 
 /**
@@ -76,47 +103,55 @@ export async function runClingoProgram(
   options?: { timeoutMs?: number; extraArgs?: string[] }
 ): Promise<ClingoRunResult> {
   const timeoutMs = options?.timeoutMs ?? 60_000;
-  const exe = resolveClingoExecutable();
+  const invocations = resolveClingoInvocations();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'supervise360-asp-'));
   const lpPath = path.join(dir, 'program.lp');
   try {
     fs.writeFileSync(lpPath, program, 'utf8');
-    const args = [
-      '--quiet=1',
-      '--opt-mode=opt',
-      '-n',
-      '1',
-      ...(options?.extraArgs ?? []),
-      lpPath,
-      '0',
-    ];
-    const { stdout, stderr } = await execFileAsync(exe, args, {
-      timeout: timeoutMs,
-      maxBuffer: 20 * 1024 * 1024,
-      windowsHide: true,
-    });
-    const out = `${stdout}\n${stderr}`;
-    const sat = /Answer:\s*\d+/i.test(stdout) && !/UNSATISFIABLE/i.test(stdout);
-    const atoms = sat ? parseAnswerSet(stdout) : [];
-    return { ok: true, sat, stdout, stderr: stderr || '', atoms };
+
+    let lastFailure = '';
+    for (const inv of invocations) {
+      const args = [
+        ...inv.argsPrefix,
+        '--quiet=1',
+        '--opt-mode=opt',
+        '-n',
+        '1',
+        ...(options?.extraArgs ?? []),
+        lpPath,
+        '0',
+      ];
+      try {
+        const { stdout, stderr } = await execFileAsync(inv.exe, args, {
+          timeout: timeoutMs,
+          maxBuffer: 20 * 1024 * 1024,
+          windowsHide: true,
+        });
+        const sat = /Answer:\s*\d+/i.test(stdout) && !/UNSATISFIABLE/i.test(stdout);
+        const atoms = sat ? parseAnswerSet(stdout) : [];
+        if (sat) console.log(`✅ [ASP] Solver used: ${inv.label}`);
+        return { ok: true, sat, stdout, stderr: stderr || '', atoms };
+      } catch (e: unknown) {
+        const err = e as NodeJS.ErrnoException & { stdout?: string; stderr?: string; status?: number };
+        const stdout = typeof err.stdout === 'string' ? err.stdout : '';
+        const stderr = typeof err.stderr === 'string' ? err.stderr : '';
+        const combined = `${stdout}\n${stderr}`;
+        if (/UNSATISFIABLE/i.test(combined)) {
+          return { ok: true, sat: false, stdout, stderr, atoms: [] };
+        }
+        lastFailure = `${inv.label} failed (${err.code || err.status || 'error'}): ${stderr || String(e)}`;
+      }
+    }
+
+    return {
+      ok: false,
+      sat: false,
+      stdout: '',
+      stderr: lastFailure || 'No clingo invocation succeeded',
+      atoms: [],
+    };
   } catch (e: unknown) {
-    const err = e as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
-    const stdout = typeof err.stdout === 'string' ? err.stdout : '';
-    const stderr = typeof err.stderr === 'string' ? err.stderr : '';
-    const combined = `${stdout}\n${stderr}`;
-    if (err.code === 'ENOENT') {
-      return {
-        ok: false,
-        sat: false,
-        stdout,
-        stderr: stderr || String(e),
-        atoms: [],
-      };
-    }
-    if (/UNSATISFIABLE/i.test(combined)) {
-      return { ok: true, sat: false, stdout, stderr, atoms: [] };
-    }
-    throw e;
+    return { ok: false, sat: false, stdout: '', stderr: String(e), atoms: [] };
   } finally {
     try {
       fs.unlinkSync(lpPath);
@@ -128,7 +163,10 @@ export async function runClingoProgram(
 }
 
 export function clingoConfiguredMessage(): string {
-  return process.env.CLINGO_PATH
-    ? `CLINGO_PATH=${process.env.CLINGO_PATH}`
-    : 'clingo on PATH (set CLINGO_PATH to a full path to clingo.exe if needed)';
+  const hasPath = process.env.CLINGO_PATH && process.env.CLINGO_PATH.trim().length > 0;
+  const hasPy = process.env.CLINGO_PYTHON_PATH && process.env.CLINGO_PYTHON_PATH.trim().length > 0;
+  if (hasPath || hasPy) {
+    return `CLINGO_PATH=${process.env.CLINGO_PATH || '(not set)'}, CLINGO_PYTHON_PATH=${process.env.CLINGO_PYTHON_PATH || '(not set)'}`;
+  }
+  return 'clingo on PATH (or set CLINGO_PATH / CLINGO_PYTHON_PATH)';
 }
