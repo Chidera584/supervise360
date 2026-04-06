@@ -195,8 +195,9 @@ class ApiClient {
     });
   }
 
-  async clearGroups(): Promise<ApiResponse> {
-    return this.request('/groups/clear', {
+  async clearGroups(department?: string): Promise<ApiResponse> {
+    const q = department ? `?department=${encodeURIComponent(department)}` : '';
+    return this.request(`/groups/clear${q}`, {
       method: 'DELETE',
     });
   }
@@ -217,9 +218,10 @@ class ApiClient {
     });
   }
 
-  async autoAssignSupervisors(): Promise<ApiResponse> {
+  async autoAssignSupervisors(department?: string): Promise<ApiResponse> {
     return this.request('/supervisors/auto-assign', {
       method: 'POST',
+      body: JSON.stringify(department ? { department } : {}),
     });
   }
 
@@ -229,9 +231,10 @@ class ApiClient {
     });
   }
 
-  async clearAllSupervisors(): Promise<ApiResponse> {
+  async clearAllSupervisors(department?: string): Promise<ApiResponse> {
     return this.request('/supervisors/clear-all', {
       method: 'POST',
+      body: JSON.stringify(department ? { department } : {}),
     });
   }
 

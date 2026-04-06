@@ -6,7 +6,7 @@ interface GroupsContextType {
   groups: Group[];
   setGroups: (groups: Group[]) => void;
   addGroups: (newGroups: Group[]) => void;
-  clearGroups: () => void;
+  clearGroups: (department?: string) => void;
   updateGroup: (groupId: number, updates: Partial<Group>) => void;
   formGroupsFromStudents: (students: any[]) => Promise<{ success: boolean; error?: string }>;
   syncWithDatabase: () => Promise<void>;
@@ -180,10 +180,10 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const clearGroups = useCallback(async () => {
+  const clearGroups = useCallback(async (department?: string) => {
     try {
-      // Clear from database first - this will clear all groups (backend handles department filtering)
-      await apiClient.clearGroups();
+      // Clear from database first (department-scoped when provided)
+      await apiClient.clearGroups(department);
     } catch (error) {
       console.error('Failed to clear groups from database:', error);
     }

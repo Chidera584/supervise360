@@ -13,6 +13,7 @@ import {
   Archive,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
 
 const TEAL = '#006D6D';
 const BROWN = '#92400e';
@@ -119,6 +120,32 @@ export function ReportsAnalytics() {
 
   const donutRadius = 44;
   const donutCirc = 2 * Math.PI * donutRadius;
+  const downloadAnalyticsPdf = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Supervise360 Reports & Analytics', 14, 16);
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 24);
+    doc.text(`Total groups: ${totalGroups}`, 14, 34);
+    doc.text(`Active projects: ${projectsSubmitted}`, 14, 42);
+    doc.text(`Total reports: ${totalReports}`, 14, 50);
+    doc.text(`Reviewed reports: ${reviewedReports}`, 14, 58);
+    doc.text(`Completion: ${completionPct}%`, 14, 66);
+    doc.setFontSize(12);
+    doc.text('Supervisor workload by department', 14, 78);
+    let y = 86;
+    if (deptWorkload.length === 0) {
+      doc.setFontSize(10);
+      doc.text('No workload rows yet.', 14, y);
+    } else {
+      deptWorkload.forEach((d) => {
+        doc.setFontSize(10);
+        doc.text(`${d.name}: ${d.load} groups (${d.people} supervisors)`, 14, y);
+        y += 8;
+      });
+    }
+    doc.save(`reports_analytics_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
 
   return (
     <MainLayout
@@ -143,7 +170,7 @@ export function ReportsAnalytics() {
           <div className="flex flex-wrap gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={downloadAnalyticsPdf}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             >
               <FileDown className="w-4 h-4" strokeWidth={1.75} />

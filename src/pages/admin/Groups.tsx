@@ -26,10 +26,6 @@ export function Groups() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [showFormationConfirm, setShowFormationConfirm] = useState(false);
-  const [pendingFormationStudents, setPendingFormationStudents] = useState<any[] | null>(null);
-  const [formationConfirmLoading, setFormationConfirmLoading] = useState(false);
-  const [formationConfirmError, setFormationConfirmError] = useState<string | null>(null);
   const [showThresholdNotice, setShowThresholdNotice] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -191,38 +187,6 @@ export function Groups() {
           </Card>
         )}
 
-        {/* Step 1: Select Department - Required before upload */}
-        <Card className="border-2 border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-6">
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-2 flex items-center gap-2">
-            <Building className="w-5 h-5 text-[#1F7A8C]" />
-            Select Department
-          </h2>
-          <p className="text-sm text-slate-600 mb-4">
-            Choose the department you want to form groups and assign supervisors for. All uploaded students will be grouped under this department.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[220px]">
-              <select
-                value={selectedDepartment}
-                onChange={(e) => handleDepartmentChange(e.target.value)}
-                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
-              >
-                <option value="">Select department...</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-            </div>
-            {selectedDepartment && (
-              <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Working on: {selectedDepartment}
-              </span>
-            )}
-          </div>
-        </Card>
-
         {/* Header */}
         <Card className="border border-slate-200 p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -232,7 +196,7 @@ export function Groups() {
                 {departmentGroups.length > 0 ? (
                   <>Department: {displayDepartment} • {departmentGroups.length} groups formed</>
                 ) : selectedDepartment ? (
-                  <>Working on: {selectedDepartment} • Upload students to form groups</>
+                  <>Working on: {selectedDepartment}</>
                 ) : (
                   'Select a department above to get started'
                 )}
@@ -265,6 +229,36 @@ export function Groups() {
                 Refresh
               </Button>
             </div>
+          </div>
+        </Card>
+
+        {/* Select Department */}
+        <Card className="border border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-4">
+          <h2 className="text-base font-semibold text-[#022B3A] mb-1 flex items-center gap-2">
+            <Building className="w-4 h-4 text-[#1F7A8C]" />
+            Select Department
+          </h2>
+          <p className="text-sm text-slate-600 mb-3">Select a department.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px]">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+                className="w-full appearance-none px-3 py-2 pr-9 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
+              >
+                <option value="">Select department...</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+            {selectedDepartment && (
+              <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Working on: {selectedDepartment}
+              </span>
+            )}
           </div>
         </Card>
 
@@ -494,9 +488,14 @@ export function Groups() {
                 department: selectedDepartment
               }));
 
-              setFormationConfirmError(null);
-              setPendingFormationStudents(studentsWithDepartment);
-              setShowFormationConfirm(true);
+              const result = await formGroupsFromStudents(studentsWithDepartment);
+
+              if (result.success) {
+                await syncWithDatabase();
+              } else {
+                console.error('Group formation failed:', result.error);
+                setError(result.error || 'Failed to form groups');
+              }
             } catch (err) {
               console.error('File upload error:', err);
               
@@ -524,49 +523,6 @@ export function Groups() {
           }}
         />
 
-        <ConfirmationModal
-          isOpen={showFormationConfirm}
-          onClose={() => {
-            if (formationConfirmLoading) return;
-            setShowFormationConfirm(false);
-            setPendingFormationStudents(null);
-            setFormationConfirmError(null);
-          }}
-          onConfirm={async () => {
-            if (!pendingFormationStudents?.length) return;
-            setFormationConfirmError(null);
-            setFormationConfirmLoading(true);
-            try {
-              const result = await formGroupsFromStudents(pendingFormationStudents);
-              if (!result.success) {
-                const msg = result.error || 'Failed to form groups';
-                setFormationConfirmError(msg);
-                throw new Error(msg);
-              }
-              await syncWithDatabase();
-              setPendingFormationStudents(null);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : 'Failed to form groups';
-              setFormationConfirmError(msg);
-              throw e;
-            } finally {
-              setFormationConfirmLoading(false);
-            }
-          }}
-          title="Form groups with ASP algorithm?"
-          message={
-            pendingFormationStudents?.length
-              ? `You are about to form groups for ${selectedDepartment} from ${pendingFormationStudents.length} student record(s). The server will replace existing groups for this department and run the ASP-style formation (balanced HIGH / MEDIUM / LOW GPA tiers using current thresholds). Continue?`
-              : ''
-          }
-          confirmText="Form groups"
-          cancelText="Cancel"
-          type="info"
-          loading={formationConfirmLoading}
-          loadingText="Forming groups..."
-          error={formationConfirmError || undefined}
-        />
-
         {/* Clear Confirmation Modal */}
         <ConfirmationModal
           isOpen={showClearConfirm}
@@ -574,7 +530,7 @@ export function Groups() {
           onConfirm={async () => {
             try {
               setIsLoading(true);
-              await clearGroups();
+              await clearGroups(selectedDepartment || undefined);
               setShowClearConfirm(false);
             } catch (err) {
               setError('Failed to clear groups');
@@ -582,9 +538,11 @@ export function Groups() {
               setIsLoading(false);
             }
           }}
-          title="Clear All Groups"
-          message="Are you sure you want to clear ALL groups across ALL departments? This action cannot be undone."
-          confirmText="Clear All Groups"
+          title="Clear Groups"
+          message={selectedDepartment
+            ? `Are you sure you want to clear groups for ${selectedDepartment}?`
+            : 'Are you sure you want to clear groups?'}
+          confirmText="Clear Groups"
           cancelText="Cancel"
           type="danger"
         />

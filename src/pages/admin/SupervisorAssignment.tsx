@@ -44,9 +44,6 @@ export function SupervisorAssignment() {
   const [swapping, setSwapping] = useState(false);
   const [clearAllModal, setClearAllModal] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [showAssignConfirm, setShowAssignConfirm] = useState(false);
-  const [assignConfirmKind, setAssignConfirmKind] = useState<'upload' | 'existing' | null>(null);
-  const [assignConfirmError, setAssignConfirmError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'workload' | 'groups' | 'upload'>('workload');
   const [groupsSearch, setGroupsSearch] = useState('');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -206,17 +203,43 @@ export function SupervisorAssignment() {
     }
   };
 
-  const openAssignConfirmFromUpload = () => {
+  const handleAutoAssignSupervisors = async () => {
     if (uploadedSupervisors.length === 0) {
       alert('Please upload supervisor data first');
       return;
     }
-    setAssignConfirmError(null);
-    setAssignConfirmKind('upload');
-    setShowAssignConfirm(true);
+
+    setAssigning(true);
+    
+    try {
+      // First upload the supervisors to database
+      const uploadResponse = await apiClient.uploadSupervisors(uploadedSupervisors);
+      if (!uploadResponse.success) {
+        throw new Error(uploadResponse.message || 'Failed to upload supervisors');
+      }
+
+      // Then auto-assign supervisors to groups
+      const assignResponse = await apiClient.autoAssignSupervisors(selectedDepartment || undefined);
+      if (!assignResponse.success) {
+        throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
+      }
+
+      // Sync workload counters from actual project_groups (fixes 0 groups display)
+      await apiClient.syncSupervisorWorkload();
+      await loadSupervisorWorkload();
+      await syncWithDatabase();
+      
+      setUploadedSupervisors([]);
+      setAssigning(false);
+    } catch (error) {
+      console.error('Error in auto-assignment:', error);
+      alert(error instanceof Error ? error.message : 'Failed to assign supervisors');
+      setAssigning(false);
+    }
   };
 
-  const openAssignConfirmFromExisting = () => {
+  /** Auto-assign using existing supervisors in the system (no upload needed) - for when groups were reformed but supervisors already exist */
+  const handleAutoAssignFromExisting = async () => {
     if (supervisors.length === 0) {
       alert('No supervisors in the system. Upload supervisor CSV in the Upload & Assign tab first.');
       return;
@@ -225,61 +248,19 @@ export function SupervisorAssignment() {
       alert('No groups awaiting assignment. All groups are already assigned.');
       return;
     }
-    setAssignConfirmError(null);
-    setAssignConfirmKind('existing');
-    setShowAssignConfirm(true);
-  };
-
-  const performAutoAssignSupervisors = async () => {
-    if (uploadedSupervisors.length === 0) {
-      setAssignConfirmError('No supervisor data to upload.');
-      throw new Error('No supervisor data');
-    }
-    setAssignConfirmError(null);
     setAssigning(true);
     try {
-      const uploadResponse = await apiClient.uploadSupervisors(uploadedSupervisors);
-      if (!uploadResponse.success) {
-        throw new Error(uploadResponse.message || 'Failed to upload supervisors');
-      }
-
-      const assignResponse = await apiClient.autoAssignSupervisors();
+      const assignResponse = await apiClient.autoAssignSupervisors(selectedDepartment || undefined);
       if (!assignResponse.success) {
         throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
       }
-
       await apiClient.syncSupervisorWorkload();
       await loadSupervisorWorkload();
       await syncWithDatabase();
-
-      setUploadedSupervisors([]);
-    } catch (error) {
-      console.error('Error in auto-assignment:', error);
-      const msg = error instanceof Error ? error.message : 'Failed to assign supervisors';
-      setAssignConfirmError(msg);
-      throw error;
-    } finally {
       setAssigning(false);
-    }
-  };
-
-  const performAutoAssignFromExisting = async () => {
-    setAssignConfirmError(null);
-    setAssigning(true);
-    try {
-      const assignResponse = await apiClient.autoAssignSupervisors();
-      if (!assignResponse.success) {
-        throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
-      }
-      await apiClient.syncSupervisorWorkload();
-      await loadSupervisorWorkload();
-      await syncWithDatabase();
     } catch (error) {
       console.error('Error in auto-assignment:', error);
-      const msg = error instanceof Error ? error.message : 'Failed to assign supervisors';
-      setAssignConfirmError(msg);
-      throw error;
-    } finally {
+      alert(error instanceof Error ? error.message : 'Failed to assign supervisors');
       setAssigning(false);
     }
   };
@@ -293,7 +274,7 @@ export function SupervisorAssignment() {
   const handleClearAllSupervisors = async () => {
     setClearing(true);
     try {
-      const res = await apiClient.clearAllSupervisors();
+      const res = await apiClient.clearAllSupervisors(selectedDepartment || undefined);
       if (res.success) {
         await loadSupervisorWorkload();
         await syncWithDatabase();
@@ -315,9 +296,13 @@ export function SupervisorAssignment() {
       return;
     }
     const filename = `${userDepartment.toLowerCase().replace(/\s+/g, '_')}_supervisor_assignments`;
+    const normalizeGroupName = (name: string) => {
+      const m = String(name || '').match(/Group\s*(\d+)/i) || String(name || '').match(/(\d+)\s*$/);
+      return m ? `Group ${m[1]}` : String(name || '').trim();
+    };
     const groupsWithId = convertedGroups.map(g => ({
       id: g.id,
-      name: g.name,
+      name: normalizeGroupName(g.name),
       members: g.members,
       supervisor: g.supervisor
     }));
@@ -438,38 +423,6 @@ export function SupervisorAssignment() {
   return (
     <MainLayout title="Supervisor Assignment">
       <div className="flex flex-col gap-4 flex-1 min-h-0">
-        {/* Department selector - each department has its own lecturers, no cross-department assignment */}
-        <Card className="border-2 border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-6">
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-2 flex items-center gap-2">
-            <Building className="w-5 h-5 text-[#1F7A8C]" />
-            Select Department
-          </h2>
-          <p className="text-sm text-slate-600 mb-4">
-            Each department has its own lecturers. Supervisors can only be assigned to groups within their department. Select the department you want to work with.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[220px]">
-              <select
-                value={selectedDepartment}
-                onChange={(e) => handleDepartmentChange(e.target.value)}
-                className="w-full appearance-none px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
-              >
-                <option value="">Select department...</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-            </div>
-            {selectedDepartment && (
-              <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Working on: {selectedDepartment}
-              </span>
-            )}
-          </div>
-        </Card>
-
         {/* Header */}
         <Card className="border border-slate-200 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -532,6 +485,36 @@ export function SupervisorAssignment() {
             </div>
           </div>
           <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
+        </Card>
+
+        {/* Department selector */}
+        <Card className="border border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-4">
+          <h2 className="text-base font-semibold text-[#022B3A] mb-1 flex items-center gap-2">
+            <Building className="w-4 h-4 text-[#1F7A8C]" />
+            Select Department
+          </h2>
+          <p className="text-sm text-slate-600 mb-3">Select a department.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px]">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+                className="w-full appearance-none px-3 py-2 pr-9 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
+              >
+                <option value="">Select department...</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+            {selectedDepartment && (
+              <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Working on: {selectedDepartment}
+              </span>
+            )}
+          </div>
         </Card>
 
         {/* Stats - total supervisors always; groups/assigned/awaiting when department selected */}
@@ -621,7 +604,7 @@ export function SupervisorAssignment() {
               )}
             </div>
             {departmentSupervisors.length > 0 && unassignedGroups.length > 0 && (
-              <Button onClick={openAssignConfirmFromExisting} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
+              <Button onClick={handleAutoAssignFromExisting} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
                 {assigning ? (
                   <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
                 ) : (
@@ -795,7 +778,7 @@ export function SupervisorAssignment() {
             <Card className="border border-slate-200 p-6 flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">Uploaded Supervisors ({uploadedSupervisors.length})</h3>
-                <Button onClick={openAssignConfirmFromUpload} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
+                <Button onClick={handleAutoAssignSupervisors} disabled={assigning} className="bg-[#1F7A8C] hover:bg-[#2a8a9c]">
                   {assigning ? (
                     <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />Assigning...</>
                   ) : (
@@ -863,45 +846,16 @@ export function SupervisorAssignment() {
           </div>
         )}
 
-        <ConfirmationModal
-          isOpen={showAssignConfirm}
-          onClose={() => {
-            if (assigning) return;
-            setShowAssignConfirm(false);
-            setAssignConfirmKind(null);
-            setAssignConfirmError(null);
-          }}
-          onConfirm={async () => {
-            if (assignConfirmKind === 'upload') {
-              await performAutoAssignSupervisors();
-            } else if (assignConfirmKind === 'existing') {
-              await performAutoAssignFromExisting();
-            }
-          }}
-          title="Run automatic supervisor assignment?"
-          message={
-            assignConfirmKind === 'upload'
-              ? `This will save ${uploadedSupervisors.length} supervisor record(s) to the database, then assign supervisors to every group that does not have one yet. Assignment uses the workload-balancing algorithm (same department only; spreads groups across supervisors). Continue?`
-              : assignConfirmKind === 'existing'
-                ? 'This will assign supervisors to every group in the system that does not have one yet, using supervisors already in the database and the same workload-balancing rules. Continue?'
-                : ''
-          }
-          confirmText="Assign supervisors"
-          cancelText="Cancel"
-          type="info"
-          loading={assigning}
-          loadingText="Assigning..."
-          error={assignConfirmError || undefined}
-        />
-
         {/* Clear All Confirmation */}
         <ConfirmationModal
           isOpen={clearAllModal}
           onClose={() => !clearing && setClearAllModal(false)}
           onConfirm={handleClearAllSupervisors}
-          title="Clear All Supervisors"
-          message="This will remove all supervisors and unassign all groups. You will need to upload a new supervisor list and re-assign. This cannot be undone."
-          confirmText="Clear All"
+          title="Clear Supervisors"
+          message={selectedDepartment
+            ? `This will clear supervisors and assignments for ${selectedDepartment}.`
+            : 'This will remove all supervisors and unassign all groups.'}
+          confirmText="Clear"
           cancelText="Cancel"
           type="danger"
         />

@@ -120,11 +120,12 @@ function buildGroupedAssignmentRows(
   const rows: GroupAssignmentRow[] = [];
   groups.forEach((group) => {
     const members = group.members || [];
-    const groupNum = group.name.replace('Group ', '');
+    const m = String(group.name || '').match(/Group\s*(\d+)/i) || String(group.name || '').match(/(\d+)\s*$/);
+    const groupLabel = m ? `Group ${m[1]}` : String(group.name || '').trim();
     const supervisor = group.supervisor || 'Not Assigned';
     members.forEach((memberName, mIdx) => {
       rows.push({
-        group: mIdx === 0 ? groupNum : '',
+        group: mIdx === 0 ? groupLabel : '',
         matricNo: getMemberMatric(group.id, mIdx),
         name: memberName,
         supervisor: mIdx === 0 ? supervisor : ''

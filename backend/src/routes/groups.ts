@@ -13,6 +13,29 @@ const router = Router();
 export function createGroupsRouter(db: Pool) {
   const groupService = new GroupFormationService(db);
 
+  const resetEvaluationsForDepartment = async (connection: any, department: string) => {
+    const dept = String(department || '').trim();
+    if (!dept) return;
+    // Reset project-level and student-level evaluations tied to groups in this department.
+    await connection.execute(
+      `DELETE e FROM evaluations e
+       INNER JOIN projects p ON p.id = e.project_id
+       INNER JOIN project_groups pg ON pg.id = p.group_id
+       WHERE TRIM(COALESCE(pg.department,'')) = TRIM(?)`,
+      [dept]
+    );
+    try {
+      await connection.execute(
+        `DELETE se FROM student_evaluations se
+         INNER JOIN project_groups pg ON pg.id = se.group_id
+         WHERE TRIM(COALESCE(pg.department,'')) = TRIM(?)`,
+        [dept]
+      );
+    } catch {
+      // student_evaluations may not exist in older environments
+    }
+  };
+
   // Get current student's group by matric number (student only, real-time data)
   router.get('/my-group', authenticateToken, requireStudent, async (req, res) => {
     try {
@@ -23,7 +46,10 @@ export function createGroupsRouter(db: Pool) {
 
       console.log('🔍 /groups/my-group called for user:', userId);
       const [studentRows] = await db.execute(
-        'SELECT matric_number FROM students WHERE user_id = ?',
+        `SELECT s.matric_number, COALESCE(NULLIF(TRIM(u.department), ''), '') as department
+         FROM students s
+         INNER JOIN users u ON u.id = s.user_id
+         WHERE s.user_id = ?`,
         [userId]
       );
       const students = studentRows as any[];
@@ -37,8 +63,9 @@ export function createGroupsRouter(db: Pool) {
       }
 
       const matricNumber = students[0].matric_number;
+      const studentDepartment = students[0].department || '';
       console.log('🔍 /groups/my-group matric number:', matricNumber);
-      const group = await groupService.getGroupByMatricNumber(matricNumber);
+      const group = await groupService.getGroupByMatricNumber(matricNumber, studentDepartment);
 
       if (!group) {
         console.log('⚠️ /groups/my-group: no group found for matric', matricNumber);
@@ -116,6 +143,18 @@ export function createGroupsRouter(db: Pool) {
       // Clear existing groups for this department so we get a clean formation (no duplicates)
       const deptToClear = department || students[0]?.department;
       if (deptToClear) {
+        // Reset evaluations for this department before regrouping.
+        const connection = await db.getConnection();
+        try {
+          await connection.beginTransaction();
+          await resetEvaluationsForDepartment(connection, deptToClear);
+          await connection.commit();
+        } catch (e) {
+          await connection.rollback();
+          throw e;
+        } finally {
+          connection.release();
+        }
         await groupService.clearGroupsForDepartment(deptToClear);
         console.log('🧹 [GROUPS/FORM] Cleared existing groups for department:', deptToClear);
       }
@@ -186,6 +225,19 @@ export function createGroupsRouter(db: Pool) {
       
       try {
         await connection.beginTransaction();
+
+        // Reset evaluations for this group when supervisor changes.
+        await connection.execute(
+          `DELETE e FROM evaluations e
+           INNER JOIN projects p ON p.id = e.project_id
+           WHERE p.group_id = ?`,
+          [groupId]
+        );
+        try {
+          await connection.execute('DELETE FROM student_evaluations WHERE group_id = ?', [groupId]);
+        } catch {
+          // student_evaluations may not exist in older environments
+        }
 
         // Update group with supervisor
         await connection.execute(
@@ -284,26 +336,66 @@ export function createGroupsRouter(db: Pool) {
     }
   });
 
-  // Clear all groups (admin only)
+  // Clear groups (department-specific when provided)
   router.delete('/clear', authenticateToken, async (req, res) => {
     try {
+      const department = String((req.query.department as string) || '').trim();
       const connection = await db.getConnection();
       
       try {
         await connection.beginTransaction();
 
-        // Clear group members first (foreign key constraint)
-        await connection.execute('DELETE FROM group_members');
-        
-        // Clear groups
-        await connection.execute('DELETE FROM project_groups');
-        
-        // Reset supervisor workload
-        await connection.execute('UPDATE supervisor_workload SET current_groups = 0, updated_at = NOW()');
+        if (department) {
+          await resetEvaluationsForDepartment(connection, department);
+          // Clear members/groups for selected department only
+          await connection.execute(
+            `DELETE gm FROM group_members gm
+             INNER JOIN project_groups pg ON pg.id = gm.group_id
+             WHERE TRIM(COALESCE(pg.department,'')) = TRIM(?)`,
+            [department]
+          );
+          await connection.execute(
+            'DELETE FROM projects WHERE group_id IN (SELECT id FROM (SELECT id FROM project_groups WHERE TRIM(COALESCE(department,\'\')) = TRIM(?)) t)',
+            [department]
+          );
+          await connection.execute(
+            'DELETE FROM project_groups WHERE TRIM(COALESCE(department,\'\')) = TRIM(?)',
+            [department]
+          );
+          // Recompute workload globally from remaining assignments
+          await connection.execute('UPDATE supervisor_workload SET current_groups = 0, updated_at = NOW()');
+          await connection.execute(
+            `UPDATE supervisor_workload sw
+             INNER JOIN (
+               SELECT supervisor_name, COUNT(*) as c
+               FROM project_groups
+               WHERE supervisor_name IS NOT NULL AND supervisor_name <> ''
+               GROUP BY supervisor_name
+             ) x ON x.supervisor_name = sw.supervisor_name
+             SET sw.current_groups = x.c, sw.updated_at = NOW()`
+          );
+        } else {
+          // Legacy behavior: clear all departments
+          await connection.execute('DELETE FROM evaluations');
+          try {
+            await connection.execute('DELETE FROM student_evaluations');
+          } catch {
+            // student_evaluations may not exist in older environments
+          }
+          await connection.execute('DELETE FROM group_members');
+          await connection.execute('DELETE FROM projects');
+          await connection.execute('DELETE FROM project_groups');
+          await connection.execute('UPDATE supervisor_workload SET current_groups = 0, updated_at = NOW()');
+        }
 
         await connection.commit();
         
-        res.json({ success: true, message: 'All groups cleared successfully' });
+        res.json({
+          success: true,
+          message: department
+            ? `Groups cleared for ${department}`
+            : 'All groups cleared successfully'
+        });
       } catch (error) {
         await connection.rollback();
         throw error;

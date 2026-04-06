@@ -675,7 +675,7 @@ export class GroupFormationService {
   }
 
   // Get a student's group by their matric number (primary identifier)
-  async getGroupByMatricNumber(matricNumber: string): Promise<GroupData | null> {
+  async getGroupByMatricNumber(matricNumber: string, department?: string): Promise<GroupData | null> {
     if (!matricNumber || matricNumber.trim() === '') {
       return null;
     }
@@ -683,11 +683,16 @@ export class GroupFormationService {
     const connection = await this.db.getConnection();
     try {
       const trimmed = matricNumber.trim();
+      const useDept = !!department && String(department).trim().length > 0;
       const [rows] = await connection.execute(
-        `SELECT gm.group_id FROM group_members gm 
-         WHERE gm.matric_number = ? OR TRIM(COALESCE(gm.matric_number,'')) = ?
+        `SELECT gm.group_id
+         FROM group_members gm
+         INNER JOIN project_groups pg ON pg.id = gm.group_id
+         WHERE (gm.matric_number = ? OR TRIM(COALESCE(gm.matric_number,'')) = ?)
+           AND (? = 0 OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
+         ORDER BY gm.group_id DESC
          LIMIT 1`,
-        [trimmed, trimmed]
+        [trimmed, trimmed, useDept ? 1 : 0, department || '']
       );
 
       const memberRows = rows as any[];

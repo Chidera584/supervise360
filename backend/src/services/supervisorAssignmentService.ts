@@ -38,7 +38,7 @@ export class SupervisorAssignmentService {
    * 3. No limit on groups per supervisor - distribute as evenly as possible.
    *    When uneven is unavoidable (e.g. 7 groups, 3 supervisors → 2,2,3), that's allowed.
    */
-  async assignSupervisorsToGroups(): Promise<{
+  async assignSupervisorsToGroups(department?: string): Promise<{
     success: boolean;
     assignments: AssignmentResult[];
     unassigned: GroupData[];
@@ -49,13 +49,16 @@ export class SupervisorAssignmentService {
     try {
       await connection.beginTransaction();
 
-      // Fetch unassigned groups
-      const [unassignedGroupsRows] = await connection.execute(`
-        SELECT id, name, department 
-        FROM project_groups 
-        WHERE supervisor_name IS NULL OR supervisor_name = ''
-        ORDER BY id ASC
-      `);
+      const deptFilter = String(department || '').trim();
+      // Fetch unassigned groups (optionally department-scoped)
+      const [unassignedGroupsRows] = await connection.execute(
+        `SELECT id, name, department
+         FROM project_groups
+         WHERE (supervisor_name IS NULL OR supervisor_name = '')
+           AND (? = '' OR TRIM(COALESCE(department,'')) = TRIM(?))
+         ORDER BY id ASC`,
+        [deptFilter, deptFilter]
+      );
       const unassignedGroups = unassignedGroupsRows as GroupData[];
 
       console.log(`📊 [Assign v2 - no limit] Found ${unassignedGroups.length} unassigned groups`);

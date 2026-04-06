@@ -14,6 +14,25 @@ const router = Router();
 export function createSupervisorsRouter(db: Pool) {
   const assignmentService = new SupervisorAssignmentService(db);
 
+  const resetEvaluationsForGroupIds = async (connection: any, groupIds: number[]) => {
+    if (!groupIds.length) return;
+    const placeholders = groupIds.map(() => '?').join(',');
+    await connection.execute(
+      `DELETE e FROM evaluations e
+       INNER JOIN projects p ON p.id = e.project_id
+       WHERE p.group_id IN (${placeholders})`,
+      groupIds
+    );
+    try {
+      await connection.execute(
+        `DELETE FROM student_evaluations WHERE group_id IN (${placeholders})`,
+        groupIds
+      );
+    } catch {
+      // student_evaluations may not exist in older environments
+    }
+  };
+
   // Get supervisor's assigned groups with real data (project, reports, members)
   router.get('/my-groups', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
     console.log('[my-groups] Request received for user:', req.user?.id);
@@ -249,10 +268,21 @@ export function createSupervisorsRouter(db: Pool) {
   router.post('/auto-assign', authenticateToken, async (req, res) => {
     try {
       console.log('🔍 ASP-based auto-assign supervisors endpoint called');
-      
-      const result = await assignmentService.assignSupervisorsToGroups();
+      const department = String(req.body?.department || '').trim();
+      const result = await assignmentService.assignSupervisorsToGroups(department || undefined);
 
       if (result.success && result.assignments.length > 0) {
+        const connection = await db.getConnection();
+        try {
+          await connection.beginTransaction();
+          await resetEvaluationsForGroupIds(connection, result.assignments.map((a) => a.groupId));
+          await connection.commit();
+        } catch (e) {
+          await connection.rollback();
+          throw e;
+        } finally {
+          connection.release();
+        }
         console.log(`✅ ${result.assignments.length} groups assigned successfully`);
         if (!isEmailConfigured()) {
           console.warn('📧 Email not configured (SMTP_HOST, SMTP_USER, SMTP_PASS in .env) - no emails will be sent');
@@ -413,16 +443,47 @@ export function createSupervisorsRouter(db: Pool) {
     }
   });
 
-  // Clear all supervisors and their group assignments (reset everything)
+  // Clear supervisors and assignments (department-specific when provided)
   router.post('/clear-all', authenticateToken, requireAdmin, async (req, res) => {
     try {
+      const department = String(req.body?.department || '').trim();
       const connection = await db.getConnection();
       try {
         await connection.beginTransaction();
-        await connection.execute('UPDATE project_groups SET supervisor_name = NULL WHERE 1=1');
-        await connection.execute('DELETE FROM supervisor_workload');
+        if (department) {
+          const [grpRows] = await connection.execute(
+            `SELECT id FROM project_groups WHERE TRIM(COALESCE(department,'')) = TRIM(?)`,
+            [department]
+          );
+          const groupIds = (grpRows as any[]).map((r) => Number(r.id)).filter(Boolean);
+          await resetEvaluationsForGroupIds(connection, groupIds);
+          await connection.execute(
+            `UPDATE project_groups
+             SET supervisor_name = NULL
+             WHERE TRIM(COALESCE(department,'')) = TRIM(?)`,
+            [department]
+          );
+          await connection.execute(
+            `DELETE FROM supervisor_workload WHERE TRIM(COALESCE(department,'')) = TRIM(?)`,
+            [department]
+          );
+        } else {
+          await connection.execute('UPDATE project_groups SET supervisor_name = NULL WHERE 1=1');
+          await connection.execute('DELETE FROM supervisor_workload');
+          await connection.execute('DELETE FROM evaluations');
+          try {
+            await connection.execute('DELETE FROM student_evaluations');
+          } catch {
+            // student_evaluations may not exist in older environments
+          }
+        }
         await connection.commit();
-        res.json({ success: true, message: 'All supervisors and assignments cleared. Upload a new list to start fresh.' });
+        res.json({
+          success: true,
+          message: department
+            ? `Supervisors and assignments cleared for ${department}.`
+            : 'All supervisors and assignments cleared. Upload a new list to start fresh.'
+        });
       } catch (e) {
         await connection.rollback();
         throw e;
