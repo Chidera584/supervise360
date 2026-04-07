@@ -33,7 +33,7 @@ const STEPS = [
 
 export function Reports() {
   const { student } = useAuth();
-  const { groups, syncWithDatabase } = useGroups();
+  const { syncWithDatabase } = useGroups();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -42,12 +42,14 @@ export function Reports() {
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const studentGroup = groups.find((g) =>
-    g.members.some((m) => (m.matricNumber ?? (m as any).matric) === student?.matric_number)
-  );
+  const [studentGroup, setStudentGroup] = useState<any | null>(null);
 
   useEffect(() => {
     syncWithDatabase().catch(() => {});
+    apiClient.getMyGroup().then((res) => {
+      if (res.success && res.data) setStudentGroup(res.data);
+      else setStudentGroup(null);
+    }).catch(() => setStudentGroup(null));
   }, [syncWithDatabase]);
 
   const loadReports = async () => {

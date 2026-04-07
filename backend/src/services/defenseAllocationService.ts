@@ -128,33 +128,58 @@ export class DefenseAllocationService {
   /**
    * Find group_id for a student - try matric_number first, then student_name
    */
-  private async findGroupForStudent(matricNumber: string | null, userName: string | null): Promise<{ groupId: number } | null> {
+  private async findGroupForStudent(
+    matricNumber: string | null,
+    userName: string | null,
+    department?: string | null
+  ): Promise<{ groupId: number } | null> {
+    const dept = normalizeDepartment(department || '');
     if (matricNumber && matricNumber.trim()) {
       const [byMatric] = await this.db.execute(
-        'SELECT group_id FROM group_members WHERE matric_number = ? LIMIT 1',
-        [matricNumber.trim()]
+        `SELECT gm.group_id
+         FROM group_members gm
+         INNER JOIN project_groups pg ON pg.id = gm.group_id
+         WHERE gm.matric_number = ?
+           AND (? = '' OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
+         LIMIT 1`,
+        [matricNumber.trim(), dept, dept]
       );
       if ((byMatric as any[]).length > 0) return { groupId: (byMatric as any[])[0].group_id };
       // Try trimmed/loose match (spaces, case)
       const [byMatricLoose] = await this.db.execute(
-        'SELECT group_id FROM group_members WHERE TRIM(matric_number) = ? OR matric_number = ? LIMIT 1',
-        [matricNumber.trim(), matricNumber]
+        `SELECT gm.group_id
+         FROM group_members gm
+         INNER JOIN project_groups pg ON pg.id = gm.group_id
+         WHERE (TRIM(gm.matric_number) = ? OR gm.matric_number = ?)
+           AND (? = '' OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
+         LIMIT 1`,
+        [matricNumber.trim(), matricNumber, dept, dept]
       );
       if ((byMatricLoose as any[]).length > 0) return { groupId: (byMatricLoose as any[])[0].group_id };
     }
     if (userName) {
       const nm = userName.trim();
       const [byName] = await this.db.execute(
-        'SELECT group_id FROM group_members WHERE TRIM(student_name) = ? OR student_name = ? LIMIT 1',
-        [nm, nm]
+        `SELECT gm.group_id
+         FROM group_members gm
+         INNER JOIN project_groups pg ON pg.id = gm.group_id
+         WHERE (TRIM(gm.student_name) = ? OR gm.student_name = ?)
+           AND (? = '' OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
+         LIMIT 1`,
+        [nm, nm, dept, dept]
       );
       if ((byName as any[]).length > 0) return { groupId: (byName as any[])[0].group_id };
       // Try matching with parts (e.g. "Grace Ayo" vs "Ayo Grace" or "Grace" in name)
       const parts = nm.split(/\s+/).filter(Boolean);
       if (parts.length >= 1) {
         const [byPart] = await this.db.execute(
-          `SELECT group_id FROM group_members WHERE ${parts.map(() => 'student_name LIKE ?').join(' AND ')} LIMIT 1`,
-          parts.map(p => `%${p}%`)
+          `SELECT gm.group_id
+           FROM group_members gm
+           INNER JOIN project_groups pg ON pg.id = gm.group_id
+           WHERE ${parts.map(() => 'gm.student_name LIKE ?').join(' AND ')}
+             AND (? = '' OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
+           LIMIT 1`,
+          [...parts.map(p => `%${p}%`), dept, dept]
         );
         if ((byPart as any[]).length > 0) return { groupId: (byPart as any[])[0].group_id };
       }
@@ -180,37 +205,10 @@ export class DefenseAllocationService {
 
     const department = normalizeDepartment(group.department);
     const deptVariants = getDepartmentMatchVariants(department);
-    if (deptVariants.length === 0 && !department) {
-      // Try matching without department - use any allocation that has group number in range
-      const [fallbackRows] = await this.db.execute(
-        `SELECT venue_name, department, group_start, group_end, assessors
-         FROM defense_allocations
-         WHERE ? >= group_start AND ? <= group_end
-         LIMIT 1`,
-        [groupNumber, groupNumber]
-      );
-      const allocs = fallbackRows as any[];
-      if (allocs.length > 0) {
-        const a = allocs[0];
-        let assessors: string[] = [];
-        try {
-          assessors = typeof a.assessors === 'string' ? JSON.parse(a.assessors) : (a.assessors || []);
-        } catch {
-          assessors = [];
-        }
-        return {
-          venue: a.venue_name,
-          groupRange: `${a.department} Groups ${a.group_start}–${a.group_end}`,
-          assessors,
-          department: a.department,
-          groupNumber
-        };
-      }
-    }
     if (deptVariants.length === 0) return null;
 
     const placeholders = deptVariants.map(() => '?').join(',');
-    let [allocRows] = await this.db.execute(
+    const [allocRows] = await this.db.execute(
       `SELECT venue_name, department, group_start, group_end, assessors
        FROM defense_allocations
        WHERE LOWER(TRIM(department)) IN (${placeholders})
@@ -218,18 +216,7 @@ export class DefenseAllocationService {
        LIMIT 1`,
       [...deptVariants, groupNumber, groupNumber]
     );
-    let allocs = allocRows as any[];
-    // Fallback: match by group number only (e.g. when dept names differ)
-    if (allocs.length === 0) {
-      [allocRows] = await this.db.execute(
-        `SELECT venue_name, department, group_start, group_end, assessors
-         FROM defense_allocations
-         WHERE ? >= group_start AND ? <= group_end
-         LIMIT 1`,
-        [groupNumber, groupNumber]
-      );
-      allocs = allocRows as any[];
-    }
+    const allocs = allocRows as any[];
     if (allocs.length === 0) return null;
 
     const a = allocs[0];
@@ -251,9 +238,13 @@ export class DefenseAllocationService {
   /**
    * Get defense info for a student by matric number.
    */
-  async getStudentDefenseSchedule(matricNumber: string | null, userName?: string | null): Promise<StudentDefenseInfo | null> {
+  async getStudentDefenseSchedule(
+    matricNumber: string | null,
+    userName?: string | null,
+    department?: string | null
+  ): Promise<StudentDefenseInfo | null> {
     await this.ensureTable();
-    const found = await this.findGroupForStudent(matricNumber, userName);
+    const found = await this.findGroupForStudent(matricNumber, userName, department);
     if (!found) return null;
     return this.getDefenseScheduleByGroupId(found.groupId);
   }

@@ -234,12 +234,11 @@ export function Groups() {
 
         {/* Select Department */}
         <Card className="border border-[#1F7A8C]/30 bg-[#1F7A8C]/5 p-4">
-          <h2 className="text-base font-semibold text-[#022B3A] mb-1 flex items-center gap-2">
-            <Building className="w-4 h-4 text-[#1F7A8C]" />
-            Select Department
-          </h2>
-          <p className="text-sm text-slate-600 mb-3">Select a department.</p>
           <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-base font-semibold text-[#022B3A] flex items-center gap-2">
+              <Building className="w-4 h-4 text-[#1F7A8C]" />
+              Select Department
+            </h2>
             <div className="relative min-w-[220px]">
               <select
                 value={selectedDepartment}

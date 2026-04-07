@@ -116,13 +116,17 @@ export function createReportsRouter(db: Pool) {
       }
 
       const [studentRows] = await db.execute(
-        'SELECT matric_number FROM students WHERE user_id = ?',
+        `SELECT s.matric_number, COALESCE(NULLIF(TRIM(u.department), ''), '') as department
+         FROM students s
+         INNER JOIN users u ON u.id = s.user_id
+         WHERE s.user_id = ?`,
         [userId]
       );
       const matric = (studentRows as any[])[0]?.matric_number;
+      const studentDepartment = (studentRows as any[])[0]?.department || '';
       if (!matric) return res.status(400).json({ success: false, message: 'Matric number not found' });
 
-      const groupId = await reportService.getGroupIdByMatric(matric);
+      const groupId = await reportService.getGroupIdByMatric(matric, studentDepartment);
       if (!groupId) return res.status(400).json({ success: false, message: 'Group not found' });
 
       let projectId = await reportService.getProjectIdByGroup(groupId);
@@ -157,8 +161,9 @@ export function createReportsRouter(db: Pool) {
       notifySubmissionConfirmation(db, userId, submitter?.email, submitterName, reportTitle, req.file.originalname).catch(() => {});
 
       // Get supervisor for this group and notify them
-      const [pgRows] = await db.execute('SELECT supervisor_name FROM project_groups WHERE id = ?', [groupId]);
+      const [pgRows] = await db.execute('SELECT supervisor_name, department FROM project_groups WHERE id = ?', [groupId]);
       const supName = (pgRows as any[])[0]?.supervisor_name;
+      const groupDepartment = (pgRows as any[])[0]?.department || '';
       if (supName) {
         const sn = String(supName).trim().replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
         const parts = sn.split(/[\s,]+/).filter(Boolean);
@@ -168,17 +173,20 @@ export function createReportsRouter(db: Pool) {
            INNER JOIN supervisors s ON s.user_id = u.id
            WHERE ? LIKE CONCAT('%', TRIM(COALESCE(u.first_name,'')), '%')
              AND ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%')
+             AND (? = '' OR TRIM(COALESCE(u.department,'')) = TRIM(?))
              AND COALESCE(u.first_name,'') != '' AND COALESCE(u.last_name,'') != ''
            LIMIT 1`,
-          [sn, sn]
+          [sn, sn, groupDepartment, groupDepartment]
         );
         let supUser = (supUserRows as any[])[0];
         if (!supUser && lastPart) {
           const [fallback] = await db.execute(
             `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
              INNER JOIN supervisors s ON s.user_id = u.id
-             WHERE (u.last_name = ? OR ? LIKE CONCAT('%', u.last_name, '%')) LIMIT 1`,
-            [lastPart, sn]
+             WHERE (u.last_name = ? OR ? LIKE CONCAT('%', u.last_name, '%'))
+               AND (? = '' OR TRIM(COALESCE(u.department,'')) = TRIM(?))
+             LIMIT 1`,
+            [lastPart, sn, groupDepartment, groupDepartment]
           );
           supUser = (fallback as any[])[0];
         }

@@ -62,7 +62,7 @@ export function createDefensePanelsRouter(db: Pool) {
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
       const [[studentRows], [userRows], [groupRows]] = await Promise.all([
         db.execute('SELECT matric_number FROM students WHERE user_id = ?', [userId]),
-        db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]),
+        db.execute('SELECT first_name, last_name, COALESCE(NULLIF(TRIM(department), \'\'), \'\') as department FROM users WHERE id = ?', [userId]),
         db.execute(
           `SELECT gm.group_id FROM group_members gm
            INNER JOIN students s ON (s.matric_number = gm.matric_number OR TRIM(s.matric_number) = TRIM(gm.matric_number))
@@ -75,7 +75,8 @@ export function createDefensePanelsRouter(db: Pool) {
       const matric = (studentRows as any[])[0]?.matric_number;
       const user = (userRows as any[])[0];
       const userName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : null;
-      data = await defenseAllocService.getStudentDefenseSchedule(matric || null, userName);
+      const userDepartment = user?.department || '';
+      data = await defenseAllocService.getStudentDefenseSchedule(matric || null, userName, userDepartment);
       // Fallback: find group via students->matric->group_members join
       if (!data && (groupRows as any[]).length > 0) {
         const groupId = (groupRows as any[])[0].group_id;

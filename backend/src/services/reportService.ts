@@ -3,21 +3,26 @@ import { Pool } from 'mysql2/promise';
 export class ReportService {
   constructor(private db: Pool) {}
 
-  async getGroupIdByMatric(matricNumber: string) {
+  async getGroupIdByMatric(matricNumber: string, department?: string) {
     const raw = String(matricNumber || '').trim();
     if (!raw) return null;
     const compact = raw.replace(/\s+/g, '');
     const compactNoSlash = compact.replace(/\//g, '');
+    const dept = String(department || '').trim();
     const [rows] = await this.db.execute(
-      `SELECT group_id
-       FROM group_members
-       WHERE
-         matric_number = ?
-         OR TRIM(COALESCE(matric_number, '')) = ?
-         OR REPLACE(TRIM(COALESCE(matric_number, '')), ' ', '') = ?
-         OR REPLACE(REPLACE(TRIM(COALESCE(matric_number, '')), ' ', ''), '/', '') = ?
+      `SELECT gm.group_id
+       FROM group_members gm
+       INNER JOIN project_groups pg ON pg.id = gm.group_id
+       WHERE (
+         gm.matric_number = ?
+         OR TRIM(COALESCE(gm.matric_number, '')) = ?
+         OR REPLACE(TRIM(COALESCE(gm.matric_number, '')), ' ', '') = ?
+         OR REPLACE(REPLACE(TRIM(COALESCE(gm.matric_number, '')), ' ', ''), '/', '') = ?
+       )
+       AND (? = '' OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
+       ORDER BY gm.group_id DESC
        LIMIT 1`,
-      [raw, raw, compact, compactNoSlash]
+      [raw, raw, compact, compactNoSlash, dept, dept]
     );
     return (rows as any[])[0]?.group_id || null;
   }
@@ -68,13 +73,14 @@ export class ReportService {
   /** Get group IDs for a supervisor - same logic as my-groups endpoint */
   async getSupervisorGroupIds(supervisorUserId: number): Promise<number[]> {
     const [userRows] = await this.db.execute(
-      'SELECT first_name, last_name FROM users WHERE id = ?',
+      'SELECT first_name, last_name, COALESCE(NULLIF(TRIM(department), \'\'), \'\') as department FROM users WHERE id = ?',
       [supervisorUserId]
     );
     const user = (userRows as any[])[0];
     const firstName = (user?.first_name || '').trim();
     const lastName = (user?.last_name || '').trim();
     const fullName = `${firstName} ${lastName}`.trim().replace(/\s+/g, ' ');
+    const userDepartment = String(user?.department || '').trim();
     if (!fullName && !firstName && !lastName) return [];
 
     const params: any[] = [fullName, fullName];
@@ -84,8 +90,9 @@ export class ReportService {
       : '';
     const [rows] = await this.db.execute(
       `SELECT id FROM project_groups
-       WHERE TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause}`,
-      params
+       WHERE (TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause})
+         AND (? = '' OR TRIM(COALESCE(department,'')) = TRIM(?))`,
+      [...params, userDepartment, userDepartment]
     );
     return (rows as any[]).map((r: any) => r.id);
   }
