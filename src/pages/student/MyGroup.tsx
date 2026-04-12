@@ -11,6 +11,8 @@ interface GroupMember {
   gpa?: number;
   tier?: string;
   matricNumber?: string;
+  email?: string | null;
+  phone?: string | null;
 }
 
 interface GroupData {
@@ -18,6 +20,8 @@ interface GroupData {
   name: string;
   members: GroupMember[];
   supervisor: string | null;
+  supervisorEmail?: string | null;
+  supervisorPhone?: string | null;
   department?: string;
   avg_gpa?: number;
   status?: string;
@@ -137,11 +141,30 @@ export function MyGroup() {
               <div className="flex-1">
                 <h4 className="font-semibold text-gray-900">{groupData.supervisor}</h4>
                 <p className="text-sm text-gray-600">Project Supervisor</p>
+                {groupData.supervisorEmail && (
+                  <p className="text-xs text-gray-700 mt-1">
+                    <a href={`mailto:${groupData.supervisorEmail}`} className="text-[#1F7A8C] hover:underline">
+                      {groupData.supervisorEmail}
+                    </a>
+                  </p>
+                )}
+                {groupData.supervisorPhone && (
+                  <p className="text-xs text-gray-700">{groupData.supervisorPhone}</p>
+                )}
               </div>
-              <Button variant="outline" size="sm">
-                <Mail className="mr-2" size={14} />
-                Contact
-              </Button>
+              {(groupData.supervisorEmail || groupData.supervisorPhone) && (
+                <a
+                  href={
+                    groupData.supervisorEmail
+                      ? `mailto:${groupData.supervisorEmail}`
+                      : `tel:${groupData.supervisorPhone}`
+                  }
+                  className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  <Mail className="mr-2" size={14} />
+                  Contact
+                </a>
+              )}
             </div>
           </Card>
         )}
@@ -178,6 +201,20 @@ export function MyGroup() {
                       <span className="text-gray-600">Matric:</span>
                       <span className="font-medium">{member.matricNumber || 'N/A'}</span>
                     </div>
+                    {member.email && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-600 shrink-0">Email:</span>
+                        <a href={`mailto:${member.email}`} className="font-medium text-[#1F7A8C] truncate text-right">
+                          {member.email}
+                        </a>
+                      </div>
+                    )}
+                    {member.phone && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Phone:</span>
+                        <span className="font-medium">{member.phone}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

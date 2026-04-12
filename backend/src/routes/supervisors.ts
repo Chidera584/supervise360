@@ -133,6 +133,9 @@ export function createSupervisorsRouter(db: Pool) {
           supervisor_name as name,
           department,
           current_groups,
+          max_groups,
+          email,
+          phone,
           is_available
         FROM supervisor_workload
         ORDER BY department, supervisor_name
@@ -237,10 +240,12 @@ export function createSupervisorsRouter(db: Pool) {
             console.warn('⚠️  Skipping row with missing name or department:', supervisor);
             continue;
           }
+          const email = supervisor.email != null ? String(supervisor.email).trim() || null : null;
+          const phone = supervisor.phone != null ? String(supervisor.phone).trim() || null : null;
           await connection.execute(
-            `INSERT INTO supervisor_workload (supervisor_name, department, current_groups, is_available) 
-             VALUES (?, ?, 0, TRUE)`,
-            [name, department]
+            `INSERT INTO supervisor_workload (supervisor_name, email, phone, department, current_groups, is_available) 
+             VALUES (?, ?, ?, ?, 0, TRUE)`,
+            [name, email, phone, department]
           );
           insertedCount++;
         }
@@ -493,6 +498,31 @@ export function createSupervisorsRouter(db: Pool) {
     } catch (error) {
       console.error('Error clearing supervisors:', error);
       res.status(500).json({ success: false, error: 'Failed to clear supervisors' });
+    }
+  });
+
+  // Admin: set per-department max groups cap for a workload row
+  router.put('/workload/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { max_groups } = req.body as { max_groups?: number | null };
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ success: false, message: 'Invalid id' });
+      }
+      if (max_groups !== undefined && max_groups !== null && (typeof max_groups !== 'number' || max_groups < 0)) {
+        return res.status(400).json({ success: false, message: 'max_groups must be null or a non-negative number' });
+      }
+      if (max_groups === undefined) {
+        return res.status(400).json({ success: false, message: 'max_groups is required (use null to clear cap)' });
+      }
+      await db.execute(`UPDATE supervisor_workload SET max_groups = ?, updated_at = NOW() WHERE id = ?`, [
+        max_groups,
+        id,
+      ]);
+      res.json({ success: true, message: 'Workload cap updated' });
+    } catch (error) {
+      console.error('Workload cap update error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update cap' });
     }
   });
 

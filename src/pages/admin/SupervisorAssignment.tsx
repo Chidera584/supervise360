@@ -49,6 +49,15 @@ export function SupervisorAssignment() {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const fileInputRef = useRef(null);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
+  const [sessions, setSessions] = useState<{ id: number; label: string }[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<number | ''>('');
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [moveMemberId, setMoveMemberId] = useState('');
+  const [moveFromGroupId, setMoveFromGroupId] = useState('');
+  const [moveToGroupId, setMoveToGroupId] = useState('');
+  const [moveSwapType, setMoveSwapType] = useState<'STUDENT_GROUP' | 'STUDENT_SUPERVISOR'>('STUDENT_GROUP');
+  const [moveExpectedSupervisor, setMoveExpectedSupervisor] = useState('');
+  const [movingStudent, setMovingStudent] = useState(false);
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -59,6 +68,18 @@ export function SupervisorAssignment() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      const res = await apiClient.getSessions().catch(() => ({ success: false, data: [] }));
+      if (res.success && Array.isArray(res.data)) {
+        const list = res.data as { id: number; label: string }[];
+        setSessions(list);
+        if (list.length === 1 && selectedSessionId === '') setSelectedSessionId(list[0].id);
+      }
+    };
+    loadSessions();
   }, []);
 
   // Fetch departments
@@ -115,7 +136,13 @@ export function SupervisorAssignment() {
   // Filter groups by selected department (each department has its own lecturers - no cross-department)
   // When no department selected, show nothing - user must pick a department first
   const departmentGroups = selectedDepartment
-    ? filterByDepartment(groups).filter((g) => (g.department || '') === selectedDepartment)
+    ? filterByDepartment(groups).filter((g) => {
+        if ((g.department || '') !== selectedDepartment) return false;
+        if (selectedSessionId !== '' && Number((g as any).session_id) !== Number(selectedSessionId)) {
+          return false;
+        }
+        return true;
+      })
     : [];
 
   // Supervisors in the selected department only (for group assignment context)
@@ -183,7 +210,13 @@ export function SupervisorAssignment() {
         });
         const name = (nameKey ? row[nameKey] : row.name || row.Name || '').toString().trim();
         const department = (deptKey ? (row[deptKey] ?? '') : (row.department ?? row.Department ?? '')).toString().trim();
-        return { name: name || 'Unknown', department };
+        const emailKey = Object.keys(row).find((k) => k.toLowerCase().includes('email'));
+        const phoneKey = Object.keys(row).find(
+          (k) => k.toLowerCase().includes('phone') || k.toLowerCase().includes('tel') || k.toLowerCase().includes('mobile')
+        );
+        const email = emailKey ? String(row[emailKey] ?? '').trim() || undefined : undefined;
+        const phone = phoneKey ? String(row[phoneKey] ?? '').trim() || undefined : undefined;
+        return { name: name || 'Unknown', department, email, phone };
       }).filter(s => s.name && s.name !== 'Unknown' && s.department);
       
       if (processedSupervisors.length === 0) {
@@ -482,6 +515,9 @@ export function SupervisorAssignment() {
                 <Edit size={14} className="mr-1.5" />
                 Swap Students
               </Button>
+              <Button variant="outline" onClick={() => setMoveModalOpen(true)} disabled={!selectedDepartment}>
+                Move student
+              </Button>
             </div>
           </div>
           <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
@@ -503,6 +539,19 @@ export function SupervisorAssignment() {
                 <option value="">Select department...</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+            <div className="relative min-w-[200px]">
+              <select
+                value={selectedSessionId === '' ? '' : String(selectedSessionId)}
+                onChange={(e) => setSelectedSessionId(e.target.value ? Number(e.target.value) : '')}
+                className="w-full appearance-none px-3 py-2 pr-9 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
+              >
+                <option value="">All sessions</option>
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -649,6 +698,29 @@ export function SupervisorAssignment() {
                             <div className="min-w-0 flex-1">
                               <h6 className="text-base font-medium text-slate-900 truncate">{supervisor.name}</h6>
                               <p className="text-sm text-slate-500">{(supervisor.current_groups || 0)} groups</p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                                <span>Max / dept:</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className="w-16 border border-slate-200 rounded px-1 py-0.5"
+                                  placeholder="∞"
+                                  defaultValue={supervisor.max_groups ?? ''}
+                                  key={`cap-${supervisor.id}-${supervisor.max_groups ?? 'x'}`}
+                                  onBlur={async (e) => {
+                                    const raw = e.target.value.trim();
+                                    const v = raw === '' ? null : Number(raw);
+                                    if (v !== null && (Number.isNaN(v) || v < 0)) return;
+                                    await apiClient.updateSupervisorWorkloadCap(supervisor.id, v);
+                                    await loadSupervisorWorkload();
+                                  }}
+                                />
+                              </div>
+                              {(supervisor.email || supervisor.phone) && (
+                                <p className="text-xs text-slate-500 mt-1 truncate">
+                                  {[supervisor.email, supervisor.phone].filter(Boolean).join(' · ')}
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C]">
@@ -960,6 +1032,112 @@ export function SupervisorAssignment() {
                     {swapping ? 'Swapping...' : 'Swap Students'}
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {moveModalOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => !movingStudent && setMoveModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-gray-900">Move student</h3>
+              <p className="text-sm text-gray-600">
+                Move one student to a target group (same session). Use member ID from the database (group_members.id).
+              </p>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Member ID</label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={moveMemberId}
+                  onChange={(e) => setMoveMemberId(e.target.value)}
+                  placeholder="e.g. 42"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">From group ID</label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={moveFromGroupId}
+                  onChange={(e) => setMoveFromGroupId(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">To group ID</label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={moveToGroupId}
+                  onChange={(e) => setMoveToGroupId(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Swap type</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={moveSwapType}
+                  onChange={(e) =>
+                    setMoveSwapType(e.target.value as 'STUDENT_GROUP' | 'STUDENT_SUPERVISOR')
+                  }
+                >
+                  <option value="STUDENT_GROUP">Student ↔ Group</option>
+                  <option value="STUDENT_SUPERVISOR">Student ↔ Supervisor (expect target supervisor)</option>
+                </select>
+              </div>
+              {moveSwapType === 'STUDENT_SUPERVISOR' && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Expected supervisor name (must match target group)
+                  </label>
+                  <input
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    value={moveExpectedSupervisor}
+                    onChange={(e) => setMoveExpectedSupervisor(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setMoveModalOpen(false)} disabled={movingStudent}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setMovingStudent(true);
+                    try {
+                      const res = await apiClient.moveGroupMember({
+                        memberId: Number(moveMemberId),
+                        fromGroupId: Number(moveFromGroupId),
+                        toGroupId: Number(moveToGroupId),
+                        swapType: moveSwapType,
+                        expectedSupervisorName:
+                          moveSwapType === 'STUDENT_SUPERVISOR' ? moveExpectedSupervisor.trim() : undefined,
+                      });
+                      if (res.success) {
+                        alert('Student moved successfully');
+                        setMoveModalOpen(false);
+                        await syncWithDatabase();
+                        await loadSupervisorWorkload();
+                      } else {
+                        alert((res as any).message || 'Move failed');
+                      }
+                    } finally {
+                      setMovingStudent(false);
+                    }
+                  }}
+                  disabled={
+                    movingStudent ||
+                    !moveMemberId ||
+                    !moveFromGroupId ||
+                    !moveToGroupId ||
+                    (moveSwapType === 'STUDENT_SUPERVISOR' && !moveExpectedSupervisor.trim())
+                  }
+                >
+                  {movingStudent ? 'Moving...' : 'Move'}
+                </Button>
               </div>
             </div>
           </div>

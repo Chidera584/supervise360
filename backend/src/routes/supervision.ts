@@ -1,0 +1,377 @@
+import { Router } from 'express';
+import { Pool } from 'mysql2/promise';
+import { authenticateToken, requireStudent, requireSupervisor } from '../middleware/auth';
+import type { AuthenticatedRequest } from '../types';
+
+async function getSupervisorFullName(db: Pool, userId: number): Promise<string> {
+  const [rows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
+  const u = (rows as any[])[0];
+  return u ? `${(u.first_name || '').trim()} ${(u.last_name || '').trim()}`.trim().replace(/\s+/g, ' ') : '';
+}
+
+async function assertSupervisorOwnsGroup(
+  db: Pool,
+  supervisorUserId: number,
+  groupId: number
+): Promise<boolean> {
+  const fullName = await getSupervisorFullName(db, supervisorUserId);
+  if (!fullName) return false;
+  const [rows] = await db.execute(
+    `SELECT id FROM project_groups WHERE id = ? AND TRIM(COALESCE(supervisor_name,'')) = TRIM(?)`,
+    [groupId, fullName]
+  );
+  return (rows as any[]).length > 0;
+}
+
+export function createSupervisionRouter(db: Pool) {
+  const router = Router();
+
+  // Supervisor: list meetings for groups they supervise (optional ?sessionId=)
+  router.get('/meetings', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const fullName = await getSupervisorFullName(db, userId);
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : NaN;
+      const sessionFilter = !Number.isNaN(sessionId) ? 'AND pg.session_id = ?' : '';
+      const params: any[] = [fullName];
+      if (!Number.isNaN(sessionId)) params.push(sessionId);
+
+      const [rows] = await db.execute(
+        `SELECT m.id, m.group_id, m.session_id, m.title, m.starts_at, m.ends_at, m.location, m.notes, m.created_at,
+                pg.name AS group_name, pg.department
+         FROM supervision_meetings m
+         INNER JOIN project_groups pg ON pg.id = m.group_id
+         WHERE TRIM(COALESCE(pg.supervisor_name,'')) = TRIM(?) ${sessionFilter}
+         ORDER BY m.starts_at DESC`,
+        params
+      );
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      console.error('Supervisor meetings list error:', error);
+      res.status(500).json({ success: false, message: 'Failed to list meetings' });
+    }
+  });
+
+  router.post('/meetings', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const { group_id, session_id, title, starts_at, ends_at, location, notes } = req.body;
+      const gid = Number(group_id);
+      const sid = Number(session_id);
+      if (!gid || !sid || !starts_at) {
+        return res.status(400).json({
+          success: false,
+          message: 'group_id, session_id, and starts_at are required',
+        });
+      }
+      const ok = await assertSupervisorOwnsGroup(db, userId, gid);
+      if (!ok) {
+        return res.status(403).json({ success: false, message: 'You do not supervise this group' });
+      }
+      const [pgRows] = await db.execute(
+        'SELECT session_id FROM project_groups WHERE id = ?',
+        [gid]
+      );
+      const gsid = (pgRows as any[])[0]?.session_id;
+      if (gsid != null && Number(gsid) !== sid) {
+        return res.status(400).json({ success: false, message: 'session_id must match the group session' });
+      }
+      const [ins] = await db.execute(
+        `INSERT INTO supervision_meetings (group_id, session_id, supervisor_user_id, title, starts_at, ends_at, location, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          gid,
+          sid,
+          userId,
+          (title && String(title).trim()) || 'Supervision meeting',
+          starts_at,
+          ends_at || null,
+          location || null,
+          notes || null,
+        ]
+      );
+      res.json({ success: true, data: { id: (ins as any).insertId } });
+    } catch (error) {
+      console.error('Create meeting error:', error);
+      res.status(500).json({ success: false, message: 'Failed to create meeting' });
+    }
+  });
+
+  router.put('/meetings/:id', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const mid = Number(req.params.id);
+      const [mrows] = await db.execute(
+        'SELECT id, supervisor_user_id FROM supervision_meetings WHERE id = ?',
+        [mid]
+      );
+      const m = (mrows as any[])[0];
+      if (!m) return res.status(404).json({ success: false, message: 'Meeting not found' });
+      if (Number(m.supervisor_user_id) !== userId) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+      }
+      const { title, starts_at, ends_at, location, notes } = req.body;
+      const sets: string[] = [];
+      const vals: any[] = [];
+      if (title !== undefined) {
+        sets.push('title = ?');
+        vals.push(title);
+      }
+      if (starts_at !== undefined) {
+        sets.push('starts_at = ?');
+        vals.push(starts_at);
+      }
+      if (ends_at !== undefined) {
+        sets.push('ends_at = ?');
+        vals.push(ends_at);
+      }
+      if (location !== undefined) {
+        sets.push('location = ?');
+        vals.push(location);
+      }
+      if (notes !== undefined) {
+        sets.push('notes = ?');
+        vals.push(notes);
+      }
+      if (sets.length === 0) {
+        return res.json({ success: true, message: 'No changes' });
+      }
+      vals.push(mid);
+      await db.execute(
+        `UPDATE supervision_meetings SET ${sets.join(', ')}, updated_at = NOW() WHERE id = ?`,
+        vals
+      );
+      res.json({ success: true, message: 'Meeting updated' });
+    } catch (error) {
+      console.error('Update meeting error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update meeting' });
+    }
+  });
+
+  router.post('/meetings/:id/attendance', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const mid = Number(req.params.id);
+      const { attendance } = req.body as { attendance?: { group_member_id: number; present: boolean }[] };
+      if (!Array.isArray(attendance)) {
+        return res.status(400).json({ success: false, message: 'attendance array required' });
+      }
+      const [mrows] = await db.execute(
+        `SELECT m.id, m.group_id, m.session_id, m.supervisor_user_id, pg.supervisor_name
+         FROM supervision_meetings m
+         INNER JOIN project_groups pg ON pg.id = m.group_id
+         WHERE m.id = ?`,
+        [mid]
+      );
+      const meet = (mrows as any[])[0];
+      if (!meet) return res.status(404).json({ success: false, message: 'Meeting not found' });
+      if (Number(meet.supervisor_user_id) !== userId) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+      }
+
+      const conn = await db.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.execute('DELETE FROM meeting_attendance WHERE meeting_id = ?', [mid]);
+        await conn.execute('DELETE FROM student_assessment_entries WHERE meeting_id = ?', [mid]);
+
+        for (const row of attendance) {
+          const gmid = Number(row.group_member_id);
+          const present = !!row.present;
+          const [gmRows] = await conn.execute(
+            'SELECT id, group_id, matric_number, student_name FROM group_members WHERE id = ?',
+            [gmid]
+          );
+          const gm = (gmRows as any[])[0];
+          if (!gm || Number(gm.group_id) !== Number(meet.group_id)) continue;
+
+          await conn.execute(
+            `INSERT INTO meeting_attendance (meeting_id, group_member_id, present) VALUES (?, ?, ?)`,
+            [mid, gmid, present]
+          );
+
+          let studentUserId: number | null = null;
+          if (gm.matric_number) {
+            const [sRows] = await conn.execute(
+              'SELECT user_id FROM students WHERE matric_number = ? OR TRIM(matric_number) = ? LIMIT 1',
+              [gm.matric_number, gm.matric_number]
+            );
+            studentUserId = (sRows as any[])[0]?.user_id ?? null;
+          }
+          if (studentUserId) {
+            await conn.execute(
+              `INSERT INTO student_assessment_entries
+               (student_user_id, supervisor_id, session_id, category, points, max_points, title, notes, meeting_id, recorded_at)
+               VALUES (?, ?, ?, 'meeting_attendance', ?, 1, ?, ?, ?, NOW())`,
+              [
+                studentUserId,
+                userId,
+                meet.session_id,
+                present ? 1 : 0,
+                `Meeting attendance`,
+                present ? 'Present' : 'Absent',
+                mid,
+              ]
+            );
+          }
+        }
+
+        await conn.commit();
+        res.json({ success: true, message: 'Attendance saved' });
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
+      }
+    } catch (error) {
+      console.error('Attendance save error:', error);
+      res.status(500).json({ success: false, message: 'Failed to save attendance' });
+    }
+  });
+
+  router.post('/assessments', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const {
+        student_user_id,
+        session_id,
+        category,
+        points,
+        max_points,
+        title,
+        notes,
+        group_id,
+      } = req.body;
+      const sid = Number(session_id);
+      const stu = Number(student_user_id);
+      const gid = group_id != null ? Number(group_id) : null;
+      if (!stu || !sid || !category) {
+        return res.status(400).json({
+          success: false,
+          message: 'student_user_id, session_id, and category are required',
+        });
+      }
+      if (gid) {
+        const ok = await assertSupervisorOwnsGroup(db, userId, gid);
+        if (!ok) {
+          return res.status(403).json({ success: false, message: 'You do not supervise this group' });
+        }
+      }
+      const [ins] = await db.execute(
+        `INSERT INTO student_assessment_entries
+         (student_user_id, supervisor_id, session_id, category, points, max_points, title, notes, meeting_id, recorded_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NOW())`,
+        [
+          stu,
+          userId,
+          sid,
+          category,
+          points != null ? Number(points) : null,
+          max_points != null ? Number(max_points) : null,
+          title || null,
+          notes || null,
+        ]
+      );
+      res.json({ success: true, data: { id: (ins as any).insertId } });
+    } catch (error: any) {
+      console.error('Assessment create error:', error);
+      res.status(500).json({ success: false, message: error?.message || 'Failed to save assessment' });
+    }
+  });
+
+  router.get('/assessments', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : NaN;
+      const sessionFilter = !Number.isNaN(sessionId) ? 'AND e.session_id = ?' : '';
+      const params: any[] = [userId];
+      if (!Number.isNaN(sessionId)) params.push(sessionId);
+      const [rows] = await db.execute(
+        `SELECT e.*, u.first_name, u.last_name, u.email
+         FROM student_assessment_entries e
+         INNER JOIN users u ON u.id = e.student_user_id
+         WHERE e.supervisor_id = ? ${sessionFilter}
+         ORDER BY e.recorded_at DESC`,
+        params
+      );
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      console.error('Supervisor assessments list error:', error);
+      res.status(500).json({ success: false, message: 'Failed to list assessments' });
+    }
+  });
+
+  // Student: meetings for their group
+  router.get('/my-meetings', authenticateToken, requireStudent, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const [stRows] = await db.execute(
+        `SELECT s.matric_number, s.session_id FROM students s WHERE s.user_id = ?`,
+        [userId]
+      );
+      const st = (stRows as any[])[0];
+      if (!st?.matric_number) {
+        return res.json({ success: true, data: [] });
+      }
+      const matric = String(st.matric_number).trim();
+      const qParams: any[] = [matric, matric];
+      let sessionClause = '';
+      if (st.session_id != null) {
+        sessionClause = ' AND pg.session_id = ?';
+        qParams.push(st.session_id);
+      }
+      const [gRows] = await db.execute(
+        `SELECT gm.group_id
+         FROM group_members gm
+         INNER JOIN project_groups pg ON pg.id = gm.group_id
+         WHERE (gm.matric_number = ? OR TRIM(gm.matric_number) = ?) ${sessionClause}
+         ORDER BY gm.group_id DESC LIMIT 1`,
+        qParams
+      );
+      const gid = (gRows as any[])[0]?.group_id;
+      if (!gid) {
+        return res.json({ success: true, data: [] });
+      }
+      const [rows] = await db.execute(
+        `SELECT m.id, m.title, m.starts_at, m.ends_at, m.location, m.notes
+         FROM supervision_meetings m
+         WHERE m.group_id = ?
+         ORDER BY m.starts_at ASC`,
+        [gid]
+      );
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      console.error('Student meetings error:', error);
+      res.status(500).json({ success: false, message: 'Failed to load meetings' });
+    }
+  });
+
+  // Student: progressive assessment summary (no numeric scores — qualitative only)
+  router.get('/my-assessments', authenticateToken, requireStudent, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const [rows] = await db.execute(
+        `SELECT e.id, e.category, e.title, e.notes, e.recorded_at, e.meeting_id
+         FROM student_assessment_entries e
+         WHERE e.student_user_id = ?
+         ORDER BY e.recorded_at DESC`,
+        [userId]
+      );
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      console.error('Student assessments error:', error);
+      res.status(500).json({ success: false, message: 'Failed to load assessments' });
+    }
+  });
+
+  return router;
+}

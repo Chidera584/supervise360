@@ -1,5 +1,6 @@
 import { Pool } from 'mysql2/promise';
 import { trySupervisorAssignmentWithClingo } from './asp/aspEncodings';
+import { syncSupervisorWorkloadWithConnection } from './workloadService';
 
 /**
  * Supervisor assignment: uses Potassco Clingo (answer set programming) when available to minimize
@@ -12,6 +13,8 @@ export interface SupervisorData {
   department: string;
   currentGroups: number;
   isAvailable: boolean;
+  /** When set, auto-assign will not exceed this many groups in this department row */
+  maxGroups?: number | null;
 }
 
 export interface GroupData {
@@ -79,7 +82,8 @@ export class SupervisorAssignmentService {
           supervisor_name as name,
           department,
           current_groups as currentGroups,
-          COALESCE(is_available, TRUE) as isAvailable
+          COALESCE(is_available, TRUE) as isAvailable,
+          max_groups as maxGroups
         FROM supervisor_workload
         ORDER BY current_groups ASC, supervisor_name ASC
       `);
@@ -152,7 +156,8 @@ export class SupervisorAssignmentService {
     groups: GroupData[],
     supervisors: SupervisorData[]
   ): Promise<AssignmentResult[]> {
-    const asp = await trySupervisorAssignmentWithClingo(groups, supervisors);
+    const anyCap = supervisors.some((s) => s.maxGroups != null);
+    const asp = anyCap ? null : await trySupervisorAssignmentWithClingo(groups, supervisors);
     if (asp) return asp;
 
     const assignments: AssignmentResult[] = [];
@@ -168,11 +173,16 @@ export class SupervisorAssignmentService {
 
     for (const group of sortedGroups) {
       // Only supervisors from the SAME department can be assigned to this group
-      const eligibleSupervisors = supervisorPool.filter(
+      let eligibleSupervisors = supervisorPool.filter(
         s => (s.department || '').trim() === (group.department || '').trim()
       );
+      eligibleSupervisors = eligibleSupervisors.filter((s) => {
+        const cap = s.maxGroups;
+        if (cap == null) return true;
+        return s.currentGroups + s.assignedInThisRound < cap;
+      });
       if (eligibleSupervisors.length === 0) {
-        console.warn(`⚠️  No supervisor in department "${group.department}" for ${group.name}`);
+        console.warn(`⚠️  No supervisor in department "${group.department}" for ${group.name} (or all at capacity)`);
         continue;
       }
 
@@ -212,39 +222,8 @@ export class SupervisorAssignmentService {
     try {
       await connection.beginTransaction();
 
-      console.log('🔄 Syncing supervisor workload...');
-
-      // Get actual group counts per supervisor (by name only - supervisors can have groups from any dept)
-      const [actualCounts] = await connection.execute(`
-        SELECT 
-          supervisor_name,
-          COUNT(*) as actual_count
-        FROM project_groups
-        WHERE supervisor_name IS NOT NULL AND supervisor_name != ''
-        GROUP BY supervisor_name
-      `);
-
-      // Reset all supervisor counts to 0
-      await connection.execute(`
-        UPDATE supervisor_workload 
-        SET current_groups = 0
-      `);
-
-      // Update with actual counts (match by supervisor name - each supervisor has one row)
-      for (const row of actualCounts as any[]) {
-        const [result] = await connection.execute(
-          `UPDATE supervisor_workload 
-           SET current_groups = ? 
-           WHERE supervisor_name = ?`,
-          [row.actual_count, row.supervisor_name]
-        );
-        const affected = (result as any).affectedRows;
-        if (affected > 0) {
-          console.log(`✅ Synced ${row.supervisor_name}: ${row.actual_count} groups`);
-        } else {
-          console.warn(`⚠️ No supervisor_workload row for ${row.supervisor_name} - assignment exists in project_groups but not in workload table`);
-        }
-      }
+      console.log('🔄 Syncing supervisor workload (per department)...');
+      await syncSupervisorWorkloadWithConnection(connection);
 
       await connection.commit();
       console.log('✅ Supervisor workload sync completed');
@@ -279,7 +258,8 @@ export class SupervisorAssignmentService {
         SELECT 
           supervisor_name as name,
           department,
-          current_groups as currentGroups
+          current_groups as currentGroups,
+          max_groups as maxGroups
         FROM supervisor_workload
         ORDER BY department, supervisor_name
       `);
@@ -331,21 +311,23 @@ export class SupervisorAssignmentService {
         violations.push('Some groups have multiple supervisors assigned');
       }
 
-      // Check 2: Workload sync
+      // Check 2: Workload sync (per supervisor_name + department)
       const [syncCheck] = await connection.execute(`
         SELECT 
           s.supervisor_name,
+          s.department,
           s.current_groups as recorded_count,
-          COUNT(g.id) as actual_count
+          COALESCE(COUNT(g.id), 0) as actual_count
         FROM supervisor_workload s
-        LEFT JOIN project_groups g ON s.supervisor_name = g.supervisor_name
-        GROUP BY s.supervisor_name
+        LEFT JOIN project_groups g ON g.supervisor_name = s.supervisor_name
+          AND TRIM(COALESCE(g.department,'')) = TRIM(COALESCE(s.department,''))
+        GROUP BY s.id, s.supervisor_name, s.department, s.current_groups
         HAVING recorded_count != actual_count
       `);
 
       for (const sync of syncCheck as any[]) {
         violations.push(
-          `Supervisor ${sync.supervisor_name} workload out of sync: recorded=${sync.recorded_count}, actual=${sync.actual_count}`
+          `Supervisor ${sync.supervisor_name} (${sync.department}) workload out of sync: recorded=${sync.recorded_count}, actual=${sync.actual_count}`
         );
       }
 

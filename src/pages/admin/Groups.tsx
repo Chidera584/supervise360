@@ -19,9 +19,15 @@ export function Groups() {
   const { filterByDepartment } = useDepartment();
   const [departments, setDepartments] = useState<{ id: number; name: string; code: string }[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState(deptFromUrl || '');
-  const departmentGroups = filterByDepartment(groups).filter(
-    (g) => !selectedDepartment || (g.department || '') === selectedDepartment
-  );
+  const [sessions, setSessions] = useState<{ id: number; label: string }[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<number | ''>('');
+  const departmentGroups = filterByDepartment(groups).filter((g) => {
+    if (selectedDepartment && (g.department || '') !== selectedDepartment) return false;
+    if (selectedSessionId !== '' && Number((g as any).session_id) !== Number(selectedSessionId)) {
+      return false;
+    }
+    return true;
+  });
   const { thresholds, loading: thresholdsLoading, refetch: refetchThresholds } = useGpaThresholds(selectedDepartment || 'Software Engineering');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +79,20 @@ export function Groups() {
     localStorage.removeItem('gpa_thresholds_changed');
     setShowThresholdNotice(false);
   };
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      const res = await apiClient.getSessions().catch(() => ({ success: false, data: [] }));
+      if (res.success && Array.isArray(res.data)) {
+        const list = res.data as { id: number; label: string }[];
+        setSessions(list);
+        if (list.length === 1 && selectedSessionId === '') {
+          setSelectedSessionId(list[0].id);
+        }
+      }
+    };
+    loadSessions();
+  }, []);
 
   // Fetch departments from API
   useEffect(() => {
@@ -204,10 +224,16 @@ export function Groups() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button
-                onClick={() => selectedDepartment && fileInputRef.current?.click()}
-                disabled={!selectedDepartment}
+                onClick={() => selectedDepartment && selectedSessionId !== '' && fileInputRef.current?.click()}
+                disabled={!selectedDepartment || selectedSessionId === ''}
                 className="bg-[#022B3A] hover:bg-[#1F7A8C] disabled:opacity-50 disabled:cursor-not-allowed"
-                title={!selectedDepartment ? 'Select a department first' : 'Upload students for ' + selectedDepartment}
+                title={
+                  !selectedDepartment
+                    ? 'Select a department first'
+                    : selectedSessionId === ''
+                      ? 'Select an academic session first'
+                      : 'Upload students for ' + selectedDepartment
+                }
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Students
@@ -248,6 +274,19 @@ export function Groups() {
                 <option value="">Select department...</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+            <div className="relative min-w-[200px]">
+              <select
+                value={selectedSessionId === '' ? '' : String(selectedSessionId)}
+                onChange={(e) => setSelectedSessionId(e.target.value ? Number(e.target.value) : '')}
+                className="w-full appearance-none px-3 py-2 pr-9 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#1F7A8C] focus:border-transparent bg-white text-slate-900"
+              >
+                <option value="">Academic session...</option>
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -442,8 +481,10 @@ export function Groups() {
                   : 'Choose a department above, then upload student data to form groups.'}
               </p>
               <Button
-                onClick={() => selectedDepartment && fileInputRef.current?.click()}
-                disabled={!selectedDepartment}
+                onClick={() =>
+                  selectedDepartment && selectedSessionId !== '' && fileInputRef.current?.click()
+                }
+                disabled={!selectedDepartment || selectedSessionId === ''}
                 className="bg-[#022B3A] hover:bg-[#1F7A8C] disabled:opacity-50"
               >
                 <Upload className="w-4 h-4 mr-2" />
@@ -480,6 +521,10 @@ export function Groups() {
                 setError('Please select a department first');
                 return;
               }
+              if (selectedSessionId === '') {
+                setError('Please select an academic session first');
+                return;
+              }
 
               // Process student data with selected department (all students go to this department)
               const studentsWithDepartment = parsedData.rows.map((student: any) => ({
@@ -487,7 +532,7 @@ export function Groups() {
                 department: selectedDepartment
               }));
 
-              const result = await formGroupsFromStudents(studentsWithDepartment);
+              const result = await formGroupsFromStudents(studentsWithDepartment, Number(selectedSessionId));
 
               if (result.success) {
                 await syncWithDatabase();

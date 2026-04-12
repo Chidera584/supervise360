@@ -95,7 +95,7 @@ export function createEvaluationsRouter(db: Pool) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      const row = await evaluationService.getStudentSelfEvaluation(userId);
+      const row = await evaluationService.getStudentSelfEvaluationPublic(userId);
       const data = row ? [row] : [];
       res.json({ success: true, data });
     } catch (error) {

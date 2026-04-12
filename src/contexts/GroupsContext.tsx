@@ -8,7 +8,10 @@ interface GroupsContextType {
   addGroups: (newGroups: Group[]) => void;
   clearGroups: (department?: string) => void;
   updateGroup: (groupId: number, updates: Partial<Group>) => void;
-  formGroupsFromStudents: (students: any[]) => Promise<{ success: boolean; error?: string }>;
+  formGroupsFromStudents: (
+    students: any[],
+    sessionId: number
+  ) => Promise<{ success: boolean; error?: string }>;
   syncWithDatabase: () => Promise<void>;
   forceRefresh: () => Promise<void>;
 }
@@ -114,7 +117,8 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
             status: 'formed' as const,
             supervisor: dbGroup.supervisor || dbGroup.supervisor_name || null,
             department: dbGroup.department || 'Software Engineering',
-            avgGpa: avgGpa
+            avgGpa: avgGpa,
+            session_id: dbGroup.session_id != null ? Number(dbGroup.session_id) : undefined,
           };
         });
 
@@ -208,12 +212,15 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const formGroupsFromStudents = useCallback(async (students: any[]): Promise<{ success: boolean; error?: string }> => {
+  const formGroupsFromStudents = useCallback(async (
+    students: any[],
+    sessionId: number
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       // Extract department from first student (all should have same department)
       const department = students[0]?.department;
 
-      const response = await apiClient.formGroups(students, department);
+      const response = await apiClient.formGroups(students, department, sessionId);
 
       // Check if the response indicates an HTTP error
       if (!response.success) {

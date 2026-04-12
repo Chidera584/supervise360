@@ -7,16 +7,44 @@ import {
   notifyGroupingAndSupervisor,
   notifyNewStudentAssignment,
 } from '../services/notificationEmailService';
+import {
+  adjustSupervisorWorkload,
+  checkSupervisorCap,
+  syncSupervisorWorkloadWithConnection,
+} from '../services/workloadService';
 
 const router = Router();
 
 export function createGroupsRouter(db: Pool) {
   const groupService = new GroupFormationService(db);
 
-  const resetEvaluationsForDepartment = async (connection: any, department: string) => {
+  const resetEvaluationsForDepartment = async (
+    connection: any,
+    department: string,
+    sessionId?: number | null
+  ) => {
     const dept = String(department || '').trim();
     if (!dept) return;
-    // Reset project-level and student-level evaluations tied to groups in this department.
+    if (sessionId != null) {
+      await connection.execute(
+        `DELETE e FROM evaluations e
+         INNER JOIN projects p ON p.id = e.project_id
+         INNER JOIN project_groups pg ON pg.id = p.group_id
+         WHERE TRIM(COALESCE(pg.department,'')) = TRIM(?) AND pg.session_id = ?`,
+        [dept, sessionId]
+      );
+      try {
+        await connection.execute(
+          `DELETE se FROM student_evaluations se
+           INNER JOIN project_groups pg ON pg.id = se.group_id
+           WHERE TRIM(COALESCE(pg.department,'')) = TRIM(?) AND pg.session_id = ?`,
+          [dept, sessionId]
+        );
+      } catch {
+        /* */
+      }
+      return;
+    }
     await connection.execute(
       `DELETE e FROM evaluations e
        INNER JOIN projects p ON p.id = e.project_id
@@ -62,13 +90,10 @@ export function createGroupsRouter(db: Pool) {
         });
       }
 
-      const matricNumber = students[0].matric_number;
-      const studentDepartment = students[0].department || '';
-      console.log('🔍 /groups/my-group matric number:', matricNumber);
-      const group = await groupService.getGroupByMatricNumber(matricNumber, studentDepartment);
+      const group = await groupService.getGroupForStudentUser(userId);
 
       if (!group) {
-        console.log('⚠️ /groups/my-group: no group found for matric', matricNumber);
+        console.log('⚠️ /groups/my-group: no group found for user', userId);
         return res.json({
           success: true,
           data: null,
@@ -77,16 +102,41 @@ export function createGroupsRouter(db: Pool) {
       }
       console.log('✅ /groups/my-group: group found', { id: group.id, name: group.name });
 
+      let supervisorEmail: string | null = null;
+      let supervisorPhone: string | null = null;
+      if (group.supervisor && group.department) {
+        try {
+          const [cw] = await db.execute(
+            `SELECT email, phone FROM supervisor_workload
+             WHERE TRIM(supervisor_name) = TRIM(?) AND TRIM(COALESCE(department,'')) = TRIM(?)
+             LIMIT 1`,
+            [group.supervisor, group.department]
+          );
+          const cr = (cw as any[])[0];
+          if (cr) {
+            supervisorEmail = cr.email ?? null;
+            supervisorPhone = cr.phone ?? null;
+          }
+        } catch {
+          /* */
+        }
+      }
+
       res.json({
         success: true,
         data: {
           id: group.id,
           name: group.name,
+          sessionId: group.session_id,
           members: group.members.map(m => ({
             name: m.name,
-            matricNumber: (m as any).matricNumber
+            matricNumber: (m as any).matricNumber,
+            email: (m as any).email ?? null,
+            phone: (m as any).phone ?? null,
           })),
           supervisor: group.supervisor,
+          supervisorEmail,
+          supervisorPhone,
           department: group.department,
           status: group.status
         }
@@ -104,7 +154,11 @@ export function createGroupsRouter(db: Pool) {
   router.get('/', authenticateToken, async (req, res) => {
     try {
       console.log('🔍 Groups endpoint called');
-      const groups = await groupService.getAllGroups();
+      let groups = await groupService.getAllGroups();
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : NaN;
+      if (!Number.isNaN(sessionId)) {
+        groups = groups.filter((g) => Number((g as any).session_id) === sessionId);
+      }
       console.log('✅ Groups fetched successfully:', groups.length);
       
       // Return in the expected API format
@@ -126,7 +180,7 @@ export function createGroupsRouter(db: Pool) {
   // Form groups from uploaded student data
   router.post('/form', authenticateToken, async (req, res) => {
     try {
-      const { students, department } = req.body;
+      const { students, department, sessionId: sessionIdRaw } = req.body;
       
       console.log('📥 [GROUPS/FORM] Received request to form groups');
       console.log('   - Students count:', students?.length || 0);
@@ -140,6 +194,23 @@ export function createGroupsRouter(db: Pool) {
         });
       }
 
+      const sessionId = Number(sessionIdRaw);
+      if (!sessionIdRaw || Number.isNaN(sessionId)) {
+        return res.status(400).json({
+          success: false,
+          error: 'sessionId is required',
+          message: 'sessionId is required (academic session / cohort)',
+        });
+      }
+      const [sessRows] = await db.execute('SELECT id FROM academic_sessions WHERE id = ?', [sessionId]);
+      if ((sessRows as any[]).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid sessionId',
+          message: 'The selected academic session does not exist.',
+        });
+      }
+
       // Clear existing groups for this department so we get a clean formation (no duplicates)
       const deptToClear = department || students[0]?.department;
       if (deptToClear) {
@@ -147,7 +218,7 @@ export function createGroupsRouter(db: Pool) {
         const connection = await db.getConnection();
         try {
           await connection.beginTransaction();
-          await resetEvaluationsForDepartment(connection, deptToClear);
+          await resetEvaluationsForDepartment(connection, deptToClear, sessionId);
           await connection.commit();
         } catch (e) {
           await connection.rollback();
@@ -155,8 +226,8 @@ export function createGroupsRouter(db: Pool) {
         } finally {
           connection.release();
         }
-        await groupService.clearGroupsForDepartment(deptToClear);
-        console.log('🧹 [GROUPS/FORM] Cleared existing groups for department:', deptToClear);
+        await groupService.clearGroupsForDepartment(deptToClear, sessionId);
+        console.log('🧹 [GROUPS/FORM] Cleared existing groups for department:', deptToClear, 'session:', sessionId);
       }
 
       // Process student data with department for threshold lookup
@@ -180,7 +251,7 @@ export function createGroupsRouter(db: Pool) {
       }
 
       // Save to database
-      const groupIds = await groupService.saveGroupsToDatabase(groups);
+      const groupIds = await groupService.saveGroupsToDatabase(groups, sessionId);
       
       // Return formed groups with IDs
       const groupsWithIds = groups.map((group, index) => ({
@@ -222,36 +293,69 @@ export function createGroupsRouter(db: Pool) {
       }
 
       const connection = await db.getConnection();
+      let supervisorChanged = false;
       
       try {
         await connection.beginTransaction();
 
-        // Reset evaluations for this group when supervisor changes.
-        await connection.execute(
-          `DELETE e FROM evaluations e
-           INNER JOIN projects p ON p.id = e.project_id
-           WHERE p.group_id = ?`,
+        const [pgRows] = await connection.execute(
+          'SELECT supervisor_name, department FROM project_groups WHERE id = ? FOR UPDATE',
           [groupId]
         );
-        try {
-          await connection.execute('DELETE FROM student_evaluations WHERE group_id = ?', [groupId]);
-        } catch {
-          // student_evaluations may not exist in older environments
+        const pgRow = (pgRows as any[])[0];
+        if (!pgRow) {
+          await connection.rollback();
+          return res.status(404).json({
+            success: false,
+            error: 'Group not found',
+            message: 'Group not found',
+          });
         }
 
-        // Update group with supervisor
-        await connection.execute(
-          'UPDATE project_groups SET supervisor_name = ?, updated_at = NOW() WHERE id = ?',
-          [supervisorName, groupId]
-        );
+        const oldSup = pgRow.supervisor_name ? String(pgRow.supervisor_name).trim() : '';
+        const dept = String(pgRow.department || '').trim();
+        const newSup = String(supervisorName).trim();
 
-        // Update supervisor workload
-        await connection.execute(
-          'UPDATE supervisor_workload SET current_groups = current_groups + 1, updated_at = NOW() WHERE supervisor_name = ?',
-          [supervisorName]
-        );
+        if (oldSup !== newSup) {
+          supervisorChanged = true;
+          if (newSup) {
+            const cap = await checkSupervisorCap(connection, newSup, dept);
+            if (!cap.ok) {
+              await connection.rollback();
+              return res.status(400).json({ success: false, message: cap.message });
+            }
+          }
+
+          await connection.execute(
+            `DELETE e FROM evaluations e
+             INNER JOIN projects p ON p.id = e.project_id
+             WHERE p.group_id = ?`,
+            [groupId]
+          );
+          try {
+            await connection.execute('DELETE FROM student_evaluations WHERE group_id = ?', [groupId]);
+          } catch {
+            // student_evaluations may not exist in older environments
+          }
+
+          await connection.execute(
+            'UPDATE project_groups SET supervisor_name = ?, updated_at = NOW() WHERE id = ?',
+            [supervisorName, groupId]
+          );
+
+          if (oldSup) {
+            await adjustSupervisorWorkload(connection, oldSup, dept, -1);
+          }
+          if (newSup) {
+            await adjustSupervisorWorkload(connection, newSup, dept, 1);
+          }
+        }
 
         await connection.commit();
+
+        if (!supervisorChanged) {
+          return res.json({ success: true, message: 'Supervisor unchanged' });
+        }
 
         // Notify students (grouping + supervisor) and supervisor (new assignment)
         const [memberRows] = await db.execute(
@@ -298,8 +402,8 @@ export function createGroupsRouter(db: Pool) {
           }
         }
         if (studentUserIds.length > 0) {
-          const [pgRows] = await db.execute('SELECT name FROM project_groups WHERE id = ?', [groupId]);
-          const groupName = (pgRows as any[])[0]?.name || `Group ${groupId}`;
+          const [pgNameRows] = await db.execute('SELECT name FROM project_groups WHERE id = ?', [groupId]);
+          const groupName = (pgNameRows as any[])[0]?.name || `Group ${groupId}`;
           notifyGroupingAndSupervisor(db, studentUserIds, studentEmails, studentNames, groupName, supervisorName).catch(() => {});
         }
 
@@ -362,18 +466,7 @@ export function createGroupsRouter(db: Pool) {
             'DELETE FROM project_groups WHERE TRIM(COALESCE(department,\'\')) = TRIM(?)',
             [department]
           );
-          // Recompute workload globally from remaining assignments
-          await connection.execute('UPDATE supervisor_workload SET current_groups = 0, updated_at = NOW()');
-          await connection.execute(
-            `UPDATE supervisor_workload sw
-             INNER JOIN (
-               SELECT supervisor_name, COUNT(*) as c
-               FROM project_groups
-               WHERE supervisor_name IS NOT NULL AND supervisor_name <> ''
-               GROUP BY supervisor_name
-             ) x ON x.supervisor_name = sw.supervisor_name
-             SET sw.current_groups = x.c, sw.updated_at = NOW()`
-          );
+          await syncSupervisorWorkloadWithConnection(connection);
         } else {
           // Legacy behavior: clear all departments
           await connection.execute('DELETE FROM evaluations');
@@ -385,7 +478,7 @@ export function createGroupsRouter(db: Pool) {
           await connection.execute('DELETE FROM group_members');
           await connection.execute('DELETE FROM projects');
           await connection.execute('DELETE FROM project_groups');
-          await connection.execute('UPDATE supervisor_workload SET current_groups = 0, updated_at = NOW()');
+          await syncSupervisorWorkloadWithConnection(connection);
         }
 
         await connection.commit();

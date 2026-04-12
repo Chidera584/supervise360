@@ -7,6 +7,8 @@ export interface StudentData {
   tier: 'HIGH' | 'MEDIUM' | 'LOW';
   department?: string;
   student_id?: string;
+  email?: string | null;
+  phone?: string | null;
   /** Unique key for tracking used students (avoids losing students with duplicate names) */
   _key?: string;
 }
@@ -21,6 +23,7 @@ export interface GroupData {
   supervisor?: string | null;
   department?: string;
   project_id?: number;
+  session_id?: number;
 }
 
 export class GroupFormationService {
@@ -187,12 +190,30 @@ export class GroupFormationService {
         console.log(`📊 [PROCESS STUDENTS] Student ${index + 1}: ${name} (GPA: ${gpa}) → ${tier} (thresholds: H≥${thresholds.high}, M≥${thresholds.medium}, L≥${thresholds.low})`);
       }
       
+      const emailRaw =
+        student.email ||
+        student.Email ||
+        student.EMAIL ||
+        student['E-mail'] ||
+        student['Email Address'];
+      const phoneRaw =
+        student.phone ||
+        student.Phone ||
+        student.PHONE ||
+        student['Phone Number'] ||
+        student.telephone ||
+        student.mobile;
+      const email = emailRaw != null && String(emailRaw).trim() ? String(emailRaw).trim() : null;
+      const phone = phoneRaw != null && String(phoneRaw).trim() ? String(phoneRaw).trim() : null;
+
       return {
         name,
         gpa,
         tier,
         department: studentDepartment,
         student_id: studentId,
+        email,
+        phone,
         _key: (studentId && String(studentId).trim()) ? String(studentId).trim() : `_row_${index}`
       };
     });
@@ -602,22 +623,44 @@ export class GroupFormationService {
   }
 
   // Clear groups for a department before forming new ones (avoids duplicates, ensures clean formation)
-  async clearGroupsForDepartment(department: string): Promise<void> {
+  async clearGroupsForDepartment(department: string, sessionId?: number | null): Promise<void> {
     const connection = await this.db.getConnection();
     try {
-      await connection.execute(
-        'DELETE gm FROM group_members gm INNER JOIN project_groups pg ON gm.group_id = pg.id WHERE pg.department = ?',
-        [department]
-      );
-      await connection.execute('DELETE p FROM projects p INNER JOIN project_groups pg ON p.group_id = pg.id WHERE pg.department = ?', [department]);
-      await connection.execute('DELETE FROM project_groups WHERE department = ?', [department]);
+      if (sessionId != null) {
+        await connection.execute(
+          `DELETE gm FROM group_members gm
+           INNER JOIN project_groups pg ON gm.group_id = pg.id
+           WHERE pg.department = ? AND pg.session_id = ?`,
+          [department, sessionId]
+        );
+        await connection.execute(
+          `DELETE p FROM projects p
+           INNER JOIN project_groups pg ON p.group_id = pg.id
+           WHERE pg.department = ? AND pg.session_id = ?`,
+          [department, sessionId]
+        );
+        await connection.execute(
+          'DELETE FROM project_groups WHERE department = ? AND session_id = ?',
+          [department, sessionId]
+        );
+      } else {
+        await connection.execute(
+          'DELETE gm FROM group_members gm INNER JOIN project_groups pg ON gm.group_id = pg.id WHERE pg.department = ?',
+          [department]
+        );
+        await connection.execute(
+          'DELETE p FROM projects p INNER JOIN project_groups pg ON p.group_id = pg.id WHERE pg.department = ?',
+          [department]
+        );
+        await connection.execute('DELETE FROM project_groups WHERE department = ?', [department]);
+      }
     } finally {
       connection.release();
     }
   }
 
   // Save groups to database
-  async saveGroupsToDatabase(groups: GroupData[]): Promise<number[]> {
+  async saveGroupsToDatabase(groups: GroupData[], sessionId: number): Promise<number[]> {
     const connection = await this.db.getConnection();
     const groupIds: number[] = [];
 
@@ -630,9 +673,9 @@ export class GroupFormationService {
         
         // Insert group into project_groups table (not 'groups' which is reserved)
         const [groupResult] = await connection.execute(
-          `INSERT INTO project_groups (name, avg_gpa, status, department, formation_method, formation_date, created_at) 
-           VALUES (?, ?, ?, ?, 'asp', NOW(), NOW())`,
-          [group.name, group.avg_gpa, group.status, department]
+          `INSERT INTO project_groups (name, avg_gpa, status, department, session_id, formation_method, formation_date, created_at) 
+           VALUES (?, ?, ?, ?, ?, 'asp', NOW(), NOW())`,
+          [group.name, group.avg_gpa, group.status, department, sessionId]
         );
 
         const groupId = (groupResult as any).insertId;
@@ -656,9 +699,18 @@ export class GroupFormationService {
           const member = group.members[i]; // Already in tier order
           const matricNumber = member.student_id || null;
           await connection.execute(
-            `INSERT INTO group_members (group_id, student_name, student_gpa, gpa_tier, member_order, matric_number) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [groupId, member.name, member.gpa, member.tier, i + 1, matricNumber]
+            `INSERT INTO group_members (group_id, student_name, student_gpa, gpa_tier, member_order, matric_number, email, phone) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              groupId,
+              member.name,
+              member.gpa,
+              member.tier,
+              i + 1,
+              matricNumber,
+              member.email ?? null,
+              member.phone ?? null,
+            ]
           );
         }
       }
@@ -674,8 +726,14 @@ export class GroupFormationService {
     }
   }
 
-  // Get a student's group by their matric number (primary identifier)
-  async getGroupByMatricNumber(matricNumber: string, department?: string): Promise<GroupData | null> {
+  /**
+   * Resolve group by matric; optional department and session scope concurrent cohorts.
+   */
+  async getGroupByMatricNumber(
+    matricNumber: string,
+    department?: string,
+    sessionId?: number | null
+  ): Promise<GroupData | null> {
     if (!matricNumber || matricNumber.trim() === '') {
       return null;
     }
@@ -684,15 +742,17 @@ export class GroupFormationService {
     try {
       const trimmed = matricNumber.trim();
       const useDept = !!department && String(department).trim().length > 0;
+      const useSession = sessionId != null && sessionId !== undefined;
       const [rows] = await connection.execute(
         `SELECT gm.group_id
          FROM group_members gm
          INNER JOIN project_groups pg ON pg.id = gm.group_id
          WHERE (gm.matric_number = ? OR TRIM(COALESCE(gm.matric_number,'')) = ?)
            AND (? = 0 OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
+           AND (? = 0 OR pg.session_id = ?)
          ORDER BY gm.group_id DESC
          LIMIT 1`,
-        [trimmed, trimmed, useDept ? 1 : 0, department || '']
+        [trimmed, trimmed, useDept ? 1 : 0, department || '', useSession ? 1 : 0, sessionId ?? 0]
       );
 
       const memberRows = rows as any[];
@@ -709,6 +769,25 @@ export class GroupFormationService {
     } finally {
       connection.release();
     }
+  }
+
+  /** Preferred for /groups/my-group: uses student's session_id when set. */
+  async getGroupForStudentUser(userId: number): Promise<GroupData | null> {
+    const [rows] = await this.db.execute(
+      `SELECT s.matric_number, TRIM(COALESCE(u.department,'')) as department, s.session_id
+       FROM students s
+       INNER JOIN users u ON u.id = s.user_id
+       WHERE s.user_id = ?`,
+      [userId]
+    );
+    const st = (rows as any[])[0];
+    if (!st?.matric_number) return null;
+    const sid = st.session_id != null ? Number(st.session_id) : null;
+    return this.getGroupByMatricNumber(
+      String(st.matric_number).trim(),
+      st.department || undefined,
+      sid
+    );
   }
 
   // Get all groups with members
@@ -747,7 +826,9 @@ export class GroupFormationService {
           name: member.student_name,
           gpa: member.student_gpa,
           tier: member.gpa_tier as 'HIGH' | 'MEDIUM' | 'LOW',
-          matricNumber: member.matric_number || member.student_id || null
+          matricNumber: member.matric_number || member.student_id || null,
+          email: member.email ?? null,
+          phone: member.phone ?? null,
         }));
 
         groups.push({
@@ -758,7 +839,8 @@ export class GroupFormationService {
           status: group.status,
           supervisor_id: group.supervisor_id,
           supervisor: group.supervisor_name || null, // supervisor_name from project_groups table
-          department: group.department
+          department: group.department,
+          session_id: group.session_id != null ? Number(group.session_id) : undefined,
         });
         
         // Log first group to verify supervisor is included
@@ -793,6 +875,38 @@ export class GroupFormationService {
     } finally {
       connection.release();
     }
+  }
+
+  /** After member moves/swaps: tier order, member_order, and project_groups.avg_gpa. */
+  async renormalizeGroupOrdersAndAvg(connection: any, groupId: number): Promise<void> {
+    const [orderedRows] = await connection.execute(
+      `SELECT id
+       FROM group_members
+       WHERE group_id = ?
+       ORDER BY
+         CASE
+           WHEN gpa_tier = 'HIGH' THEN 1
+           WHEN gpa_tier = 'MEDIUM' THEN 2
+           WHEN gpa_tier = 'LOW' THEN 3
+           ELSE 4
+         END ASC,
+         student_gpa DESC,
+         id ASC`,
+      [groupId]
+    );
+    const members = orderedRows as any[];
+    for (let i = 0; i < members.length; i++) {
+      await connection.execute('UPDATE group_members SET member_order = ? WHERE id = ?', [
+        i + 1,
+        members[i].id,
+      ]);
+    }
+    const [avgRows] = await connection.execute(
+      'SELECT AVG(student_gpa) AS avg_gpa FROM group_members WHERE group_id = ?',
+      [groupId]
+    );
+    const avg = Number((avgRows as any[])[0]?.avg_gpa ?? 0);
+    await connection.execute('UPDATE project_groups SET avg_gpa = ? WHERE id = ?', [avg, groupId]);
   }
 
   // Validate group formation constraints

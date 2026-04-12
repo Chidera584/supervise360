@@ -94,85 +94,26 @@ export function DefenseEvaluation() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Evaluation Results (out of 60)</h2>
+          <h2 className="text-lg font-semibold text-[#022B3A] mb-4">Supervisor evaluation</h2>
+          <p className="text-sm text-slate-600 mb-4">
+            You can see when your supervisor has completed an evaluation. Numeric scores are not shown here.
+          </p>
           {evaluations.length > 0 ? (
             <div className="space-y-4">
               {evaluations.map((evalItem: any) => (
                 <div key={evalItem.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
-                  <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C] capitalize">
-                        {evalItem.evaluation_type || 'Evaluation'}
-                      </span>
+                      <p className="font-medium text-slate-900">
+                        {evalItem.evaluation_received ? 'Evaluation received' : 'Evaluation'}
+                      </p>
                       {evalItem.evaluated_at && (
                         <p className="text-xs text-slate-500 mt-1">
-                          {new Date(evalItem.evaluated_at).toLocaleDateString()}
+                          {new Date(evalItem.evaluated_at).toLocaleString()}
                         </p>
                       )}
                     </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-[#022B3A]">
-                        {evalItem.total_score != null ? `${evalItem.total_score} / 60` : '—'}
-                      </p>
-                      <p className="text-sm text-slate-600">Total score</p>
-                    </div>
                   </div>
-                  {(evalItem.documentation_score != null || evalItem.implementation_score != null || evalItem.presentation_score != null || evalItem.innovation_score != null) && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 pt-3 border-t border-slate-200">
-                      {evalItem.documentation_score != null && (
-                        <div>
-                          <p className="text-xs text-slate-500">Project quality</p>
-                          <p className="font-medium text-slate-900">{evalItem.documentation_score}</p>
-                        </div>
-                      )}
-                      {evalItem.implementation_score != null && (
-                        <div>
-                          <p className="text-xs text-slate-500">Individual contribution</p>
-                          <p className="font-medium text-slate-900">{evalItem.implementation_score}</p>
-                        </div>
-                      )}
-                      {evalItem.presentation_score != null && (
-                        <div>
-                          <p className="text-xs text-slate-500">Overall performance</p>
-                          <p className="font-medium text-slate-900">{evalItem.presentation_score}</p>
-                        </div>
-                      )}
-                      {evalItem.innovation_score != null && (
-                        <div>
-                          <p className="text-xs text-slate-500">Participation</p>
-                          <p className="font-medium text-slate-900">{evalItem.innovation_score}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {evalItem.feedback && (
-                    <div className="pt-3 border-t border-slate-200">
-                      <p className="text-xs font-medium text-slate-500 mb-1">Feedback</p>
-                      <p className="text-sm text-slate-800">{evalItem.feedback}</p>
-                    </div>
-                  )}
-                  {(evalItem.strengths || evalItem.weaknesses || evalItem.recommendations) && (
-                    <div className="pt-3 mt-3 border-t border-slate-200 space-y-2 text-sm">
-                      {evalItem.strengths && (
-                        <div>
-                          <p className="text-xs font-medium text-slate-500">Strengths</p>
-                          <p className="text-slate-700">{evalItem.strengths}</p>
-                        </div>
-                      )}
-                      {evalItem.weaknesses && (
-                        <div>
-                          <p className="text-xs font-medium text-slate-500">Areas for improvement</p>
-                          <p className="text-slate-700">{evalItem.weaknesses}</p>
-                        </div>
-                      )}
-                      {evalItem.recommendations && (
-                        <div>
-                          <p className="text-xs font-medium text-slate-500">Recommendations</p>
-                          <p className="text-slate-700">{evalItem.recommendations}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

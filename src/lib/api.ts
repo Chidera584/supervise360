@@ -172,8 +172,9 @@ class ApiClient {
   }
 
   // Groups endpoints
-  async getGroups(): Promise<ApiResponse> {
-    return this.request('/groups');
+  async getGroups(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/groups${q}`);
   }
 
   // Get current student's group (by matric number) - real-time from database
@@ -181,11 +182,75 @@ class ApiClient {
     return this.request('/groups/my-group');
   }
 
-  async formGroups(students: any[], department?: string): Promise<ApiResponse> {
+  async formGroups(students: any[], department?: string, sessionId?: number): Promise<ApiResponse> {
     return this.request('/groups/form', {
       method: 'POST',
-      body: JSON.stringify({ students, department }),
+      body: JSON.stringify({ students, department, sessionId }),
     });
+  }
+
+  async getSessions(): Promise<ApiResponse> {
+    return this.request('/sessions');
+  }
+
+  async createSession(payload: {
+    label: string;
+    starts_on?: string | null;
+    ends_on?: string | null;
+    is_active?: boolean;
+  }): Promise<ApiResponse> {
+    return this.request('/sessions', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async moveGroupMember(payload: {
+    memberId: number;
+    fromGroupId: number;
+    toGroupId: number;
+    swapType?: 'STUDENT_GROUP' | 'STUDENT_SUPERVISOR';
+    expectedSupervisorName?: string;
+  }): Promise<ApiResponse> {
+    return this.request('/admin/groups/move-member', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateSupervisorWorkloadCap(id: number, max_groups: number | null): Promise<ApiResponse> {
+    return this.request(`/supervisors/workload/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ max_groups }),
+    });
+  }
+
+  async getSupervisionMeetings(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/supervision/meetings${q}`);
+  }
+
+  async createSupervisionMeeting(body: Record<string, unknown>): Promise<ApiResponse> {
+    return this.request('/supervision/meetings', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  async updateSupervisionMeeting(id: number, body: Record<string, unknown>): Promise<ApiResponse> {
+    return this.request(`/supervision/meetings/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  }
+
+  async saveMeetingAttendance(
+    meetingId: number,
+    attendance: { group_member_id: number; present: boolean }[]
+  ): Promise<ApiResponse> {
+    return this.request(`/supervision/meetings/${meetingId}/attendance`, {
+      method: 'POST',
+      body: JSON.stringify({ attendance }),
+    });
+  }
+
+  async getMySupervisionMeetings(): Promise<ApiResponse> {
+    return this.request('/supervision/my-meetings');
+  }
+
+  async getMyProgressiveAssessments(): Promise<ApiResponse> {
+    return this.request('/supervision/my-assessments');
   }
 
   async assignSupervisor(groupId: number, supervisorName: string): Promise<ApiResponse> {

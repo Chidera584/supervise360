@@ -26,7 +26,15 @@ import { authenticateToken, requireAdmin, requireSupervisor } from './middleware
 import type { AuthenticatedRequest } from './types';
 import { computeAllocation } from './services/defenseSchedulingService';
 import { DefenseAllocationService } from './services/defenseAllocationService';
-import { ensureProjectGroupsSchema, ensureReportsApprovedColumn, backfillProjectsForGroups, ensureDepartmentsTables } from './services/schemaFixService';
+import {
+  ensureProjectGroupsSchema,
+  ensureReportsApprovedColumn,
+  backfillProjectsForGroups,
+  ensureDepartmentsTables,
+  ensureFeatureExpansionSchema,
+} from './services/schemaFixService';
+import { createSessionsRouter } from './routes/sessions';
+import { createSupervisionRouter } from './routes/supervision';
 
 // Load environment variables
 dotenv.config();
@@ -114,6 +122,7 @@ async function startServer() {
       console.log(`✅ Backfilled ${backfilled} project(s) for groups`);
     }
     await ensureDepartmentsTables(db);
+    await ensureFeatureExpansionSchema(db);
 
     // Create and register routes that need database connection
     const groupsRouter = createGroupsRouter(db);
@@ -126,11 +135,15 @@ async function startServer() {
     const messagesRouter = createMessagesRouter(db);
     const notificationsRouter = createNotificationsRouter(db);
     const defensePanelsRouter = createDefensePanelsRouter(db);
+    const sessionsRouter = createSessionsRouter(db);
+    const supervisionRouter = createSupervisionRouter(db);
     
     // Register API routes (standalone my-groups before supervisors router so it's guaranteed to work)
     app.use('/api/auth', authRoutes);
     app.use('/api/users', userRoutes);
     app.use('/api/groups', groupsRouter);
+    app.use('/api/sessions', sessionsRouter);
+    app.use('/api/supervision', supervisionRouter);
     app.get('/api/supervisors/my-groups', authenticateToken, requireSupervisor, async (req, res) => {
       try {
         const userId = (req as AuthenticatedRequest).user?.id;
@@ -147,17 +160,32 @@ async function startServer() {
           groupWhere += ` OR (supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))`;
           groupParams.push(firstName, lastName);
         }
+        const sessionIdQ = req.query.sessionId ? Number(req.query.sessionId) : NaN;
+        let sessionExtra = '';
+        const groupExecParams = [...groupParams];
+        if (!Number.isNaN(sessionIdQ)) {
+          sessionExtra = ' AND session_id = ?';
+          groupExecParams.push(sessionIdQ);
+        }
         const [groupRows] = await db.execute(
-          `SELECT id, name, department, status, avg_gpa, supervisor_name, created_at FROM project_groups ${groupWhere} ORDER BY name ASC`,
-          groupParams
+          `SELECT id, name, department, status, avg_gpa, supervisor_name, created_at, session_id FROM project_groups ${groupWhere}${sessionExtra} ORDER BY name ASC`,
+          groupExecParams
         );
         const groups = groupRows as any[];
         const result = await Promise.all(groups.map(async (g: any) => {
           const [memberRows] = await db.execute(
-            'SELECT id, student_name, student_gpa, gpa_tier, matric_number, member_order FROM group_members WHERE group_id = ? ORDER BY member_order ASC',
+            'SELECT id, student_name, student_gpa, gpa_tier, matric_number, member_order, email, phone FROM group_members WHERE group_id = ? ORDER BY member_order ASC',
             [g.id]
           );
-          const members = (memberRows as any[]).map(m => ({ id: m.id, name: m.student_name, gpa: m.student_gpa, tier: m.gpa_tier, matricNumber: m.matric_number }));
+          const members = (memberRows as any[]).map(m => ({
+            id: m.id,
+            name: m.student_name,
+            gpa: m.student_gpa,
+            tier: m.gpa_tier,
+            matricNumber: m.matric_number,
+            email: m.email ?? null,
+            phone: m.phone ?? null,
+          }));
           const [projectRows] = await db.execute('SELECT id, title, status, progress_percentage, submitted_at FROM projects WHERE group_id = ? LIMIT 1', [g.id]);
           const project = (projectRows as any[])[0] || null;
           const [reportCounts] = await db.execute(
@@ -167,7 +195,28 @@ async function startServer() {
           );
           const counts = (reportCounts as any[])[0] || { total: 0, reviewed: 0 };
           const totalReports = Number(counts.total) || 0, reportsReviewed = Number(counts.reviewed) || 0;
-          return { id: g.id, name: g.name, department: g.department, status: g.status || 'formed', avg_gpa: g.avg_gpa, supervisor: g.supervisor_name, members, project: project ? { id: project.id, title: project.title, status: project.status, progress_percentage: project.progress_percentage, submitted_at: project.submitted_at } : null, reportsTotal: totalReports, reportsReviewed, reportsPending: totalReports - reportsReviewed };
+          return {
+            id: g.id,
+            name: g.name,
+            department: g.department,
+            session_id: g.session_id,
+            status: g.status || 'formed',
+            avg_gpa: g.avg_gpa,
+            supervisor: g.supervisor_name,
+            members,
+            project: project
+              ? {
+                  id: project.id,
+                  title: project.title,
+                  status: project.status,
+                  progress_percentage: project.progress_percentage,
+                  submitted_at: project.submitted_at,
+                }
+              : null,
+            reportsTotal: totalReports,
+            reportsReviewed,
+            reportsPending: totalReports - reportsReviewed,
+          };
         }));
         res.json({ success: true, data: result });
       } catch (err) {

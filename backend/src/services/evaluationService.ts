@@ -366,4 +366,17 @@ export class EvaluationService {
     );
     return (rows as any[])[0] || null;
   }
+
+  /**
+   * Student-facing view: confirms evaluation exists but hides scores, grades, and rubric fields.
+   */
+  async getStudentSelfEvaluationPublic(userId: number) {
+    const row = await this.getStudentSelfEvaluation(userId);
+    if (!row) return null;
+    return {
+      id: row.id,
+      evaluation_received: true,
+      evaluated_at: row.evaluated_at,
+    };
+  }
 }

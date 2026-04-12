@@ -10,11 +10,13 @@ import { ProjectService } from '../services/projectService';
 import { computeAllocation } from '../services/defenseSchedulingService';
 import { notifyUnassignedStudentsAlert } from '../services/notificationEmailService';
 import { sendTestEmail, isEmailConfigured } from '../services/emailService';
+import { GroupFormationService } from '../services/groupFormationService';
 
 const router = Router();
 
 export function createAdminRouter(db: Pool) {
   const adminService = new AdminService(db);
+  const groupFormationService = new GroupFormationService(db);
   const departmentService = new DepartmentService(db);
   const defenseService = new DefensePanelService(db);
   const defenseAllocService = new DefenseAllocationService(db);
@@ -380,6 +382,19 @@ export function createAdminRouter(db: Pool) {
           await conn.rollback();
           return res.status(404).json({ success: false, message: 'Members not found or group mismatch' });
         }
+        const [[pgS1], [pgS2]] = await Promise.all([
+          conn.execute('SELECT session_id FROM project_groups WHERE id = ?', [g1]) as any,
+          conn.execute('SELECT session_id FROM project_groups WHERE id = ?', [g2]) as any,
+        ]);
+        const sid1 = (pgS1 as any[])[0]?.session_id;
+        const sid2 = (pgS2 as any[])[0]?.session_id;
+        if (sid1 != null && sid2 != null && Number(sid1) !== Number(sid2)) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Groups must belong to the same academic session',
+          });
+        }
         const tier1 = r1.gpa_tier ?? null;
         const tier2 = r2.gpa_tier ?? null;
         if (tier1 !== tier2) {
@@ -389,40 +404,8 @@ export function createAdminRouter(db: Pool) {
         await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [g2, r1.id]);
         await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [g1, r2.id]);
 
-        // Keep each affected group internally consistent after cross-group swap:
-        // 1) normalize member_order to avoid duplicate order slots
-        // 2) recompute avg_gpa so group summaries reflect the new members immediately
         for (const groupId of [g1, g2]) {
-          const [orderedRows] = await conn.execute(
-            `SELECT id
-             FROM group_members
-             WHERE group_id = ?
-             ORDER BY
-               CASE
-                 WHEN gpa_tier = 'HIGH' THEN 1
-                 WHEN gpa_tier = 'MEDIUM' THEN 2
-                 WHEN gpa_tier = 'LOW' THEN 3
-                 ELSE 4
-               END ASC,
-               student_gpa DESC,
-               id ASC`,
-            [groupId]
-          );
-
-          const members = orderedRows as any[];
-          for (let i = 0; i < members.length; i++) {
-            await conn.execute(
-              'UPDATE group_members SET member_order = ? WHERE id = ?',
-              [i + 1, members[i].id]
-            );
-          }
-
-          const [avgRows] = await conn.execute(
-            'SELECT AVG(student_gpa) AS avg_gpa FROM group_members WHERE group_id = ?',
-            [groupId]
-          );
-          const avg = Number((avgRows as any[])[0]?.avg_gpa ?? 0);
-          await conn.execute('UPDATE project_groups SET avg_gpa = ? WHERE id = ?', [avg, groupId]);
+          await groupFormationService.renormalizeGroupOrdersAndAvg(conn, groupId);
         }
 
         await conn.commit();
@@ -436,6 +419,169 @@ export function createAdminRouter(db: Pool) {
     } catch (error) {
       console.error('Swap members error:', error);
       res.status(500).json({ success: false, message: 'Failed to swap students' });
+    }
+  });
+
+  /**
+   * Move one student to another group (Student↔Group / Student↔Supervisor when target group matches supervisor).
+   * swapType: STUDENT_GROUP | STUDENT_SUPERVISOR — for STUDENT_SUPERVISOR pass expectedSupervisorName matching target group's supervisor.
+   */
+  router.post('/groups/move-member', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const memberId = Number(req.body?.memberId);
+      const fromGroupId = Number(req.body?.fromGroupId);
+      const toGroupId = Number(req.body?.toGroupId);
+      const swapType = String(req.body?.swapType || 'STUDENT_GROUP');
+      const expectedSupervisorName = req.body?.expectedSupervisorName
+        ? String(req.body.expectedSupervisorName).trim()
+        : '';
+
+      if (!memberId || !fromGroupId || !toGroupId || fromGroupId === toGroupId) {
+        return res.status(400).json({
+          success: false,
+          message: 'memberId, fromGroupId, toGroupId are required; from and to must differ',
+        });
+      }
+
+      const conn = await db.getConnection();
+      try {
+        await conn.beginTransaction();
+
+        const [mRowsRaw] = await conn.execute(
+          'SELECT id, group_id, gpa_tier, student_name, student_gpa FROM group_members WHERE id = ?',
+          [memberId]
+        );
+        const member = (mRowsRaw as any[])[0];
+        if (!member || Number(member.group_id) !== fromGroupId) {
+          await conn.rollback();
+          return res.status(404).json({ success: false, message: 'Member not found in source group' });
+        }
+
+        const [fromPgRes, toPgRes] = await Promise.all([
+          conn.execute(
+            'SELECT id, session_id, supervisor_name, department FROM project_groups WHERE id = ?',
+            [fromGroupId]
+          ),
+          conn.execute(
+            'SELECT id, session_id, supervisor_name, department FROM project_groups WHERE id = ?',
+            [toGroupId]
+          ),
+        ]);
+        const fromG = (fromPgRes as any[])[0];
+        const toG = (toPgRes as any[])[0];
+        if (!fromG || !toG) {
+          await conn.rollback();
+          return res.status(404).json({ success: false, message: 'Group not found' });
+        }
+        if (
+          fromG.session_id != null &&
+          toG.session_id != null &&
+          Number(fromG.session_id) !== Number(toG.session_id)
+        ) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Source and target groups must belong to the same academic session',
+          });
+        }
+
+        if (swapType === 'STUDENT_SUPERVISOR' && expectedSupervisorName) {
+          const sup = toG.supervisor_name ? String(toG.supervisor_name).trim() : '';
+          if (sup !== expectedSupervisorName) {
+            await conn.rollback();
+            return res.status(400).json({
+              success: false,
+              message: 'Target group supervisor does not match expectedSupervisorName',
+            });
+          }
+        }
+
+        const [fromMemberRows] = await conn.execute(
+          'SELECT id, student_name, student_gpa, gpa_tier FROM group_members WHERE group_id = ?',
+          [fromGroupId]
+        );
+        const [toMemberRows] = await conn.execute(
+          'SELECT id, student_name, student_gpa, gpa_tier FROM group_members WHERE group_id = ?',
+          [toGroupId]
+        );
+
+        const fromList = (fromMemberRows as any[]).filter((r) => r.id !== memberId);
+        if ((fromMemberRows as any[]).length === 1) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message:
+              'Moving this student would empty the source group. Use a pairwise swap or dissolve the group instead.',
+          });
+        }
+
+        const toList = [...(toMemberRows as any[])];
+        if (toList.length >= 3) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Target group already has the maximum of 3 members',
+          });
+        }
+
+        const mapStudent = (r: any) => ({
+          name: r.student_name,
+          gpa: Number(r.student_gpa),
+          tier: r.gpa_tier as 'HIGH' | 'MEDIUM' | 'LOW',
+        });
+
+        const gFrom = {
+          name: 'source',
+          members: fromList.map(mapStudent),
+          avg_gpa: 0,
+          status: 'formed' as const,
+        };
+        gFrom.avg_gpa =
+          gFrom.members.length > 0
+            ? parseFloat(
+                (
+                  gFrom.members.reduce((s, m) => s + m.gpa, 0) / gFrom.members.length
+                ).toFixed(2)
+              )
+            : 0;
+
+        const gTo = {
+          name: 'target',
+          members: [...toList.map(mapStudent), mapStudent(member)],
+          avg_gpa: 0,
+          status: 'formed' as const,
+        };
+        gTo.avg_gpa = parseFloat(
+          (gTo.members.reduce((s, m) => s + m.gpa, 0) / gTo.members.length).toFixed(2)
+        );
+
+        const vFrom = groupFormationService.validateGroupFormation([gFrom]);
+        const vTo = groupFormationService.validateGroupFormation([gTo]);
+        if (!vFrom.isValid || !vTo.isValid) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Move violates group formation rules',
+            violations: [...vFrom.violations, ...vTo.violations],
+          });
+        }
+
+        await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [toGroupId, memberId]);
+
+        await groupFormationService.renormalizeGroupOrdersAndAvg(conn, fromGroupId);
+        await groupFormationService.renormalizeGroupOrdersAndAvg(conn, toGroupId);
+
+        await conn.commit();
+        res.json({ success: true, message: 'Student moved successfully' });
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
+      }
+    } catch (error) {
+      console.error('Move member error:', error);
+      res.status(500).json({ success: false, message: 'Failed to move student' });
     }
   });
 

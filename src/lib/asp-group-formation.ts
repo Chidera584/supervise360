@@ -20,6 +20,8 @@ export interface Group {
   supervisor?: string;
   project?: string;
   department?: string;
+  /** Academic session / cohort (from project_groups.session_id) */
+  session_id?: number;
 }
 
 // GPA tier classification based on dynamic thresholds
