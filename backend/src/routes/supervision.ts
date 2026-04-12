@@ -2,11 +2,49 @@ import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireStudent, requireSupervisor } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../types';
+import { ReportService } from '../services/reportService';
+import { NotificationService } from '../services/notificationService';
 
 async function getSupervisorFullName(db: Pool, userId: number): Promise<string> {
   const [rows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
   const u = (rows as any[])[0];
   return u ? `${(u.first_name || '').trim()} ${(u.last_name || '').trim()}`.trim().replace(/\s+/g, ' ') : '';
+}
+
+async function notifyStudentsMeetingScheduled(
+  db: Pool,
+  meetingId: number,
+  groupId: number,
+  title: string,
+  startsAt: string,
+  supervisorDisplayName: string
+) {
+  const ns = new NotificationService(db);
+  const frontend = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const [members] = await db.execute(
+    'SELECT matric_number FROM group_members WHERE group_id = ?',
+    [groupId]
+  );
+  for (const row of members as any[]) {
+    const matric = String(row.matric_number || '').trim();
+    if (!matric) continue;
+    const [stRows] = await db.execute(
+      'SELECT user_id FROM students WHERE matric_number = ? OR TRIM(matric_number) = ? LIMIT 1',
+      [matric, matric]
+    );
+    const uid = (stRows as any[])[0]?.user_id;
+    if (!uid) continue;
+    await ns
+      .create({
+        userId: uid,
+        title: 'Supervision meeting scheduled',
+        message: `${title} — ${startsAt}${supervisorDisplayName ? ` · Supervisor: ${supervisorDisplayName}` : ''}`,
+        type: 'supervision_meeting_scheduled',
+        relatedId: meetingId,
+        actionUrl: `${frontend}/supervision-meetings`,
+      })
+      .catch(() => {});
+  }
 }
 
 async function assertSupervisorOwnsGroup(
@@ -25,6 +63,7 @@ async function assertSupervisorOwnsGroup(
 
 export function createSupervisionRouter(db: Pool) {
   const router = Router();
+  const reportService = new ReportService(db);
 
   // Supervisor: list meetings for groups they supervise (optional ?sessionId=)
   router.get('/meetings', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
@@ -78,6 +117,7 @@ export function createSupervisionRouter(db: Pool) {
       if (gsid != null && Number(gsid) !== sid) {
         return res.status(400).json({ success: false, message: 'session_id must match the group session' });
       }
+      const meetTitle = (title && String(title).trim()) || 'Supervision meeting';
       const [ins] = await db.execute(
         `INSERT INTO supervision_meetings (group_id, session_id, supervisor_user_id, title, starts_at, ends_at, location, notes)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -85,17 +125,130 @@ export function createSupervisionRouter(db: Pool) {
           gid,
           sid,
           userId,
-          (title && String(title).trim()) || 'Supervision meeting',
+          meetTitle,
           starts_at,
           ends_at || null,
           location || null,
           notes || null,
         ]
       );
-      res.json({ success: true, data: { id: (ins as any).insertId } });
+      const newId = (ins as any).insertId as number;
+      const supName = await getSupervisorFullName(db, userId);
+      await notifyStudentsMeetingScheduled(db, newId, gid, meetTitle, String(starts_at), supName);
+      res.json({ success: true, data: { id: newId } });
     } catch (error) {
       console.error('Create meeting error:', error);
       res.status(500).json({ success: false, message: 'Failed to create meeting' });
+    }
+  });
+
+  router.post('/meetings/bulk', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const { session_id, starts_at, ends_at, location, title, scope, group_id } = req.body as {
+        session_id?: number;
+        starts_at?: string;
+        ends_at?: string | null;
+        location?: string | null;
+        title?: string | null;
+        scope?: 'all_groups' | 'single_group';
+        group_id?: number;
+      };
+      const sid = Number(session_id);
+      const sc = String(scope || 'all_groups');
+      if (!sid || !starts_at) {
+        return res.status(400).json({ success: false, message: 'session_id and starts_at are required' });
+      }
+      if (sc !== 'all_groups' && sc !== 'single_group') {
+        return res.status(400).json({ success: false, message: 'scope must be all_groups or single_group' });
+      }
+
+      let targetGroupIds: number[] = [];
+      if (sc === 'single_group') {
+        const gid = Number(group_id);
+        if (!gid) {
+          return res.status(400).json({ success: false, message: 'group_id is required for single_group scope' });
+        }
+        const ok = await assertSupervisorOwnsGroup(db, userId, gid);
+        if (!ok) {
+          return res.status(403).json({ success: false, message: 'You do not supervise this group' });
+        }
+        const [pgRows] = await db.execute(
+          'SELECT session_id FROM project_groups WHERE id = ?',
+          [gid]
+        );
+        const gsid = (pgRows as any[])[0]?.session_id;
+        if (gsid != null && Number(gsid) !== sid) {
+          return res.status(400).json({ success: false, message: 'session_id must match the group session' });
+        }
+        targetGroupIds = [gid];
+      } else {
+        const mine = await reportService.getSupervisorGroupIds(userId);
+        if (mine.length === 0) {
+          return res.status(400).json({ success: false, message: 'No supervised groups found for this session' });
+        }
+        const ph = mine.map(() => '?').join(',');
+        const [rows] = await db.execute(
+          `SELECT id FROM project_groups WHERE id IN (${ph}) AND session_id = ?`,
+          [...mine, sid]
+        );
+        targetGroupIds = (rows as any[]).map((r: any) => r.id);
+        if (targetGroupIds.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'No supervised groups in the selected academic session',
+          });
+        }
+      }
+
+      const meetTitle = (title && String(title).trim()) || 'Supervision meeting';
+      const supName = await getSupervisorFullName(db, userId);
+      const conn = await db.getConnection();
+      const createdIds: number[] = [];
+      try {
+        await conn.beginTransaction();
+        for (const gid of targetGroupIds) {
+          const [ins] = await conn.execute(
+            `INSERT INTO supervision_meetings (group_id, session_id, supervisor_user_id, title, starts_at, ends_at, location, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              gid,
+              sid,
+              userId,
+              meetTitle,
+              starts_at,
+              ends_at || null,
+              location || null,
+              null,
+            ]
+          );
+          const newId = (ins as any).insertId as number;
+          createdIds.push(newId);
+        }
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
+      }
+
+      for (let i = 0; i < createdIds.length; i++) {
+        await notifyStudentsMeetingScheduled(
+          db,
+          createdIds[i],
+          targetGroupIds[i],
+          meetTitle,
+          String(starts_at),
+          supName
+        );
+      }
+
+      res.json({ success: true, data: { ids: createdIds, count: createdIds.length } });
+    } catch (error) {
+      console.error('Bulk create meetings error:', error);
+      res.status(500).json({ success: false, message: 'Failed to schedule meetings' });
     }
   });
 

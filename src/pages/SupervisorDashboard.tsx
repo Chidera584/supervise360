@@ -3,7 +3,7 @@ import { MainLayout } from '../components/Layout/MainLayout';
 import { Button } from '../components/UI/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
-import { Users, FileText, MessageSquare, CheckCircle, Eye, MessageCircle } from 'lucide-react';
+import { Users, FileText, MessageSquare, CheckCircle, Eye, MessageCircle, CalendarClock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { stripGroupName, stripProjectTitle, sortGroupsByNumber } from '../utils/supervisorDisplay';
 
@@ -47,13 +47,16 @@ export function SupervisorDashboard() {
   const [reportsReviewedCount, setReportsReviewedCount] = useState(0);
   const [inboxCount, setInboxCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [meetingsCount, setMeetingsCount] = useState(0);
+  const [nextMeetingLabel, setNextMeetingLabel] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [myGroupsRes, inboxRes] = await Promise.all([
+        const [myGroupsRes, inboxRes, meetingsRes] = await Promise.all([
           apiClient.getSupervisorMyGroups(),
           apiClient.getInbox(),
+          apiClient.getSupervisionMeetings(),
         ]);
 
         if (myGroupsRes.success && Array.isArray(myGroupsRes.data)) {
@@ -72,6 +75,25 @@ export function SupervisorDashboard() {
 
         if (inboxRes.success && Array.isArray(inboxRes.data)) {
           setInboxCount((inboxRes.data as any[]).length);
+        }
+
+        if (meetingsRes.success && Array.isArray(meetingsRes.data)) {
+          const list = meetingsRes.data as { starts_at?: string; title?: string; group_name?: string }[];
+          setMeetingsCount(list.length);
+          const now = Date.now();
+          const upcoming = [...list]
+            .filter((m) => m.starts_at && new Date(m.starts_at).getTime() >= now - 60_000)
+            .sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())[0];
+          const anyMeeting = [...list].sort(
+            (a, b) => new Date(b.starts_at || 0).getTime() - new Date(a.starts_at || 0).getTime()
+          )[0];
+          const pick = upcoming || anyMeeting;
+          if (pick?.starts_at) {
+            const when = new Date(pick.starts_at).toLocaleString();
+            setNextMeetingLabel(`${pick.title || 'Meeting'} · ${when}`);
+          } else {
+            setNextMeetingLabel(null);
+          }
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -146,6 +168,30 @@ export function SupervisorDashboard() {
             accentBg="rgba(0,109,109,0.06)"
           />
         </div>
+
+        <Link
+          to="/supervision-meetings"
+          className="block rounded-2xl border border-slate-200/90 bg-gradient-to-r from-[#022B3A]/5 to-[#1F7A8C]/10 p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-[#1F7A8C]/15 flex items-center justify-center text-[#1F7A8C] shrink-0">
+                <CalendarClock className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-[#1a1a1a]">Supervision meetings</h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  {meetingsCount === 0
+                    ? 'Schedule sessions with your groups and track attendance.'
+                    : `${meetingsCount} scheduled · ${nextMeetingLabel || 'Open for details'}`}
+                </p>
+              </div>
+            </div>
+            <span className="text-sm font-semibold shrink-0 self-center" style={{ color: TEAL }}>
+              Manage meetings →
+            </span>
+          </div>
+        </Link>
 
         {/* My assigned groups */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
@@ -292,7 +338,7 @@ function MetricCard({
   value,
   label,
   icon,
-  accent,
+  accent: _accent,
   accentBg,
 }: {
   value: number;

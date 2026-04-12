@@ -13,7 +13,8 @@ export type NotificationType =
   | 'defense_scheduled'
   | 'defense_reminder'
   | 'system_update'
-  | 'deadline_reminder';
+  | 'deadline_reminder'
+  | 'supervision_meeting_scheduled';
 
 export interface CreateNotificationInput {
   userId: number;
@@ -30,6 +31,12 @@ export class NotificationService {
 
   async create(input: CreateNotificationInput): Promise<number | null> {
     try {
+      const dbType =
+        input.type === 'report_reviewed'
+          ? 'evaluation_completed'
+          : input.type === 'supervision_meeting_scheduled'
+            ? 'system_update'
+            : input.type;
       const [result] = await this.db.execute(
         `INSERT INTO notifications (user_id, title, message, type, priority, related_id, action_url)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -37,7 +44,7 @@ export class NotificationService {
           input.userId,
           input.title,
           input.message,
-          input.type === 'report_reviewed' ? 'evaluation_completed' : input.type,
+          dbType,
           input.priority || 'normal',
           input.relatedId ?? null,
           input.actionUrl ?? null,

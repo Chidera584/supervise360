@@ -31,12 +31,14 @@ interface Message {
   recipient_email?: string;
   sender_group_name?: string;
   recipient_group_name?: string;
+  message_type?: string;
 }
 
 export function Messages() {
   const location = useLocation();
-  useAuth();
+  const { user } = useAuth();
   const navState = location.state as { groupId?: number; groupName?: string } | null;
+  const isSupervisor = user?.role === 'supervisor' || user?.role === 'external_supervisor';
 
   const [inbox, setInbox] = useState<Message[]>([]);
   const [sent, setSent] = useState<Message[]>([]);
@@ -48,7 +50,9 @@ export function Messages() {
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [listFilter, setListFilter] = useState<'all' | 'unread' | 'groups'>('all');
+  const [listFilter, setListFilter] = useState<'all' | 'unread' | 'groups' | 'broadcast' | 'group' | 'direct'>('all');
+  const [composeMode, setComposeMode] = useState<'broadcast' | 'group' | 'direct'>('group');
+  const [directStudentOptions, setDirectStudentOptions] = useState<{ user_id: number; name: string; matric: string }[]>([]);
   const [headerSearch, setHeaderSearch] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showClearInboxModal, setShowClearInboxModal] = useState(false);
@@ -59,10 +63,12 @@ export function Messages() {
   const loadData = async () => {
     setLoading(true);
     const groupId = navState?.groupId;
-    const [inboxRes, sentRes, contactsRes] = await Promise.all([
+    const [inboxRes, sentRes, contactsRes, groupsRes, studentsRes] = await Promise.all([
       apiClient.getInbox(),
       apiClient.getSent(),
       apiClient.getMessageContacts(groupId),
+      isSupervisor ? apiClient.getSupervisorMyGroups() : Promise.resolve({ success: false, data: [] }),
+      isSupervisor ? apiClient.getStudents() : Promise.resolve({ success: false, data: [] }),
     ]);
     if (inboxRes.success && Array.isArray(inboxRes.data)) setInbox(inboxRes.data);
     if (sentRes.success && Array.isArray(sentRes.data)) setSent(sentRes.data);
@@ -73,12 +79,49 @@ export function Messages() {
         setRecipientId(String(contactList[0].id));
       }
     }
+    if (
+      isSupervisor &&
+      groupsRes.success &&
+      Array.isArray(groupsRes.data) &&
+      studentsRes.success &&
+      Array.isArray(studentsRes.data)
+    ) {
+      const matrics = new Set<string>();
+      (groupsRes.data as any[]).forEach((g) => {
+        (g.members || []).forEach((m: any) => {
+          const t = String(m.matricNumber || m.matric_number || '').trim();
+          if (t) matrics.add(t);
+        });
+      });
+      const opts = (studentsRes.data as any[])
+        .filter((s) => matrics.has(String(s.matric_number || '').trim()))
+        .map((s) => ({
+          user_id: Number(s.user_id),
+          name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+          matric: String(s.matric_number || ''),
+        }))
+        .filter((o) => o.user_id > 0);
+      setDirectStudentOptions(opts);
+    } else {
+      setDirectStudentOptions([]);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-  }, [navState?.groupId]);
+  }, [navState?.groupId, isSupervisor]);
+
+  useEffect(() => {
+    if (!isSupervisor || replyTo) return;
+    const broadcast = contacts.find((c) => c.type === 'broadcast');
+    const firstGroup = contacts.find((c) => c.type === 'group');
+    if (composeMode === 'broadcast' && broadcast) setRecipientId(String(broadcast.id));
+    else if (composeMode === 'group' && firstGroup) setRecipientId(String(firstGroup.id));
+    else if (composeMode === 'direct' && directStudentOptions.length > 0) {
+      setRecipientId(String(directStudentOptions[0].user_id));
+    }
+  }, [isSupervisor, composeMode, contacts, directStudentOptions, replyTo]);
 
   useEffect(() => {
     if (replyTo) {
@@ -99,6 +142,20 @@ export function Messages() {
     }
     if (activeTab === 'inbox' && listFilter === 'groups') {
       list = list.filter((m) => !!m.sender_group_name);
+    }
+    if (activeTab === 'inbox' && listFilter === 'broadcast') {
+      list = list.filter((m) => m.message_type === 'broadcast');
+    }
+    if (activeTab === 'inbox' && listFilter === 'group') {
+      list = list.filter((m) => m.message_type === 'group' || (!!m.sender_group_name && m.message_type !== 'broadcast'));
+    }
+    if (activeTab === 'inbox' && listFilter === 'direct') {
+      list = list.filter(
+        (m) =>
+          m.message_type === 'direct' ||
+          m.message_type === 'student' ||
+          (!m.message_type && !m.sender_group_name)
+      );
     }
     if (!q) return list;
     return list.filter(
@@ -126,11 +183,15 @@ export function Messages() {
     const selectedContact = contacts.find((c) => String(c.id) === recipientId);
     const contactType = selectedContact?.type || 'user';
 
-    const hasRecipient =
-      replyTo ||
-      (contactType === 'group' && rid > 0) ||
-      (contactType === 'broadcast' && rid === -1) ||
-      (contactType === 'user' && rid > 0);
+    const hasRecipient = isSupervisor
+      ? replyTo ||
+        (composeMode === 'broadcast' && rid === -1) ||
+        (composeMode === 'group' && rid > 0) ||
+        (composeMode === 'direct' && rid > 0)
+      : replyTo ||
+        (contactType === 'group' && rid > 0) ||
+        (contactType === 'broadcast' && rid === -1) ||
+        (contactType === 'user' && rid > 0);
     if (!hasRecipient || !subject.trim() || !content.trim()) {
       setMessage({ type: 'error', text: 'Please select a recipient, enter a subject, and write your message.' });
       return;
@@ -141,6 +202,15 @@ export function Messages() {
     const payload: any = { subject: subject.trim(), content: content.trim() };
     if (replyTo) {
       payload.parent_id = replyTo.id;
+    } else if (isSupervisor) {
+      if (composeMode === 'broadcast') {
+        payload.broadcast = true;
+      } else if (composeMode === 'group') {
+        payload.group_id = rid;
+      } else {
+        payload.recipient_id = rid;
+        payload.message_type = 'direct';
+      }
     } else if (contactType === 'group' && rid > 0) {
       payload.group_id = rid;
     } else if (contactType === 'broadcast' && rid === -1) {
@@ -257,7 +327,16 @@ export function Messages() {
               </div>
               {activeTab === 'inbox' && (
                 <div className="flex flex-wrap gap-2">
-                  {(['all', 'unread', 'groups'] as const).map((f) => (
+                  {(
+                    [
+                      ['all', 'All'],
+                      ['unread', 'Unread'],
+                      ['broadcast', 'Broadcast'],
+                      ['group', 'Group'],
+                      ['direct', 'Direct'],
+                      ['groups', 'Has group tag'],
+                    ] as const
+                  ).map(([f, label]) => (
                     <button
                       key={f}
                       type="button"
@@ -269,7 +348,7 @@ export function Messages() {
                       }`}
                       style={listFilter === f ? { backgroundColor: TEAL } : undefined}
                     >
-                      {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Groups'}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -290,7 +369,18 @@ export function Messages() {
                       selectedId === msg.id ? 'bg-[#006D6D]/08' : ''
                     } ${activeTab === 'inbox' && !msg.read_status ? 'border-l-[3px] border-l-[#006D6D]' : ''}`}
                   >
-                    <p className="font-semibold text-slate-900 text-sm truncate">{msg.subject}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-slate-900 text-sm truncate">{msg.subject}</p>
+                      {msg.message_type && (
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">
+                          {msg.message_type === 'broadcast'
+                            ? 'Broadcast'
+                            : msg.message_type === 'group'
+                              ? 'Group'
+                              : 'Direct'}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">{getFromTo(msg)}</p>
                     <p className="text-[10px] text-slate-400 mt-1">{msg.sent_at?.split('T')[0]}</p>
                   </button>
@@ -301,7 +391,6 @@ export function Messages() {
               {activeTab === 'inbox' && inbox.length > 0 && (
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => setShowClearInboxModal(true)}
                   disabled={clearing}
                   className="!text-red-600 !border-red-200 hover:!bg-red-50"
@@ -312,7 +401,6 @@ export function Messages() {
               {activeTab === 'sent' && sent.length > 0 && (
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => setShowClearSentModal(true)}
                   disabled={clearing}
                   className="!text-red-600 !border-red-200 hover:!bg-red-50"
@@ -353,25 +441,121 @@ export function Messages() {
                 </div>
               )}
               <div className="mt-4 space-y-3">
+                {isSupervisor && !replyTo && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-2">Send as</label>
+                    <div className="flex flex-wrap gap-2">
+                      {contacts.some((c) => c.type === 'broadcast') && (
+                        <button
+                          type="button"
+                          onClick={() => setComposeMode('broadcast')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                            composeMode === 'broadcast' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200'
+                          }`}
+                          style={composeMode === 'broadcast' ? { backgroundColor: TEAL } : undefined}
+                        >
+                          Broadcast (all students)
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setComposeMode('group')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                          composeMode === 'group' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200'
+                        }`}
+                        style={composeMode === 'group' ? { backgroundColor: TEAL } : undefined}
+                      >
+                        Group thread
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setComposeMode('direct')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                          composeMode === 'direct' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200'
+                        }`}
+                        style={composeMode === 'direct' ? { backgroundColor: TEAL } : undefined}
+                      >
+                        Direct (one student)
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">To</label>
-                  <select
-                    className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm bg-[#F8F9FA]"
-                    value={recipientId}
-                    onChange={(e) => {
-                      setReplyTo(null);
-                      setRecipientId(e.target.value);
-                    }}
-                    disabled={!!replyTo}
-                  >
-                    <option value="">Select recipient…</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.label ? `(${c.label})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {contacts.length === 0 && !loading && (
+                  {isSupervisor && !replyTo && composeMode === 'broadcast' && (
+                    <select
+                      className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm bg-[#F8F9FA]"
+                      value={String(contacts.find((c) => c.type === 'broadcast')?.id ?? -1)}
+                      disabled
+                    >
+                      <option value={-1}>All supervised students</option>
+                    </select>
+                  )}
+                  {isSupervisor && !replyTo && composeMode === 'group' && (
+                    <select
+                      className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm bg-[#F8F9FA]"
+                      value={recipientId}
+                      onChange={(e) => setRecipientId(e.target.value)}
+                    >
+                      <option value="">Select group…</option>
+                      {contacts
+                        .filter((c) => c.type === 'group')
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} (group)
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                  {isSupervisor && !replyTo && composeMode === 'direct' && (
+                    <select
+                      className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm bg-[#F8F9FA]"
+                      value={recipientId}
+                      onChange={(e) => setRecipientId(e.target.value)}
+                    >
+                      <option value="">Select student…</option>
+                      {directStudentOptions.map((s) => (
+                        <option key={s.user_id} value={s.user_id}>
+                          {s.name} ({s.matric})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {!isSupervisor && (
+                    <select
+                      className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm bg-[#F8F9FA]"
+                      value={recipientId}
+                      onChange={(e) => {
+                        setReplyTo(null);
+                        setRecipientId(e.target.value);
+                      }}
+                      disabled={!!replyTo}
+                    >
+                      <option value="">Select recipient…</option>
+                      {contacts.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.label ? `(${c.label})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {isSupervisor && replyTo && (
+                    <select
+                      className="w-full border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm bg-[#F8F9FA]"
+                      value={recipientId}
+                      disabled
+                    >
+                      {contacts.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.label ? `(${c.label})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {isSupervisor && composeMode === 'direct' && directStudentOptions.length === 0 && !loading && (
+                    <p className="text-xs text-amber-700 mt-1">No students found in your supervised groups.</p>
+                  )}
+                  {!isSupervisor && contacts.length === 0 && !loading && (
                     <p className="text-xs text-amber-700 mt-1">No contacts yet—join a group with a supervisor.</p>
                   )}
                 </div>
@@ -429,7 +613,6 @@ export function Messages() {
                     {activeTab === 'inbox' && (
                       <Button
                         variant="outline"
-                        size="sm"
                         className="mt-4 !rounded-[10px]"
                         onClick={() => {
                           setReplyTo(selected);

@@ -202,6 +202,22 @@ class ApiClient {
     return this.request('/sessions', { method: 'POST', body: JSON.stringify(payload) });
   }
 
+  async updateSession(
+    id: number,
+    payload: {
+      label?: string;
+      starts_on?: string | null;
+      ends_on?: string | null;
+      is_active?: boolean;
+    }
+  ): Promise<ApiResponse> {
+    return this.request(`/sessions/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteSession(id: number): Promise<ApiResponse> {
+    return this.request(`/sessions/${id}`, { method: 'DELETE' });
+  }
+
   async moveGroupMember(payload: {
     memberId: number;
     fromGroupId: number;
@@ -229,6 +245,18 @@ class ApiClient {
 
   async createSupervisionMeeting(body: Record<string, unknown>): Promise<ApiResponse> {
     return this.request('/supervision/meetings', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  async createBulkSupervisionMeetings(body: {
+    session_id: number;
+    starts_at: string;
+    ends_at?: string | null;
+    location?: string | null;
+    title?: string | null;
+    scope: 'all_groups' | 'single_group';
+    group_id?: number;
+  }): Promise<ApiResponse> {
+    return this.request('/supervision/meetings/bulk', { method: 'POST', body: JSON.stringify(body) });
   }
 
   async updateSupervisionMeeting(id: number, body: Record<string, unknown>): Promise<ApiResponse> {

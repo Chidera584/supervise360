@@ -10,6 +10,7 @@ import {
   UserCheck,
   Shield,
   Clock,
+  CalendarClock,
   ArrowRight,
   CheckCircle2,
   Lock,
@@ -27,15 +28,17 @@ export function StudentDashboard() {
   const [reportsReviewedCount, setReportsReviewedCount] = useState(0);
   const [inboxPreview, setInboxPreview] = useState<any[]>([]);
   const [studentGroup, setStudentGroup] = useState<any | null>(null);
+  const [nextMeetingStudent, setNextMeetingStudent] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [myGroupRes, reportsRes, inboxRes] = await Promise.all([
+        const [myGroupRes, reportsRes, inboxRes, meetingsRes] = await Promise.all([
           apiClient.getMyGroup(),
           apiClient.getMyReports(),
           apiClient.getInbox(),
+          apiClient.getMySupervisionMeetings(),
         ]);
 
         if (myGroupRes.success && myGroupRes.data) {
@@ -53,6 +56,21 @@ export function StudentDashboard() {
         if (inboxRes.success && Array.isArray(inboxRes.data)) {
           const inbox = inboxRes.data as any[];
           setInboxPreview(inbox.slice(0, 4));
+        }
+
+        if (meetingsRes.success && Array.isArray(meetingsRes.data)) {
+          const list = meetingsRes.data as { starts_at?: string; title?: string }[];
+          const now = Date.now();
+          const upcoming = [...list]
+            .filter((m) => m.starts_at && new Date(m.starts_at).getTime() >= now - 60_000)
+            .sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime())[0];
+          if (upcoming?.starts_at) {
+            setNextMeetingStudent(
+              `${upcoming.title || 'Supervision meeting'} · ${new Date(upcoming.starts_at).toLocaleString()}`
+            );
+          } else {
+            setNextMeetingStudent(null);
+          }
         }
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
@@ -119,6 +137,26 @@ export function StudentDashboard() {
             Submit work <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
+
+        <Link
+          to="/supervision-meetings"
+          className="block rounded-xl border border-slate-200/90 shadow-sm p-5 flex gap-4 bg-white hover:shadow-md transition-shadow"
+        >
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${TEAL}18` }}
+          >
+            <CalendarClock className="w-5 h-5" style={{ color: TEAL }} strokeWidth={1.75} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Supervision meetings</p>
+            <p className="text-lg font-bold mt-1 text-[#1a1a1a]">Upcoming</p>
+            <p className="text-sm text-slate-600 mt-0.5">
+              {nextMeetingStudent || 'No upcoming meetings scheduled.'}
+            </p>
+          </div>
+          <ArrowRight className="w-5 h-5 text-slate-400 shrink-0 self-center" />
+        </Link>
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -215,7 +253,7 @@ export function StudentDashboard() {
                     </p>
                     <div className="grid sm:grid-cols-2 gap-3">
                       {Array.isArray(studentGroup.members) ? (
-                        studentGroup.members.map((member, index) => (
+                        studentGroup.members.map((member: { name: string; matricNumber?: string }, index: number) => (
                           <div
                             key={index}
                             className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white"
@@ -226,7 +264,7 @@ export function StudentDashboard() {
                             >
                               {member.name
                                 .split(' ')
-                                .map((n) => n[0])
+                                .map((n: string) => n[0])
                                 .join('')
                                 .slice(0, 2)}
                             </div>

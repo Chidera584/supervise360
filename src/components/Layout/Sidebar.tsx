@@ -30,8 +30,6 @@ interface MenuItem {
   path: string;
 }
 
-const TEAL = '#006D6D';
-
 export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
@@ -55,6 +53,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
   const studentMenuItems: MenuItem[] = [
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
+    { icon: Calendar, label: 'Meetings', path: '/supervision-meetings' },
     { icon: Users, label: 'My Group', path: '/my-group' },
     { icon: FileText, label: 'Reports', path: '/reports' },
     { icon: MessageSquare, label: 'Messages', path: '/messages' },
@@ -64,6 +63,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
   const supervisorMenuItems: MenuItem[] = [
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
+    { icon: Calendar, label: 'Meetings', path: '/supervision-meetings' },
     { icon: Users, label: 'My Groups', path: '/my-groups' },
     { icon: FileText, label: 'Evaluations', path: '/evaluations' },
     { icon: FileText, label: 'Report Reviews', path: '/report-reviews' },

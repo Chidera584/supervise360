@@ -4,18 +4,17 @@ import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
 import { 
-  Users, Upload, Download, UserCheck, 
+  Users, Upload, UserCheck, 
   Eye, Edit, CheckCircle, Clock, Building, X, Trash2, ChevronDown, FileSpreadsheet, FileText, File 
 } from 'lucide-react';
 import { parseCSV, readFileAsText } from '../../lib/csv-parser';
 import { downloadAssignmentsAsCSV, downloadAssignmentsAsPDF, downloadAssignmentsAsWord } from '../../lib/export-utils';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useGroups } from '../../contexts/GroupsContext';
 import { useDepartment } from '../../contexts/DepartmentContext';
 import { apiClient } from '../../lib/api';
 
 export function SupervisorAssignment() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const deptFromUrl = searchParams.get('department') || '';
   const { groups, syncWithDatabase } = useGroups();
@@ -34,7 +33,7 @@ export function SupervisorAssignment() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [uploadedSupervisors, setUploadedSupervisors] = useState([]);
+  const [uploadedSupervisors, setUploadedSupervisors] = useState<any[]>([]);
   const [viewGroupsSupervisor, setViewGroupsSupervisor] = useState<string | null>(null);
   const [editSwapModal, setEditSwapModal] = useState(false);
   const [swapMember1, setSwapMember1] = useState<{ groupId: number; memberId: number; name: string; tier?: string } | null>(null);
@@ -46,24 +45,34 @@ export function SupervisorAssignment() {
   const [clearing, setClearing] = useState(false);
   const [activeTab, setActiveTab] = useState<'workload' | 'groups' | 'upload'>('workload');
   const [groupsSearch, setGroupsSearch] = useState('');
-  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
-  const fileInputRef = useRef(null);
-  const exportDropdownRef = useRef<HTMLDivElement>(null);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const actionsDropdownRef = useRef<HTMLDivElement>(null);
   const [sessions, setSessions] = useState<{ id: number; label: string }[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<number | ''>('');
-  const [moveModalOpen, setMoveModalOpen] = useState(false);
-  const [moveMemberId, setMoveMemberId] = useState('');
-  const [moveFromGroupId, setMoveFromGroupId] = useState('');
-  const [moveToGroupId, setMoveToGroupId] = useState('');
-  const [moveSwapType, setMoveSwapType] = useState<'STUDENT_GROUP' | 'STUDENT_SUPERVISOR'>('STUDENT_GROUP');
-  const [moveExpectedSupervisor, setMoveExpectedSupervisor] = useState('');
-  const [movingStudent, setMovingStudent] = useState(false);
+  const [swapWizardTab, setSwapWizardTab] = useState<'swap' | 'move' | 'reassign'>('swap');
+  const [moveSearch, setMoveSearch] = useState('');
+  const [moveStudent, setMoveStudent] = useState<{ groupId: number; memberId: number; name: string } | null>(null);
+  const [moveTargetGroupId, setMoveTargetGroupId] = useState<number | ''>('');
+  const [moveDoing, setMoveDoing] = useState(false);
+  const [reassignGroupId, setReassignGroupId] = useState<number | ''>('');
+  const [reassignSupervisorName, setReassignSupervisorName] = useState('');
+  const [reassignDoing, setReassignDoing] = useState(false);
+  /** Local draft for max-groups cap inputs (keyed by workload row id) */
+  const [workloadCapInput, setWorkloadCapInput] = useState<Record<number, string>>({});
 
-  // Close export dropdown when clicking outside
+  useEffect(() => {
+    const m: Record<number, string> = {};
+    (supervisors as any[]).forEach((s: any) => {
+      m[s.id] = s.max_groups != null ? String(s.max_groups) : '';
+    });
+    setWorkloadCapInput(m);
+  }, [supervisors]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
-        setExportDropdownOpen(false);
+      if (actionsDropdownRef.current && !actionsDropdownRef.current.contains(e.target as Node)) {
+        setActionsMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -177,7 +186,7 @@ export function SupervisorAssignment() {
         throw new Error('This appears to be a database export with only primary keys. Please export a CSV with the actual data columns needed (Name, Department).');
       }
       
-      // Validate required columns for supervisors (Name, Department only - no max groups)
+      // Validate required columns for supervisors (Name, Department; optional Workload / max_groups)
       const nameColumns = ['name', 'supervisor name', 'full name'];
       const deptColumns = ['department', 'dept', 'division'];
       
@@ -216,14 +225,33 @@ export function SupervisorAssignment() {
         );
         const email = emailKey ? String(row[emailKey] ?? '').trim() || undefined : undefined;
         const phone = phoneKey ? String(row[phoneKey] ?? '').trim() || undefined : undefined;
-        return { name: name || 'Unknown', department, email, phone };
+        const workloadKey = Object.keys(row).find((k) => {
+          const x = k.toLowerCase().replace(/\s+/g, '_');
+          return (
+            x === 'workload' ||
+            x === 'max_groups' ||
+            x === 'maxgroups' ||
+            (x.includes('max') && x.includes('group'))
+          );
+        });
+        let max_groups: number | undefined;
+        if (workloadKey) {
+          const v = String(row[workloadKey] ?? '').trim();
+          if (v !== '') {
+            const n = Number(v);
+            if (!Number.isNaN(n) && n >= 0) max_groups = n;
+          }
+        }
+        const rowOut: Record<string, unknown> = { name: name || 'Unknown', department, email, phone };
+        if (max_groups !== undefined) rowOut.max_groups = max_groups;
+        return rowOut;
       }).filter(s => s.name && s.name !== 'Unknown' && s.department);
       
       if (processedSupervisors.length === 0) {
         throw new Error('No valid supervisor rows found. Ensure CSV has Name and Department columns with non-empty values. Department must match exactly (e.g. "Computer Science").');
       }
       
-      setUploadedSupervisors(processedSupervisors);
+      setUploadedSupervisors(processedSupervisors as any[]);
       setUploading(false);
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error processing file. Please check the format.');
@@ -430,6 +458,76 @@ export function SupervisorAssignment() {
       )
     : [];
 
+  const moveStudentOptions = departmentGroups.flatMap((g) =>
+    Array.isArray(g.members)
+      ? g.members
+          .filter((m: any) => {
+            const q = normalizeText(moveSearch);
+            if (!q) return true;
+            const haystack = normalizeText(`${m.name} ${m.matricNumber || ''} ${g.name}`);
+            return haystack.includes(q);
+          })
+          .map((m: any) => ({
+            groupId: g.id,
+            memberId: m.id,
+            label: getMemberLabel(g.name, m),
+            name: m.name,
+          }))
+      : []
+  );
+
+  const moveTargetGroups = moveStudent
+    ? departmentGroups.filter((g) => g.id !== moveStudent.groupId)
+    : [];
+
+  const handleMoveStudentToGroup = async () => {
+    if (!moveStudent || moveTargetGroupId === '') return;
+    setMoveDoing(true);
+    try {
+      const res = await apiClient.moveGroupMember({
+        memberId: moveStudent.memberId,
+        fromGroupId: moveStudent.groupId,
+        toGroupId: Number(moveTargetGroupId),
+        swapType: 'STUDENT_GROUP',
+      });
+      if (res.success) {
+        await syncWithDatabase();
+        await loadSupervisorWorkload();
+        setMoveStudent(null);
+        setMoveTargetGroupId('');
+        setMoveSearch('');
+        setEditSwapModal(false);
+      } else {
+        alert((res as any).message || 'Move failed');
+      }
+    } catch {
+      alert('Failed to move student');
+    } finally {
+      setMoveDoing(false);
+    }
+  };
+
+  const handleReassignGroupSupervisor = async () => {
+    if (reassignGroupId === '' || !reassignSupervisorName.trim()) return;
+    setReassignDoing(true);
+    try {
+      const res = await apiClient.assignSupervisor(Number(reassignGroupId), reassignSupervisorName.trim());
+      if (res.success) {
+        await syncWithDatabase();
+        await loadSupervisorWorkload();
+        setReassignGroupId('');
+        setReassignSupervisorName('');
+        setEditSwapModal(false);
+      } else {
+        alert((res as any).message || 'Reassignment failed');
+      }
+    } catch {
+      alert('Failed to assign supervisor');
+    } finally {
+      setReassignDoing(false);
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout title="Supervisor Assignment">
@@ -466,58 +564,84 @@ export function SupervisorAssignment() {
                 {selectedDepartment || (isSystemAdmin ? 'Select a department above' : userDepartment)}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {convertedGroups.length > 0 && selectedDepartment && (
-                <Button variant="outline" onClick={() => setClearAllModal(true)} className="text-red-600 hover:text-red-700 hover:border-red-300" title="Clear all supervisor assignments (system-wide)">
-                  <Trash2 size={14} className="mr-1.5" />
-                  Clear All
-                </Button>
-              )}
-              {convertedGroups.length > 0 && selectedDepartment && (
-                <div className="relative" ref={exportDropdownRef}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExportDropdownOpen(o => !o)}
-                  >
-                    <Download size={14} className="mr-1.5" />
-                    Export
-                    <ChevronDown size={14} className={`ml-1.5 transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`} />
-                  </Button>
-                  {exportDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-1 py-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                      <button
-                        onClick={() => { downloadAssignments('csv'); setExportDropdownOpen(false); }}
-                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
-                      >
-                        <FileSpreadsheet size={14} className="flex-shrink-0" />
-                        CSV
-                      </button>
-                      <button
-                        onClick={() => { downloadAssignments('pdf'); setExportDropdownOpen(false); }}
-                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
-                      >
-                        <FileText size={14} className="flex-shrink-0" />
-                        PDF
-                      </button>
-                      <button
-                        onClick={() => { downloadAssignments('word'); setExportDropdownOpen(false); }}
-                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
-                      >
-                        <File size={14} className="flex-shrink-0" />
-                        Word
-                      </button>
-                    </div>
+            <div className="relative" ref={actionsDropdownRef}>
+              <Button
+                variant="outline"
+                onClick={() => setActionsMenuOpen((o) => !o)}
+                disabled={!selectedDepartment}
+                className="min-w-[140px]"
+              >
+                <Edit size={14} className="mr-1.5" />
+                Actions
+                <ChevronDown size={14} className={`ml-1.5 transition-transform ${actionsMenuOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              {actionsMenuOpen && selectedDepartment && (
+                <div className="absolute right-0 top-full mt-1 py-1 min-w-[220px] bg-white border border-slate-200 rounded-lg shadow-lg z-20">
+                  {convertedGroups.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClearAllModal(true);
+                        setActionsMenuOpen(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-red-600"
+                    >
+                      <Trash2 size={14} />
+                      Clear all supervisors
+                    </button>
                   )}
+                  {convertedGroups.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          downloadAssignments('csv');
+                          setActionsMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
+                      >
+                        <FileSpreadsheet size={14} />
+                        Export CSV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          downloadAssignments('pdf');
+                          setActionsMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
+                      >
+                        <FileText size={14} />
+                        Export PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          downloadAssignments('word');
+                          setActionsMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-700"
+                      >
+                        <File size={14} />
+                        Export Word
+                      </button>
+                    </>
+                  )}
+                  <div className="my-1 border-t border-slate-100" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapWizardTab('swap');
+                      setEditSwapModal(true);
+                      setActionsMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 text-slate-800 font-medium"
+                  >
+                    <Users size={14} />
+                    Swaps &amp; transfers
+                  </button>
                 </div>
               )}
-              <Button variant="outline" onClick={() => setEditSwapModal(true)} disabled={!selectedDepartment}>
-                <Edit size={14} className="mr-1.5" />
-                Swap Students
-              </Button>
-              <Button variant="outline" onClick={() => setMoveModalOpen(true)} disabled={!selectedDepartment}>
-                Move student
-              </Button>
             </div>
           </div>
           <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
@@ -671,8 +795,8 @@ export function SupervisorAssignment() {
           ) : (
             <>
             <div className="space-y-5 flex-1 min-h-0 overflow-y-auto">
-              {(selectedDepartment && departmentSupervisorsByDept[selectedDepartment]
-                ? [departmentSupervisorsByDept[selectedDepartment]]
+              {(selectedDepartment && (departmentSupervisorsByDept as Record<string, any>)[selectedDepartment]
+                ? [(departmentSupervisorsByDept as Record<string, any>)[selectedDepartment]]
                 : Object.values(departmentSupervisorsByDept)
               ).map((dept: any) => (
                 <div key={dept.department} className="border border-slate-200 rounded-lg p-4">
@@ -698,23 +822,44 @@ export function SupervisorAssignment() {
                             <div className="min-w-0 flex-1">
                               <h6 className="text-base font-medium text-slate-900 truncate">{supervisor.name}</h6>
                               <p className="text-sm text-slate-500">{(supervisor.current_groups || 0)} groups</p>
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                                <span>Max / dept:</span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  className="w-16 border border-slate-200 rounded px-1 py-0.5"
-                                  placeholder="∞"
-                                  defaultValue={supervisor.max_groups ?? ''}
-                                  key={`cap-${supervisor.id}-${supervisor.max_groups ?? 'x'}`}
-                                  onBlur={async (e) => {
-                                    const raw = e.target.value.trim();
-                                    const v = raw === '' ? null : Number(raw);
-                                    if (v !== null && (Number.isNaN(v) || v < 0)) return;
-                                    await apiClient.updateSupervisorWorkloadCap(supervisor.id, v);
-                                    await loadSupervisorWorkload();
-                                  }}
-                                />
+                              <div className="mt-3 flex flex-col gap-1.5">
+                                <label className="text-xs font-medium text-slate-700" htmlFor={`cap-${supervisor.id}`}>
+                                  Max groups (cap)
+                                </label>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <input
+                                    id={`cap-${supervisor.id}`}
+                                    type="number"
+                                    min={0}
+                                    className="w-24 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-slate-900"
+                                    placeholder="No cap"
+                                    value={workloadCapInput[supervisor.id] ?? ''}
+                                    onChange={(e) =>
+                                      setWorkloadCapInput((prev) => ({
+                                        ...prev,
+                                        [supervisor.id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="!text-xs !py-1 !px-2"
+                                    onClick={async () => {
+                                      const raw = (workloadCapInput[supervisor.id] ?? '').trim();
+                                      const v = raw === '' ? null : Number(raw);
+                                      if (v !== null && (Number.isNaN(v) || v < 0)) {
+                                        alert('Enter a non-negative number or leave empty for no cap');
+                                        return;
+                                      }
+                                      await apiClient.updateSupervisorWorkloadCap(supervisor.id, v);
+                                      await loadSupervisorWorkload();
+                                    }}
+                                  >
+                                    Save
+                                  </Button>
+                                </div>
+                                <p className="text-[11px] text-slate-500">Leave empty for no limit.</p>
                               </div>
                               {(supervisor.email || supervisor.phone) && (
                                 <p className="text-xs text-slate-500 mt-1 truncate">
@@ -731,7 +876,7 @@ export function SupervisorAssignment() {
                                   <button onClick={() => setViewGroupsSupervisor(supervisor.name)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="View groups">
                                     <Eye size={14} />
                                   </button>
-                                  <button onClick={() => setEditSwapModal(true)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Edit / Swap">
+                                  <button onClick={() => { setSwapWizardTab('swap'); setEditSwapModal(true); }} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Edit / Swap">
                                     <Edit size={14} />
                                   </button>
                                 </div>
@@ -819,7 +964,7 @@ export function SupervisorAssignment() {
                         <button onClick={() => group.supervisor && setViewGroupsSupervisor(group.supervisor)} className="p-2 rounded hover:bg-slate-200 text-slate-600" title="View">
                           <Eye size={14} />
                         </button>
-                        <button onClick={() => setEditSwapModal(true)} className="p-2 rounded hover:bg-slate-200 text-slate-600" title="Edit">
+                        <button onClick={() => { setSwapWizardTab('swap'); setEditSwapModal(true); }} className="p-2 rounded hover:bg-slate-200 text-slate-600" title="Edit">
                           <Edit size={14} />
                         </button>
                       </div>
@@ -931,17 +1076,46 @@ export function SupervisorAssignment() {
           type="danger"
         />
 
-        {/* Edit / Swap Members Modal */}
+        {/* Swaps & transfers (swap / move / reassign supervisor) */}
         {editSwapModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !swapping && setEditSwapModal(false)}>
+          <div
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => !swapping && !moveDoing && !reassignDoing && setEditSwapModal(false)}
+          >
             <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">Swap Students Between Groups</h3>
-                <button onClick={() => !swapping && setEditSwapModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-900">Swaps &amp; transfers</h3>
+                <button
+                  onClick={() => !swapping && !moveDoing && !reassignDoing && setEditSwapModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
                   <X size={20} />
                 </button>
               </div>
-              <div className="p-4 space-y-4">
+              <div className="flex gap-1 px-4 pt-3 border-b border-slate-100">
+                {(
+                  [
+                    { id: 'swap' as const, label: 'Student ↔ Student' },
+                    { id: 'move' as const, label: 'Move to group' },
+                    { id: 'reassign' as const, label: 'Group ↔ Supervisor' },
+                  ]
+                ).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSwapWizardTab(t.id)}
+                    className={`px-3 py-2 text-sm font-medium rounded-t-lg border-b-2 -mb-px transition-colors ${
+                      swapWizardTab === t.id
+                        ? 'border-[#1F7A8C] text-[#022B3A]'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              {swapWizardTab === 'swap' && (
+              <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-8rem)]">
                 <p className="text-sm text-gray-600">Select two students from different groups to swap. Students can only be swapped within the same GPA tier (HIGH↔HIGH, MEDIUM↔MEDIUM, LOW↔LOW).</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1033,112 +1207,131 @@ export function SupervisorAssignment() {
                   </Button>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+              )}
 
-        {moveModalOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => !movingStudent && setMoveModalOpen(false)}
-          >
-            <div
-              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-semibold text-gray-900">Move student</h3>
-              <p className="text-sm text-gray-600">
-                Move one student to a target group (same session). Use member ID from the database (group_members.id).
-              </p>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Member ID</label>
-                <input
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  value={moveMemberId}
-                  onChange={(e) => setMoveMemberId(e.target.value)}
-                  placeholder="e.g. 42"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">From group ID</label>
-                <input
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  value={moveFromGroupId}
-                  onChange={(e) => setMoveFromGroupId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">To group ID</label>
-                <input
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  value={moveToGroupId}
-                  onChange={(e) => setMoveToGroupId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Swap type</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  value={moveSwapType}
-                  onChange={(e) =>
-                    setMoveSwapType(e.target.value as 'STUDENT_GROUP' | 'STUDENT_SUPERVISOR')
-                  }
-                >
-                  <option value="STUDENT_GROUP">Student ↔ Group</option>
-                  <option value="STUDENT_SUPERVISOR">Student ↔ Supervisor (expect target supervisor)</option>
-                </select>
-              </div>
-              {moveSwapType === 'STUDENT_SUPERVISOR' && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Expected supervisor name (must match target group)
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                    value={moveExpectedSupervisor}
-                    onChange={(e) => setMoveExpectedSupervisor(e.target.value)}
-                  />
+              {swapWizardTab === 'move' && (
+                <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-8rem)]">
+                  <p className="text-sm text-gray-600">
+                    Move one student into another group in this department. Source and target must share the same academic session; formation rules (tier balance, max 3 per group) still apply.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Search student</label>
+                    <input
+                      type="text"
+                      value={moveSearch}
+                      onChange={(e) => setMoveSearch(e.target.value)}
+                      placeholder="Name, matric, or group..."
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"
+                    />
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={moveStudent ? `${moveStudent.groupId}-${moveStudent.memberId}` : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setMoveStudent(null);
+                          setMoveTargetGroupId('');
+                          return;
+                        }
+                        const [gid, mid] = v.split('-').map(Number);
+                        const g = departmentGroups.find((gg) => gg.id === gid);
+                        const m = g?.members?.find((mm: any) => mm.id === mid);
+                        if (m) {
+                          setMoveStudent({ groupId: gid, memberId: mid, name: m.name });
+                          setMoveTargetGroupId('');
+                        } else {
+                          setMoveStudent(null);
+                        }
+                      }}
+                    >
+                      <option value="">Select student...</option>
+                      {moveStudentOptions.map((opt) => (
+                        <option key={`${opt.groupId}-${opt.memberId}`} value={`${opt.groupId}-${opt.memberId}`}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Target group</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={moveTargetGroupId === '' ? '' : String(moveTargetGroupId)}
+                      onChange={(e) => setMoveTargetGroupId(e.target.value ? Number(e.target.value) : '')}
+                      disabled={!moveStudent}
+                    >
+                      <option value="">{moveStudent ? 'Choose destination group...' : 'Select a student first'}</option>
+                      {moveTargetGroups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                          {(g as any).supervisor ? ` — ${(g as any).supervisor}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setEditSwapModal(false)} disabled={moveDoing}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleMoveStudentToGroup}
+                      disabled={moveDoing || !moveStudent || moveTargetGroupId === ''}
+                    >
+                      {moveDoing ? 'Moving...' : 'Move student'}
+                    </Button>
+                  </div>
                 </div>
               )}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setMoveModalOpen(false)} disabled={movingStudent}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    setMovingStudent(true);
-                    try {
-                      const res = await apiClient.moveGroupMember({
-                        memberId: Number(moveMemberId),
-                        fromGroupId: Number(moveFromGroupId),
-                        toGroupId: Number(moveToGroupId),
-                        swapType: moveSwapType,
-                        expectedSupervisorName:
-                          moveSwapType === 'STUDENT_SUPERVISOR' ? moveExpectedSupervisor.trim() : undefined,
-                      });
-                      if (res.success) {
-                        alert('Student moved successfully');
-                        setMoveModalOpen(false);
-                        await syncWithDatabase();
-                        await loadSupervisorWorkload();
-                      } else {
-                        alert((res as any).message || 'Move failed');
-                      }
-                    } finally {
-                      setMovingStudent(false);
-                    }
-                  }}
-                  disabled={
-                    movingStudent ||
-                    !moveMemberId ||
-                    !moveFromGroupId ||
-                    !moveToGroupId ||
-                    (moveSwapType === 'STUDENT_SUPERVISOR' && !moveExpectedSupervisor.trim())
-                  }
-                >
-                  {movingStudent ? 'Moving...' : 'Move'}
-                </Button>
-              </div>
+
+              {swapWizardTab === 'reassign' && (
+                <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-8rem)]">
+                  <p className="text-sm text-gray-600">
+                    Assign or change the supervisor for a group. Workload caps and notifications follow the same rules as the main assignment flow.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Group</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={reassignGroupId === '' ? '' : String(reassignGroupId)}
+                      onChange={(e) => setReassignGroupId(e.target.value ? Number(e.target.value) : '')}
+                    >
+                      <option value="">Select group...</option>
+                      {departmentGroups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                          {(g as any).supervisor ? ` — current: ${(g as any).supervisor}` : ' — unassigned'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Supervisor</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={reassignSupervisorName}
+                      onChange={(e) => setReassignSupervisorName(e.target.value)}
+                    >
+                      <option value="">Select supervisor...</option>
+                      {(departmentSupervisors as any[]).map((s: any) => (
+                        <option key={s.id} value={s.name}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setEditSwapModal(false)} disabled={reassignDoing}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleReassignGroupSupervisor}
+                      disabled={reassignDoing || reassignGroupId === '' || !reassignSupervisorName.trim()}
+                    >
+                      {reassignDoing ? 'Saving...' : 'Assign supervisor'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -34,7 +34,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 router.get('/students', authenticateToken, requireAny, async (req, res) => {
   try {
     const students = await getMany(`
-      SELECT s.id, s.matric_number, u.first_name, u.last_name, u.email, u.department, 
+      SELECT s.id, s.user_id, s.matric_number, u.first_name, u.last_name, u.email, u.department, 
              s.gpa, s.gpa_tier, s.academic_year, s.program
       FROM students s
       INNER JOIN users u ON s.user_id = u.id

@@ -242,10 +242,16 @@ export function createSupervisorsRouter(db: Pool) {
           }
           const email = supervisor.email != null ? String(supervisor.email).trim() || null : null;
           const phone = supervisor.phone != null ? String(supervisor.phone).trim() || null : null;
+          const rawCap = (supervisor as any).max_groups ?? (supervisor as any).workload;
+          let max_groups: number | null = null;
+          if (rawCap !== undefined && rawCap !== null && String(rawCap).trim() !== '') {
+            const n = Number(rawCap);
+            if (!Number.isNaN(n) && n >= 0) max_groups = n;
+          }
           await connection.execute(
-            `INSERT INTO supervisor_workload (supervisor_name, email, phone, department, current_groups, is_available) 
-             VALUES (?, ?, ?, ?, 0, TRUE)`,
-            [name, email, phone, department]
+            `INSERT INTO supervisor_workload (supervisor_name, email, phone, department, current_groups, max_groups, is_available) 
+             VALUES (?, ?, ?, ?, 0, ?, TRUE)`,
+            [name, email, phone, department, max_groups]
           );
           insertedCount++;
         }
