@@ -154,7 +154,10 @@ export function SupervisorDashboard() {
               <h2 className="text-lg font-bold text-[#1a1a1a]">My Assigned Groups</h2>
               <p className="text-sm text-slate-500 mt-1">Review submissions, manage feedback, and grade work.</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link to="/supervision-meetings" className="font-semibold hover:underline" style={{ color: TEAL }}>
+                Supervision meetings
+              </Link>
               <Link to="/my-groups" className="font-semibold hover:underline" style={{ color: TEAL }}>
                 View All Groups
               </Link>

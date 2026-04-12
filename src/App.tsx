@@ -19,9 +19,11 @@ import { Reports } from './pages/student/Reports';
 import { Messages } from './pages/student/Messages';
 import { Profile } from './pages/student/Profile';
 import { DefenseEvaluation } from './pages/student/DefenseEvaluation';
+import { StudentMeetings } from './pages/student/StudentMeetings';
 
 // Supervisor Pages
 import { MyGroups } from './pages/supervisor/MyGroups';
+import { SupervisorSupervision } from './pages/supervisor/SupervisorSupervision';
 import { Evaluations } from './pages/supervisor/Evaluations';
 import { SupervisorMessages } from './pages/supervisor/SupervisorMessages';
 import { SupervisorProfile } from './pages/supervisor/SupervisorProfile';
@@ -136,6 +138,7 @@ function App() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/defense-evaluation" element={<DefenseEvaluation />} />
+                <Route path="/supervision-meetings" element={<StudentMeetings />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </>
@@ -145,6 +148,7 @@ function App() {
               <>
                 <Route path="/dashboard" element={<SupervisorDashboard />} />
                 <Route path="/my-groups" element={<MyGroups />} />
+                <Route path="/supervision-meetings" element={<SupervisorSupervision />} />
                 <Route path="/evaluations" element={<Evaluations />} />
                 <Route path="/report-reviews" element={<ReportReviews />} />
                 <Route path="/messages" element={<SupervisorMessages />} />

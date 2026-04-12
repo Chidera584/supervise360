@@ -176,11 +176,16 @@ export function StudentDashboard() {
         <div className="grid lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3 space-y-6">
             <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3 mb-5">
+              <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
                 <h2 className="text-lg font-bold text-[#1a1a1a]">Group snapshot</h2>
-                <Link to="/my-group" className="text-sm font-semibold" style={{ color: TEAL }}>
-                  View all details
-                </Link>
+                <div className="flex items-center gap-4">
+                  <Link to="/supervision-meetings" className="text-sm font-semibold" style={{ color: TEAL }}>
+                    Supervision meetings
+                  </Link>
+                  <Link to="/my-group" className="text-sm font-semibold" style={{ color: TEAL }}>
+                    View all details
+                  </Link>
+                </div>
               </div>
               {studentGroup ? (
                 <div className="space-y-6">

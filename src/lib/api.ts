@@ -268,8 +268,9 @@ class ApiClient {
   }
 
   // Supervisors endpoints
-  async getSupervisorMyGroups(): Promise<ApiResponse> {
-    return this.request('/supervisors/my-groups');
+  async getSupervisorMyGroups(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/supervisors/my-groups${q}`);
   }
 
   async getSupervisorWorkload(): Promise<ApiResponse> {
