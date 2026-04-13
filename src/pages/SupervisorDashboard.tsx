@@ -78,7 +78,13 @@ export function SupervisorDashboard() {
         }
 
         if (meetingsRes.success && Array.isArray(meetingsRes.data)) {
-          const list = meetingsRes.data as { starts_at?: string; title?: string; group_name?: string }[];
+          const list = meetingsRes.data as {
+            kind?: string;
+            starts_at?: string;
+            title?: string;
+            group_name?: string;
+            display_label?: string;
+          }[];
           setMeetingsCount(list.length);
           const now = Date.now();
           const upcoming = [...list]
@@ -90,7 +96,11 @@ export function SupervisorDashboard() {
           const pick = upcoming || anyMeeting;
           if (pick?.starts_at) {
             const when = new Date(pick.starts_at).toLocaleString();
-            setNextMeetingLabel(`${pick.title || 'Meeting'} · ${when}`);
+            const label =
+              pick.kind === 'series' && pick.display_label
+                ? pick.display_label
+                : `${pick.title || 'Meeting'}${pick.group_name ? ` — ${pick.group_name}` : ''}`;
+            setNextMeetingLabel(`${label} · ${when}`);
           } else {
             setNextMeetingLabel(null);
           }

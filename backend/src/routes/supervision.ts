@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireStudent, requireSupervisor } from '../middleware/auth';
@@ -61,11 +62,62 @@ async function assertSupervisorOwnsGroup(
   return (rows as any[]).length > 0;
 }
 
+async function persistMeetingAttendanceForGroup(
+  conn: any,
+  userId: number,
+  meet: { id: number; group_id: number; session_id: number },
+  attendance: { group_member_id: number; present: boolean }[]
+): Promise<void> {
+  const mid = meet.id;
+  await conn.execute('DELETE FROM meeting_attendance WHERE meeting_id = ?', [mid]);
+  await conn.execute('DELETE FROM student_assessment_entries WHERE meeting_id = ?', [mid]);
+  for (const row of attendance) {
+    const gmid = Number(row.group_member_id);
+    const present = !!row.present;
+    const [gmRows] = await conn.execute(
+      'SELECT id, group_id, matric_number, student_name FROM group_members WHERE id = ?',
+      [gmid]
+    );
+    const gm = (gmRows as any[])[0];
+    if (!gm || Number(gm.group_id) !== Number(meet.group_id)) continue;
+
+    await conn.execute(
+      `INSERT INTO meeting_attendance (meeting_id, group_member_id, present) VALUES (?, ?, ?)`,
+      [mid, gmid, present]
+    );
+
+    let studentUserId: number | null = null;
+    if (gm.matric_number) {
+      const [sRows] = await conn.execute(
+        'SELECT user_id FROM students WHERE matric_number = ? OR TRIM(matric_number) = ? LIMIT 1',
+        [gm.matric_number, gm.matric_number]
+      );
+      studentUserId = (sRows as any[])[0]?.user_id ?? null;
+    }
+    if (studentUserId) {
+      await conn.execute(
+        `INSERT INTO student_assessment_entries
+         (student_user_id, supervisor_id, session_id, category, points, max_points, title, notes, meeting_id, recorded_at)
+         VALUES (?, ?, ?, 'meeting_attendance', ?, 1, ?, ?, ?, NOW())`,
+        [
+          studentUserId,
+          userId,
+          meet.session_id,
+          present ? 1 : 0,
+          `Meeting attendance`,
+          present ? 'Present' : 'Absent',
+          mid,
+        ]
+      );
+    }
+  }
+}
+
 export function createSupervisionRouter(db: Pool) {
   const router = Router();
   const reportService = new ReportService(db);
 
-  // Supervisor: list meetings for groups they supervise (optional ?sessionId=)
+  // Supervisor: list meetings — bulk rows with same bulk_series_id are grouped into one item
   router.get('/meetings', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
@@ -78,6 +130,7 @@ export function createSupervisionRouter(db: Pool) {
 
       const [rows] = await db.execute(
         `SELECT m.id, m.group_id, m.session_id, m.title, m.starts_at, m.ends_at, m.location, m.notes, m.created_at,
+                m.bulk_series_id, m.attendance_locked,
                 pg.name AS group_name, pg.department
          FROM supervision_meetings m
          INNER JOIN project_groups pg ON pg.id = m.group_id
@@ -85,7 +138,74 @@ export function createSupervisionRouter(db: Pool) {
          ORDER BY m.starts_at DESC`,
         params
       );
-      res.json({ success: true, data: rows });
+      const list = rows as any[];
+      const bySeries = new Map<string, any[]>();
+      const singles: any[] = [];
+      for (const r of list) {
+        const sid = r.bulk_series_id ? String(r.bulk_series_id) : '';
+        if (sid) {
+          if (!bySeries.has(sid)) bySeries.set(sid, []);
+          bySeries.get(sid)!.push(r);
+        } else {
+          singles.push(r);
+        }
+      }
+      const out: any[] = [];
+      for (const [, groupRows] of bySeries) {
+        if (groupRows.length === 0) continue;
+        const first = groupRows[0];
+        const depts = [...new Set(groupRows.map((x: any) => String(x.department || '').trim()).filter(Boolean))];
+        const [sessRows] = await db.execute(`SELECT label FROM academic_sessions WHERE id = ? LIMIT 1`, [
+          first.session_id,
+        ]);
+        const sessLabel = (sessRows as any[])[0]?.label || `Session ${first.session_id}`;
+        let display_label: string;
+        if (depts.length === 1) {
+          display_label = `${first.title} – All ${depts[0]} groups · ${sessLabel}`;
+        } else if (depts.length > 1) {
+          display_label = `${first.title} – All groups (${depts.join(', ')}) · ${sessLabel}`;
+        } else {
+          display_label = `${first.title} – All supervised groups · ${sessLabel}`;
+        }
+        out.push({
+          kind: 'series',
+          bulk_series_id: first.bulk_series_id,
+          title: first.title,
+          starts_at: first.starts_at,
+          session_id: first.session_id,
+          session_label: sessLabel,
+          location: first.location,
+          meeting_ids: groupRows.map((x: any) => x.id),
+          group_ids: groupRows.map((x: any) => x.group_id),
+          group_names: groupRows.map((x: any) => x.group_name),
+          departments: depts,
+          display_label,
+          attendance_locked: groupRows.every((x: any) => x.attendance_locked),
+        });
+      }
+      for (const r of singles) {
+        out.push({
+          kind: 'single',
+          id: r.id,
+          group_id: r.group_id,
+          session_id: r.session_id,
+          title: r.title,
+          starts_at: r.starts_at,
+          ends_at: r.ends_at,
+          location: r.location,
+          notes: r.notes,
+          created_at: r.created_at,
+          group_name: r.group_name,
+          department: r.department,
+          attendance_locked: !!r.attendance_locked,
+        });
+      }
+      out.sort((a, b) => {
+        const ta = new Date(a.starts_at || 0).getTime();
+        const tb = new Date(b.starts_at || 0).getTime();
+        return tb - ta;
+      });
+      res.json({ success: true, data: out });
     } catch (error) {
       console.error('Supervisor meetings list error:', error);
       res.status(500).json({ success: false, message: 'Failed to list meetings' });
@@ -204,14 +324,15 @@ export function createSupervisionRouter(db: Pool) {
 
       const meetTitle = (title && String(title).trim()) || 'Supervision meeting';
       const supName = await getSupervisorFullName(db, userId);
+      const seriesId = randomUUID();
       const conn = await db.getConnection();
       const createdIds: number[] = [];
       try {
         await conn.beginTransaction();
         for (const gid of targetGroupIds) {
           const [ins] = await conn.execute(
-            `INSERT INTO supervision_meetings (group_id, session_id, supervisor_user_id, title, starts_at, ends_at, location, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO supervision_meetings (group_id, session_id, supervisor_user_id, title, starts_at, ends_at, location, notes, bulk_series_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               gid,
               sid,
@@ -221,6 +342,7 @@ export function createSupervisionRouter(db: Pool) {
               ends_at || null,
               location || null,
               null,
+              seriesId,
             ]
           );
           const newId = (ins as any).insertId as number;
@@ -252,19 +374,213 @@ export function createSupervisionRouter(db: Pool) {
     }
   });
 
+  router.get(
+    '/meetings/series/:bulkSeriesId/attendance',
+    authenticateToken,
+    requireSupervisor,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const bulkSeriesId = String(req.params.bulkSeriesId || '').trim();
+        if (!bulkSeriesId) {
+          return res.status(400).json({ success: false, message: 'bulk_series_id required' });
+        }
+        const fullName = await getSupervisorFullName(db, userId);
+        const [rows] = await db.execute(
+          `SELECT m.id AS meeting_id, m.group_id, m.session_id, m.title, m.attendance_locked,
+                  pg.name AS group_name, gm.id AS group_member_id, gm.student_name, gm.matric_number,
+                  ma.present
+           FROM supervision_meetings m
+           INNER JOIN project_groups pg ON pg.id = m.group_id
+           INNER JOIN group_members gm ON gm.group_id = pg.id
+           LEFT JOIN meeting_attendance ma ON ma.meeting_id = m.id AND ma.group_member_id = gm.id
+           WHERE m.bulk_series_id = ? AND TRIM(COALESCE(pg.supervisor_name,'')) = TRIM(?)
+           ORDER BY pg.name ASC, gm.member_order ASC, gm.id ASC`,
+          [bulkSeriesId, fullName]
+        );
+        const list = rows as any[];
+        if (list.length === 0) {
+          return res.status(404).json({ success: false, message: 'Series not found' });
+        }
+        const locked = list.every((r) => r.attendance_locked);
+        const students = list.map((r) => ({
+          meeting_id: r.meeting_id,
+          group_id: r.group_id,
+          group_name: r.group_name,
+          group_member_id: r.group_member_id,
+          student_name: r.student_name,
+          matric_number: r.matric_number,
+          present: r.present === null || r.present === undefined ? null : !!r.present,
+        }));
+        res.json({
+          success: true,
+          data: {
+            bulk_series_id: bulkSeriesId,
+            title: list[0].title,
+            locked,
+            students,
+          },
+        });
+      } catch (error) {
+        console.error('Series attendance GET error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load attendance' });
+      }
+    }
+  );
+
+  router.post(
+    '/meetings/series/:bulkSeriesId/attendance',
+    authenticateToken,
+    requireSupervisor,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const bulkSeriesId = String(req.params.bulkSeriesId || '').trim();
+        const { attendance } = req.body as { attendance?: { group_member_id: number; present: boolean }[] };
+        if (!bulkSeriesId || !Array.isArray(attendance)) {
+          return res.status(400).json({ success: false, message: 'attendance array required' });
+        }
+        const fullName = await getSupervisorFullName(db, userId);
+        const [mrows] = await db.execute(
+          `SELECT m.id, m.group_id, m.session_id, m.supervisor_user_id, m.attendance_locked
+           FROM supervision_meetings m
+           INNER JOIN project_groups pg ON pg.id = m.group_id
+           WHERE m.bulk_series_id = ? AND TRIM(COALESCE(pg.supervisor_name,'')) = TRIM(?)`,
+          [bulkSeriesId, fullName]
+        );
+        const meetings = mrows as any[];
+        if (meetings.length === 0) {
+          return res.status(404).json({ success: false, message: 'Series not found' });
+        }
+        if (meetings.some((m) => m.attendance_locked)) {
+          return res
+            .status(403)
+            .json({ success: false, message: 'Attendance is already saved for this meeting' });
+        }
+        const groupToMeet = new Map<number, { id: number; group_id: number; session_id: number }>();
+        for (const m of meetings) {
+          groupToMeet.set(Number(m.group_id), {
+            id: Number(m.id),
+            group_id: Number(m.group_id),
+            session_id: Number(m.session_id),
+          });
+        }
+        const byMeeting = new Map<number, { group_member_id: number; present: boolean }[]>();
+        for (const row of attendance) {
+          const gmid = Number(row.group_member_id);
+          const [gmRows] = await db.execute('SELECT id, group_id FROM group_members WHERE id = ?', [gmid]);
+          const gm = (gmRows as any[])[0];
+          if (!gm) continue;
+          const gid = Number(gm.group_id);
+          const meet = groupToMeet.get(gid);
+          if (!meet) continue;
+          const arr = byMeeting.get(meet.id) || [];
+          arr.push({ group_member_id: gmid, present: !!row.present });
+          byMeeting.set(meet.id, arr);
+        }
+        const conn = await db.getConnection();
+        try {
+          await conn.beginTransaction();
+          for (const m of meetings) {
+            const mid = Number(m.id);
+            const slice = byMeeting.get(mid) || [];
+            await persistMeetingAttendanceForGroup(
+              conn,
+              userId,
+              {
+                id: mid,
+                group_id: Number(m.group_id),
+                session_id: Number(m.session_id),
+              },
+              slice
+            );
+          }
+          await conn.execute(
+            `UPDATE supervision_meetings SET attendance_locked = TRUE, updated_at = NOW() WHERE bulk_series_id = ?`,
+            [bulkSeriesId]
+          );
+          await conn.commit();
+          res.json({ success: true, message: 'Attendance saved' });
+        } catch (e) {
+          await conn.rollback();
+          throw e;
+        } finally {
+          conn.release();
+        }
+      } catch (error) {
+        console.error('Series attendance POST error:', error);
+        res.status(500).json({ success: false, message: 'Failed to save attendance' });
+      }
+    }
+  );
+
+  router.get('/meetings/:id/attendance', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const mid = Number(req.params.id);
+      if (!Number.isFinite(mid) || mid <= 0) {
+        return res.status(400).json({ success: false, message: 'Invalid meeting id' });
+      }
+      const [mrows] = await db.execute(
+        `SELECT m.id, m.supervisor_user_id, m.bulk_series_id, m.attendance_locked
+         FROM supervision_meetings m WHERE m.id = ?`,
+        [mid]
+      );
+      const meet = (mrows as any[])[0];
+      if (!meet) return res.status(404).json({ success: false, message: 'Meeting not found' });
+      if (Number(meet.supervisor_user_id) !== userId) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+      }
+      if (meet.bulk_series_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Use the combined attendance view for all-groups meetings',
+          bulk_series_id: meet.bulk_series_id,
+        });
+      }
+      const [arows] = await db.execute(
+        `SELECT ma.group_member_id, ma.present, gm.student_name, gm.matric_number
+         FROM meeting_attendance ma
+         INNER JOIN group_members gm ON gm.id = ma.group_member_id
+         WHERE ma.meeting_id = ?
+         ORDER BY gm.member_order ASC, gm.id ASC`,
+        [mid]
+      );
+      res.json({
+        success: true,
+        data: {
+          locked: !!meet.attendance_locked,
+          attendance: arows,
+        },
+      });
+    } catch (error) {
+      console.error('Meeting attendance GET error:', error);
+      res.status(500).json({ success: false, message: 'Failed to load attendance' });
+    }
+  });
+
   router.put('/meetings/:id', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
       const mid = Number(req.params.id);
       const [mrows] = await db.execute(
-        'SELECT id, supervisor_user_id FROM supervision_meetings WHERE id = ?',
+        'SELECT id, supervisor_user_id, attendance_locked FROM supervision_meetings WHERE id = ?',
         [mid]
       );
       const m = (mrows as any[])[0];
       if (!m) return res.status(404).json({ success: false, message: 'Meeting not found' });
       if (Number(m.supervisor_user_id) !== userId) {
         return res.status(403).json({ success: false, message: 'Forbidden' });
+      }
+      if (m.attendance_locked) {
+        return res.status(403).json({
+          success: false,
+          message: 'This meeting is locked after attendance was saved',
+        });
       }
       const { title, starts_at, ends_at, location, notes } = req.body;
       const sets: string[] = [];
@@ -314,7 +630,7 @@ export function createSupervisionRouter(db: Pool) {
         return res.status(400).json({ success: false, message: 'attendance array required' });
       }
       const [mrows] = await db.execute(
-        `SELECT m.id, m.group_id, m.session_id, m.supervisor_user_id, pg.supervisor_name
+        `SELECT m.id, m.group_id, m.session_id, m.supervisor_user_id, m.bulk_series_id, m.attendance_locked
          FROM supervision_meetings m
          INNER JOIN project_groups pg ON pg.id = m.group_id
          WHERE m.id = ?`,
@@ -325,54 +641,36 @@ export function createSupervisionRouter(db: Pool) {
       if (Number(meet.supervisor_user_id) !== userId) {
         return res.status(403).json({ success: false, message: 'Forbidden' });
       }
+      if (meet.bulk_series_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Use the combined attendance view for all-groups meetings',
+          bulk_series_id: meet.bulk_series_id,
+        });
+      }
+      if (meet.attendance_locked) {
+        return res
+          .status(403)
+          .json({ success: false, message: 'Attendance is already saved for this meeting' });
+      }
 
       const conn = await db.getConnection();
       try {
         await conn.beginTransaction();
-        await conn.execute('DELETE FROM meeting_attendance WHERE meeting_id = ?', [mid]);
-        await conn.execute('DELETE FROM student_assessment_entries WHERE meeting_id = ?', [mid]);
-
-        for (const row of attendance) {
-          const gmid = Number(row.group_member_id);
-          const present = !!row.present;
-          const [gmRows] = await conn.execute(
-            'SELECT id, group_id, matric_number, student_name FROM group_members WHERE id = ?',
-            [gmid]
-          );
-          const gm = (gmRows as any[])[0];
-          if (!gm || Number(gm.group_id) !== Number(meet.group_id)) continue;
-
-          await conn.execute(
-            `INSERT INTO meeting_attendance (meeting_id, group_member_id, present) VALUES (?, ?, ?)`,
-            [mid, gmid, present]
-          );
-
-          let studentUserId: number | null = null;
-          if (gm.matric_number) {
-            const [sRows] = await conn.execute(
-              'SELECT user_id FROM students WHERE matric_number = ? OR TRIM(matric_number) = ? LIMIT 1',
-              [gm.matric_number, gm.matric_number]
-            );
-            studentUserId = (sRows as any[])[0]?.user_id ?? null;
-          }
-          if (studentUserId) {
-            await conn.execute(
-              `INSERT INTO student_assessment_entries
-               (student_user_id, supervisor_id, session_id, category, points, max_points, title, notes, meeting_id, recorded_at)
-               VALUES (?, ?, ?, 'meeting_attendance', ?, 1, ?, ?, ?, NOW())`,
-              [
-                studentUserId,
-                userId,
-                meet.session_id,
-                present ? 1 : 0,
-                `Meeting attendance`,
-                present ? 'Present' : 'Absent',
-                mid,
-              ]
-            );
-          }
-        }
-
+        await persistMeetingAttendanceForGroup(
+          conn,
+          userId,
+          {
+            id: mid,
+            group_id: Number(meet.group_id),
+            session_id: Number(meet.session_id),
+          },
+          attendance
+        );
+        await conn.execute(
+          `UPDATE supervision_meetings SET attendance_locked = TRUE, updated_at = NOW() WHERE id = ?`,
+          [mid]
+        );
         await conn.commit();
         res.json({ success: true, message: 'Attendance saved' });
       } catch (e) {

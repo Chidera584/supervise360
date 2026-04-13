@@ -273,12 +273,40 @@ class ApiClient {
     });
   }
 
+  async getMeetingAttendance(meetingId: number): Promise<ApiResponse> {
+    return this.request(`/supervision/meetings/${meetingId}/attendance`);
+  }
+
+  async getSeriesMeetingAttendance(bulkSeriesId: string): Promise<ApiResponse> {
+    return this.request(
+      `/supervision/meetings/series/${encodeURIComponent(bulkSeriesId)}/attendance`
+    );
+  }
+
+  async saveSeriesMeetingAttendance(
+    bulkSeriesId: string,
+    attendance: { group_member_id: number; present: boolean }[]
+  ): Promise<ApiResponse> {
+    return this.request(
+      `/supervision/meetings/series/${encodeURIComponent(bulkSeriesId)}/attendance`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ attendance }),
+      }
+    );
+  }
+
   async getMySupervisionMeetings(): Promise<ApiResponse> {
     return this.request('/supervision/my-meetings');
   }
 
   async getMyProgressiveAssessments(): Promise<ApiResponse> {
     return this.request('/supervision/my-assessments');
+  }
+
+  async getSupervisorAssessmentEntries(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/supervision/assessments${q}`);
   }
 
   async assignSupervisor(groupId: number, supervisorName: string): Promise<ApiResponse> {

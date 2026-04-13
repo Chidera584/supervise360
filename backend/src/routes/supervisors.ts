@@ -51,13 +51,18 @@ export function createSupervisorsRouter(db: Pool) {
         return res.json({ success: true, data: [] });
       }
 
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : NaN;
+      const sessionFilter = !Number.isNaN(sessionId) ? ' AND session_id = ?' : '';
+
       // Match by name (trim both sides to handle DB whitespace)
+      const params: (string | number)[] = [fullName];
+      if (!Number.isNaN(sessionId)) params.push(sessionId);
       const [groupRows] = await db.execute(
-        `SELECT id, name, department, status, avg_gpa, supervisor_name, created_at
+        `SELECT id, name, department, status, avg_gpa, supervisor_name, created_at, session_id
          FROM project_groups
-         WHERE TRIM(COALESCE(supervisor_name, '')) = ?
+         WHERE TRIM(COALESCE(supervisor_name, '')) = ?${sessionFilter}
          ORDER BY name ASC`,
-        [fullName]
+        params
       );
       const groups = groupRows as any[];
 

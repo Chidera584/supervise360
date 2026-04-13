@@ -24,6 +24,7 @@ import { StudentMeetings } from './pages/student/StudentMeetings';
 // Supervisor Pages
 import { MyGroups } from './pages/supervisor/MyGroups';
 import { SupervisorSupervision } from './pages/supervisor/SupervisorSupervision';
+import { ProgressiveAssessment } from './pages/supervisor/ProgressiveAssessment';
 import { Evaluations } from './pages/supervisor/Evaluations';
 import { SupervisorMessages } from './pages/supervisor/SupervisorMessages';
 import { SupervisorProfile } from './pages/supervisor/SupervisorProfile';
@@ -149,6 +150,7 @@ function App() {
                 <Route path="/dashboard" element={<SupervisorDashboard />} />
                 <Route path="/my-groups" element={<MyGroups />} />
                 <Route path="/supervision-meetings" element={<SupervisorSupervision />} />
+                <Route path="/progressive-assessment" element={<ProgressiveAssessment />} />
                 <Route path="/evaluations" element={<Evaluations />} />
                 <Route path="/report-reviews" element={<ReportReviews />} />
                 <Route path="/messages" element={<SupervisorMessages />} />

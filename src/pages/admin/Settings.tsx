@@ -303,12 +303,14 @@ export function Settings() {
   const gpaDeptPanel = gpaDeptPanelName ? departmentThresholds[gpaDeptPanelName] : null;
 
   return (
-    <MainLayout title="Settings">
+    <MainLayout title="System configuration">
       <div className="w-full space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">GPA Tier Configuration</h1>
-            <p className="text-gray-600 mt-1">Configure student classification thresholds</p>
+            <h1 className="text-2xl font-bold text-gray-900">System configuration</h1>
+            <p className="text-gray-600 mt-1">
+              Academic sessions, department scope, and GPA tier thresholds for your institution.
+            </p>
           </div>
           <div className="p-3 bg-slate-100 rounded-lg">
             <Sliders className="text-slate-700" size={28} />

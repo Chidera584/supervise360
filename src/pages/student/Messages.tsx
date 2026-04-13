@@ -50,7 +50,7 @@ export function Messages() {
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [listFilter, setListFilter] = useState<'all' | 'unread' | 'groups' | 'broadcast' | 'group' | 'direct'>('all');
+  const [listFilter, setListFilter] = useState<'all' | 'unread' | 'broadcast' | 'group' | 'direct'>('all');
   const [composeMode, setComposeMode] = useState<'broadcast' | 'group' | 'direct'>('group');
   const [directStudentOptions, setDirectStudentOptions] = useState<{ user_id: number; name: string; matric: string }[]>([]);
   const [headerSearch, setHeaderSearch] = useState('');
@@ -139,9 +139,6 @@ export function Messages() {
     let list = messages;
     if (activeTab === 'inbox' && listFilter === 'unread') {
       list = list.filter((m) => !m.read_status);
-    }
-    if (activeTab === 'inbox' && listFilter === 'groups') {
-      list = list.filter((m) => !!m.sender_group_name);
     }
     if (activeTab === 'inbox' && listFilter === 'broadcast') {
       list = list.filter((m) => m.message_type === 'broadcast');
@@ -294,7 +291,7 @@ export function Messages() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Messaging</h1>
             <p className="text-slate-500 mt-1 text-sm sm:text-base">
-              Coordinate with your supervisor, your whole group, or individual group members—broadcast-style updates stay separate from supervision meetings.
+              Centralized conversations with your supervisor and group.
             </p>
           </div>
         </div>
@@ -334,7 +331,6 @@ export function Messages() {
                       ['broadcast', 'Broadcast'],
                       ['group', 'Group'],
                       ['direct', 'Direct'],
-                      ['groups', 'Has group tag'],
                     ] as const
                   ).map(([f, label]) => (
                     <button

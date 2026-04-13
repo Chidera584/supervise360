@@ -5,7 +5,7 @@ import { Button } from '../../components/UI/Button';
 import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
 import { 
   Users, Upload, UserCheck, 
-  Eye, Edit, CheckCircle, Clock, Building, X, Trash2, ChevronDown, FileSpreadsheet, FileText, File 
+  Eye, Edit, CheckCircle, Clock, Building, X, Trash2, ChevronDown, FileSpreadsheet, FileText, File, SlidersHorizontal
 } from 'lucide-react';
 import { parseCSV, readFileAsText } from '../../lib/csv-parser';
 import { downloadAssignmentsAsCSV, downloadAssignmentsAsPDF, downloadAssignmentsAsWord } from '../../lib/export-utils';
@@ -60,6 +60,7 @@ export function SupervisorAssignment() {
   const [reassignDoing, setReassignDoing] = useState(false);
   /** Local draft for max-groups cap inputs (keyed by workload row id) */
   const [workloadCapInput, setWorkloadCapInput] = useState<Record<number, string>>({});
+  const [workloadEditSupervisor, setWorkloadEditSupervisor] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     const m: Record<number, string> = {};
@@ -759,6 +760,7 @@ export function SupervisorAssignment() {
 
         {/* Tab: Supervisor Workload (Default) - only show when groups exist (groups precede supervisors) */}
         {activeTab === 'workload' && (
+        <>
         <Card className="border border-slate-200 p-6 flex-1 min-h-0 flex flex-col">
           {!selectedDepartment ? (
             <div className="text-center py-12 text-slate-500">
@@ -821,46 +823,13 @@ export function SupervisorAssignment() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <h6 className="text-base font-medium text-slate-900 truncate">{supervisor.name}</h6>
-                              <p className="text-sm text-slate-500">{(supervisor.current_groups || 0)} groups</p>
-                              <div className="mt-3 flex flex-col gap-1.5">
-                                <label className="text-xs font-medium text-slate-700" htmlFor={`cap-${supervisor.id}`}>
-                                  Max groups (cap)
-                                </label>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <input
-                                    id={`cap-${supervisor.id}`}
-                                    type="number"
-                                    min={0}
-                                    className="w-24 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-slate-900"
-                                    placeholder="No cap"
-                                    value={workloadCapInput[supervisor.id] ?? ''}
-                                    onChange={(e) =>
-                                      setWorkloadCapInput((prev) => ({
-                                        ...prev,
-                                        [supervisor.id]: e.target.value,
-                                      }))
-                                    }
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="!text-xs !py-1 !px-2"
-                                    onClick={async () => {
-                                      const raw = (workloadCapInput[supervisor.id] ?? '').trim();
-                                      const v = raw === '' ? null : Number(raw);
-                                      if (v !== null && (Number.isNaN(v) || v < 0)) {
-                                        alert('Enter a non-negative number or leave empty for no cap');
-                                        return;
-                                      }
-                                      await apiClient.updateSupervisorWorkloadCap(supervisor.id, v);
-                                      await loadSupervisorWorkload();
-                                    }}
-                                  >
-                                    Save
-                                  </Button>
-                                </div>
-                                <p className="text-[11px] text-slate-500">Leave empty for no limit.</p>
-                              </div>
+                              <p className="text-sm text-slate-500">{(supervisor.current_groups || 0)} groups assigned</p>
+                              <p className="text-xs text-slate-600 mt-2">
+                                Cap:{' '}
+                                {supervisor.max_groups != null && supervisor.max_groups !== ''
+                                  ? supervisor.max_groups
+                                  : 'None'}
+                              </p>
                               {(supervisor.email || supervisor.phone) && (
                                 <p className="text-xs text-slate-500 mt-1 truncate">
                                   {[supervisor.email, supervisor.phone].filter(Boolean).join(' · ')}
@@ -871,16 +840,35 @@ export function SupervisorAssignment() {
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#1F7A8C]/15 text-[#1F7A8C]">
                                 {(supervisor.current_groups || 0)} groups
                               </span>
-                              {supGroups.length > 0 && (
-                                <div className="flex gap-1">
+                              <div className="flex gap-1">
+                                {supGroups.length > 0 && (
                                   <button onClick={() => setViewGroupsSupervisor(supervisor.name)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="View groups">
                                     <Eye size={14} />
                                   </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setWorkloadEditSupervisor({ id: supervisor.id, name: supervisor.name });
+                                    setWorkloadCapInput((prev) => ({
+                                      ...prev,
+                                      [supervisor.id]:
+                                        supervisor.max_groups != null && supervisor.max_groups !== ''
+                                          ? String(supervisor.max_groups)
+                                          : '',
+                                    }));
+                                  }}
+                                  className="p-1.5 rounded hover:bg-slate-200 text-slate-600"
+                                  title="Edit workload cap"
+                                >
+                                  <SlidersHorizontal size={14} />
+                                </button>
+                                {supGroups.length > 0 && (
                                   <button onClick={() => { setSwapWizardTab('swap'); setEditSwapModal(true); }} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Edit / Swap">
                                     <Edit size={14} />
                                   </button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -895,6 +883,74 @@ export function SupervisorAssignment() {
           </>
           )}
         </Card>
+        {workloadEditSupervisor && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setWorkloadEditSupervisor(null)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-lg font-semibold text-slate-900">Workload cap</h3>
+                <button
+                  type="button"
+                  className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+                  onClick={() => setWorkloadEditSupervisor(null)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="text-sm text-slate-800 font-medium">{workloadEditSupervisor.name}</p>
+              <p className="text-xs text-slate-500">
+                Usually set from supervisor CSV; you can override here. Leave empty for no limit.
+              </p>
+              <div>
+                <label className="text-xs font-medium text-slate-700" htmlFor="workload-cap-modal">
+                  Max groups
+                </label>
+                <input
+                  id="workload-cap-modal"
+                  type="number"
+                  min={0}
+                  className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  placeholder="No cap"
+                  value={workloadCapInput[workloadEditSupervisor.id] ?? ''}
+                  onChange={(e) =>
+                    setWorkloadCapInput((prev) => ({
+                      ...prev,
+                      [workloadEditSupervisor.id]: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" type="button" onClick={() => setWorkloadEditSupervisor(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-[#1F7A8C]"
+                  onClick={async () => {
+                    const raw = (workloadCapInput[workloadEditSupervisor.id] ?? '').trim();
+                    const v = raw === '' ? null : Number(raw);
+                    if (v !== null && (Number.isNaN(v) || v < 0)) {
+                      alert('Enter a non-negative number or leave empty for no cap');
+                      return;
+                    }
+                    await apiClient.updateSupervisorWorkloadCap(workloadEditSupervisor.id, v);
+                    await loadSupervisorWorkload();
+                    setWorkloadEditSupervisor(null);
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
         )}
 
         {/* Tab: Groups */}

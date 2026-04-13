@@ -5,7 +5,7 @@ import { Card } from '../../components/UI/Card';
 import { apiClient } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Users, MessageSquare, FileText, Star, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, MessageSquare, FileText, Star, Clock, CheckCircle, AlertCircle, CalendarDays } from 'lucide-react';
 import { stripGroupName, stripProjectTitle, sortGroupsByNumber } from '../../utils/supervisorDisplay';
 
 interface SupervisorGroup {
@@ -53,14 +53,34 @@ export function MyGroups() {
   const [groups, setGroups] = useState<SupervisorGroup[]>([]);
   const hasScrolledToGroup = useRef(false);
   const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState<{ id: number; label: string }[]>([]);
+  const [supervisorSession, setSupervisorSession] = useState<number | ''>('');
+  const [sessionInitDone, setSessionInitDone] = useState(false);
 
   const [filter, setFilter] = useState<'all' | 'pending'>('all');
 
   useEffect(() => {
+    (async () => {
+      const sessRes = await apiClient.getSessions();
+      if (sessRes.success && Array.isArray(sessRes.data)) {
+        const list = sessRes.data as { id: number; label: string }[];
+        setSessions(list);
+        if (list.length) setSupervisorSession(list[0].id);
+      }
+      setSessionInitDone(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!sessionInitDone) return;
+    if (sessions.length > 0 && supervisorSession === '') return;
+
     let alive = true;
 
     const fetchGroups = async () => {
-      const res = await apiClient.getSupervisorMyGroups();
+      const res = await apiClient.getSupervisorMyGroups(
+        supervisorSession === '' ? undefined : Number(supervisorSession)
+      );
       if (!alive) return;
       if (res.success && res.data) {
         const raw = res.data as SupervisorGroup[];
@@ -69,6 +89,7 @@ export function MyGroups() {
       setLoading(false);
     };
 
+    setLoading(true);
     fetchGroups();
     const id = window.setInterval(fetchGroups, 30000);
     window.addEventListener('focus', fetchGroups);
@@ -78,7 +99,7 @@ export function MyGroups() {
       window.clearInterval(id);
       window.removeEventListener('focus', fetchGroups);
     };
-  }, []);
+  }, [sessionInitDone, supervisorSession, sessions.length]);
 
   // Scroll to group when navigated from Dashboard with state.groupId
   useEffect(() => {
@@ -157,9 +178,30 @@ export function MyGroups() {
               Manage academic group progress, review submissions, and provide feedback.
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Assigned groups</p>
-            <p className="text-2xl font-bold text-[#1a1a1a] mt-1">{groups.length}</p>
+          <div className="flex flex-col sm:items-end gap-2">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-slate-500 shrink-0" />
+              <label className="text-xs text-slate-600">Session</label>
+              <select
+                className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm min-w-[200px]"
+                value={supervisorSession === '' ? '' : String(supervisorSession)}
+                onChange={(e) => setSupervisorSession(e.target.value ? Number(e.target.value) : '')}
+              >
+                {sessions.length === 0 ? (
+                  <option value="">No sessions</option>
+                ) : (
+                  sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Assigned groups</p>
+              <p className="text-2xl font-bold text-[#1a1a1a] mt-1">{groups.length}</p>
+            </div>
           </div>
         </div>
 

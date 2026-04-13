@@ -64,6 +64,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const supervisorMenuItems: MenuItem[] = [
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
     { icon: Calendar, label: 'Meetings', path: '/supervision-meetings' },
+    { icon: BarChart3, label: 'Progressive assessment', path: '/progressive-assessment' },
     { icon: Users, label: 'My Groups', path: '/my-groups' },
     { icon: FileText, label: 'Evaluations', path: '/evaluations' },
     { icon: FileText, label: 'Report Reviews', path: '/report-reviews' },
