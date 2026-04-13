@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
+// Dev default admin (spec sometimes typo "admim@gmail.com" — use this spelling).
 const DEV_EMAIL = 'admin@gmail.com';
 
 async function checkAndCreateAdmin() {

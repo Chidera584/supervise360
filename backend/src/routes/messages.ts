@@ -147,7 +147,10 @@ export function createMessagesRouter(db: Pool) {
           const contacts = await messageService.getContacts(db, groupService, reportService, userId, 'student');
           const allowedIds = contacts.filter((c) => c.type === 'user').map((c) => c.id);
           if (recipients.some((r) => !allowedIds.includes(r))) {
-            return res.status(403).json({ success: false, message: 'You can only message your assigned supervisor' });
+            return res.status(403).json({
+              success: false,
+              message: 'You can only message your supervisor or other members of your project group',
+            });
           }
           const [studentRows] = await db.execute('SELECT matric_number FROM students WHERE user_id = ?', [userId]);
           const matric = (studentRows as any[])[0]?.matric_number;
@@ -167,7 +170,12 @@ export function createMessagesRouter(db: Pool) {
           } else {
             groupId = group.id;
           }
-          msgType = 'student';
+          const supervisorIds = contacts
+            .filter((c: { label?: string }) => (c.label || '').toLowerCase() === 'supervisor')
+            .map((c: { id: number }) => c.id);
+          const toSupervisor =
+            recipients.length > 0 && recipients.every((r) => supervisorIds.includes(r));
+          msgType = toSupervisor ? 'student' : 'direct';
         }
       }
 

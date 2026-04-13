@@ -256,6 +256,28 @@ export class MessageService {
           'Supervisor'
         );
       }
+
+      const [peerRows] = await this.db.execute(
+        `SELECT DISTINCT s.user_id, u.first_name, u.last_name, u.email
+         FROM group_members gm
+         INNER JOIN students s ON (
+           (TRIM(COALESCE(s.matric_number,'')) <> '' AND TRIM(COALESCE(gm.matric_number,'')) <> ''
+            AND TRIM(s.matric_number) = TRIM(gm.matric_number))
+         )
+         INNER JOIN users u ON u.id = s.user_id
+         WHERE gm.group_id = ? AND s.user_id <> ?`,
+        [group.id, userId]
+      );
+      for (const row of peerRows as any[]) {
+        const uid = Number(row.user_id);
+        if (!uid) continue;
+        addUser(
+          uid,
+          `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+          row.email || '',
+          'Group member'
+        );
+      }
     } else if (role === 'supervisor') {
       // Supervisor: groups as contacts (message goes to all in group) + "All My Groups" broadcast
       const groupIds = await reportService.getSupervisorGroupIds(userId);

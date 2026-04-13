@@ -294,7 +294,7 @@ export function Messages() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] tracking-tight">Messaging</h1>
             <p className="text-slate-500 mt-1 text-sm sm:text-base">
-              Centralized conversations with your supervisor and group.
+              Coordinate with your supervisor, your whole group, or individual group members—broadcast-style updates stay separate from supervision meetings.
             </p>
           </div>
         </div>
