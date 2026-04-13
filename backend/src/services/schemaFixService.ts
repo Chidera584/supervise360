@@ -295,24 +295,26 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
       console.log('✅ Added group_members.phone');
     }
 
-    // --- supervisor_workload caps & contact ---
-    if (!(await columnExists(db, 'supervisor_workload', 'max_groups'))) {
-      await db.execute(
-        `ALTER TABLE supervisor_workload ADD COLUMN max_groups INT NULL DEFAULT NULL AFTER current_groups`
-      );
-      console.log('✅ Added supervisor_workload.max_groups');
-    }
-    if (!(await columnExists(db, 'supervisor_workload', 'email'))) {
-      await db.execute(
-        `ALTER TABLE supervisor_workload ADD COLUMN email VARCHAR(255) NULL AFTER supervisor_name`
-      );
-      console.log('✅ Added supervisor_workload.email');
-    }
-    if (!(await columnExists(db, 'supervisor_workload', 'phone'))) {
-      await db.execute(
-        `ALTER TABLE supervisor_workload ADD COLUMN phone VARCHAR(50) NULL AFTER email`
-      );
-      console.log('✅ Added supervisor_workload.phone');
+    // --- supervisor_workload caps & contact (table may not exist on minimal DBs — skip without failing whole migration) ---
+    if (await tableExists(db, 'supervisor_workload')) {
+      if (!(await columnExists(db, 'supervisor_workload', 'max_groups'))) {
+        await db.execute(
+          `ALTER TABLE supervisor_workload ADD COLUMN max_groups INT NULL DEFAULT NULL AFTER current_groups`
+        );
+        console.log('✅ Added supervisor_workload.max_groups');
+      }
+      if (!(await columnExists(db, 'supervisor_workload', 'email'))) {
+        await db.execute(
+          `ALTER TABLE supervisor_workload ADD COLUMN email VARCHAR(255) NULL AFTER supervisor_name`
+        );
+        console.log('✅ Added supervisor_workload.email');
+      }
+      if (!(await columnExists(db, 'supervisor_workload', 'phone'))) {
+        await db.execute(
+          `ALTER TABLE supervisor_workload ADD COLUMN phone VARCHAR(50) NULL AFTER email`
+        );
+        console.log('✅ Added supervisor_workload.phone');
+      }
     }
 
     // --- supervision_meetings ---
@@ -359,6 +361,25 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
       console.log('✅ Created meeting_attendance');
     }
 
+    if (await tableExists(db, 'supervision_meetings')) {
+      if (!(await columnExists(db, 'supervision_meetings', 'bulk_series_id'))) {
+        // Avoid AFTER notes — legacy tables may omit `notes`
+        await db.execute(`ALTER TABLE supervision_meetings ADD COLUMN bulk_series_id VARCHAR(36) NULL`);
+        try {
+          await db.execute(`CREATE INDEX idx_sm_bulk_series ON supervision_meetings (bulk_series_id)`);
+        } catch {
+          /* index may exist */
+        }
+        console.log('✅ Added supervision_meetings.bulk_series_id');
+      }
+      if (!(await columnExists(db, 'supervision_meetings', 'attendance_locked'))) {
+        await db.execute(
+          `ALTER TABLE supervision_meetings ADD COLUMN attendance_locked BOOLEAN NOT NULL DEFAULT FALSE`
+        );
+        console.log('✅ Added supervision_meetings.attendance_locked');
+      }
+    }
+
     // --- student_assessment_entries ---
     if (!(await tableExists(db, 'student_assessment_entries'))) {
       await db.execute(`
@@ -403,5 +424,35 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
     }
   } catch (err) {
     console.warn('Feature expansion schema (non-fatal):', (err as Error).message);
+  }
+}
+
+/**
+ * Adds supervision_meetings.bulk_series_id and attendance_locked if missing.
+ * Runs after ensureFeatureExpansionSchema so a failure earlier in that migration
+ * (e.g. missing supervisor_workload table) does not leave production without these columns.
+ */
+export async function ensureSupervisionMeetingsColumns(db: Pool): Promise<void> {
+  try {
+    if (!(await tableExists(db, 'supervision_meetings'))) {
+      return;
+    }
+    if (!(await columnExists(db, 'supervision_meetings', 'bulk_series_id'))) {
+      await db.execute(`ALTER TABLE supervision_meetings ADD COLUMN bulk_series_id VARCHAR(36) NULL`);
+      try {
+        await db.execute(`CREATE INDEX idx_sm_bulk_series ON supervision_meetings (bulk_series_id)`);
+      } catch {
+        /* exists */
+      }
+      console.log('✅ Added supervision_meetings.bulk_series_id (redundant ensure)');
+    }
+    if (!(await columnExists(db, 'supervision_meetings', 'attendance_locked'))) {
+      await db.execute(
+        `ALTER TABLE supervision_meetings ADD COLUMN attendance_locked BOOLEAN NOT NULL DEFAULT FALSE`
+      );
+      console.log('✅ Added supervision_meetings.attendance_locked (redundant ensure)');
+    }
+  } catch (err) {
+    console.warn('ensureSupervisionMeetingsColumns (non-fatal):', (err as Error).message);
   }
 }

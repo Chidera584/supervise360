@@ -32,6 +32,7 @@ import {
   backfillProjectsForGroups,
   ensureDepartmentsTables,
   ensureFeatureExpansionSchema,
+  ensureSupervisionMeetingsColumns,
 } from './services/schemaFixService';
 import { createSessionsRouter } from './routes/sessions';
 import { createSupervisionRouter } from './routes/supervision';
@@ -123,6 +124,7 @@ async function startServer() {
     }
     await ensureDepartmentsTables(db);
     await ensureFeatureExpansionSchema(db);
+    await ensureSupervisionMeetingsColumns(db);
 
     // Create and register routes that need database connection
     const groupsRouter = createGroupsRouter(db);
