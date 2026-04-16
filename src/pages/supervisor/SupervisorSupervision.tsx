@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
+import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
 import { apiClient } from '../../lib/api';
 import { CalendarClock, RefreshCw, ClipboardList, X, Trash2 } from 'lucide-react';
 
@@ -55,6 +56,7 @@ export function SupervisorSupervision() {
   const [meetingView, setMeetingView] = useState<'upcoming' | 'history'>('upcoming');
   const [clearingHistory, setClearingHistory] = useState(false);
   const [deletingMeetingKey, setDeletingMeetingKey] = useState<string | null>(null);
+  const [meetingToDelete, setMeetingToDelete] = useState<MeetingListItem | null>(null);
 
   const sessionIdNum = supervisorSession === '' ? undefined : Number(supervisorSession);
 
@@ -289,15 +291,15 @@ export function SupervisorSupervision() {
     }
   };
 
+  const getMeetingDeleteMessage = (m: MeetingListItem) => {
+    if (m.kind === 'series') {
+      return `Delete this supervision meeting series for ${m.display_label || m.title}?`;
+    }
+    return `Delete this supervision meeting for ${m.group_name || 'this group'}?`;
+  };
+
   const deleteMeeting = async (m: MeetingListItem) => {
     const key = m.kind === 'series' ? `s-${m.bulk_series_id}` : `m-${m.id}`;
-    const label =
-      m.kind === 'series'
-        ? 'this grouped all-groups meeting'
-        : `"${m.title || 'this meeting'}"${m.group_name ? ` for ${m.group_name}` : ''}`;
-    const ok = window.confirm(`Delete ${label}?`);
-    if (!ok) return;
-
     setDeletingMeetingKey(key);
     try {
       const res =
@@ -311,6 +313,7 @@ export function SupervisorSupervision() {
       }
     } finally {
       setDeletingMeetingKey(null);
+      setMeetingToDelete(null);
     }
   };
 
@@ -415,7 +418,7 @@ export function SupervisorSupervision() {
                         type="button"
                         aria-label="Delete meeting"
                         className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => deleteMeeting(m)}
+                        onClick={() => setMeetingToDelete(m)}
                         disabled={deletingMeetingKey === key}
                       >
                         <Trash2 size={16} />
@@ -580,6 +583,21 @@ export function SupervisorSupervision() {
             </div>
           </div>
         )}
+
+        <ConfirmationModal
+          isOpen={!!meetingToDelete}
+          onClose={() => {
+            if (!deletingMeetingKey) setMeetingToDelete(null);
+          }}
+          onConfirm={() => (meetingToDelete ? deleteMeeting(meetingToDelete) : undefined)}
+          title="Delete meeting"
+          message={meetingToDelete ? getMeetingDeleteMessage(meetingToDelete) : ''}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+          loading={!!deletingMeetingKey}
+          loadingText="Deleting..."
+        />
       </div>
     </MainLayout>
   );

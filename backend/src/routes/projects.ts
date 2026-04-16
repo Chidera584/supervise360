@@ -2,30 +2,22 @@ import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireStudent, requireSupervisor } from '../middleware/auth';
 import { ProjectService } from '../services/projectService';
+import { GroupFormationService } from '../services/groupFormationService';
 import { AuthenticatedRequest } from '../types';
 
 const router = Router();
 
 export function createProjectsRouter(db: Pool) {
   const projectService = new ProjectService(db);
+  const groupService = new GroupFormationService(db);
 
   router.get('/my-project', authenticateToken, requireStudent, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
 
-      const [studentRows] = await db.execute(
-        'SELECT matric_number FROM students WHERE user_id = ?',
-        [userId]
-      );
-      const matric = (studentRows as any[])[0]?.matric_number;
-      if (!matric) return res.json({ success: true, data: null });
-
-      const [groupRows] = await db.execute(
-        'SELECT group_id FROM group_members WHERE matric_number = ? LIMIT 1',
-        [matric]
-      );
-      const groupId = (groupRows as any[])[0]?.group_id;
+      const group = await groupService.getGroupForStudentUser(userId);
+      const groupId = group?.id;
       if (!groupId) return res.json({ success: true, data: null });
 
       const project = await projectService.getProjectByGroupId(groupId);
@@ -45,18 +37,8 @@ export function createProjectsRouter(db: Pool) {
         return res.status(400).json({ success: false, message: 'Title, description, objectives are required' });
       }
 
-      const [studentRows] = await db.execute(
-        'SELECT matric_number FROM students WHERE user_id = ?',
-        [userId]
-      );
-      const matric = (studentRows as any[])[0]?.matric_number;
-      if (!matric) return res.status(400).json({ success: false, message: 'Matric number not found' });
-
-      const [groupRows] = await db.execute(
-        'SELECT group_id FROM group_members WHERE matric_number = ? LIMIT 1',
-        [matric]
-      );
-      const groupId = (groupRows as any[])[0]?.group_id;
+      const group = await groupService.getGroupForStudentUser(userId);
+      const groupId = group?.id;
       if (!groupId) return res.status(400).json({ success: false, message: 'Group not found' });
 
       const result = await projectService.submitProject(groupId, {
@@ -88,18 +70,8 @@ export function createProjectsRouter(db: Pool) {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
 
-      const [studentRows] = await db.execute(
-        'SELECT matric_number FROM students WHERE user_id = ?',
-        [userId]
-      );
-      const matric = (studentRows as any[])[0]?.matric_number;
-      if (!matric) return res.status(400).json({ success: false, message: 'Matric number not found' });
-
-      const [groupRows] = await db.execute(
-        'SELECT group_id FROM group_members WHERE matric_number = ? LIMIT 1',
-        [matric]
-      );
-      const groupId = (groupRows as any[])[0]?.group_id;
+      const group = await groupService.getGroupForStudentUser(userId);
+      const groupId = group?.id;
       if (!groupId) return res.status(400).json({ success: false, message: 'Group not found' });
 
       const result = await projectService.clearProjectByGroupId(groupId);

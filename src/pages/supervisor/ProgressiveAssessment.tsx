@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { apiClient } from '../../lib/api';
-import { BarChart3, RefreshCw } from 'lucide-react';
+import { BarChart3, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { Button } from '../../components/UI/Button';
 
 type Entry = {
@@ -28,7 +28,8 @@ type StudentSummary = {
   attendancePresent: number;
   attendanceAbsent: number;
   attendanceRate: number;
-  recentEntries: Entry[];
+  totalEntries: number;
+  entries: Entry[];
 };
 
 export function ProgressiveAssessment() {
@@ -36,6 +37,7 @@ export function ProgressiveAssessment() {
   const [sessionId, setSessionId] = useState<number | ''>('');
   const [rows, setRows] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -84,10 +86,6 @@ export function ProgressiveAssessment() {
       const attendanceAbsent = attendanceTotal - attendancePresent;
       const attendanceRate =
         attendanceTotal > 0 ? Math.round((attendancePresent / Math.max(attendanceTotal, 1)) * 100) : 0;
-      const nonAttendance = list.filter((e) => e.category !== 'meeting_attendance');
-      const recentEntries = [...nonAttendance, ...attendanceRows.slice(0, 2)]
-        .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
-        .slice(0, 5);
 
       return {
         uid,
@@ -96,7 +94,8 @@ export function ProgressiveAssessment() {
         attendancePresent,
         attendanceAbsent,
         attendanceRate,
-        recentEntries,
+        totalEntries: list.length,
+        entries: list,
       };
     });
   }, [byStudent]);
@@ -146,60 +145,86 @@ export function ProgressiveAssessment() {
             {summaries.map((s) => {
               return (
                 <Card key={s.uid}>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                    <h2 className="text-base font-semibold text-[#022B3A]">{s.name}</h2>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700">
-                        Meetings: {s.attendanceTotal}
-                      </span>
-                      <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">
-                        Present: {s.attendancePresent}
-                      </span>
-                      <span className="px-2 py-1 rounded-full bg-rose-50 text-rose-700">
-                        Absent: {s.attendanceAbsent}
-                      </span>
-                      <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                        Attendance: {s.attendanceRate}%
-                      </span>
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => setExpandedStudentId((current) => (current === s.uid ? null : s.uid))}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 text-slate-500">
+                          {expandedStudentId === s.uid ? (
+                            <ChevronDown className="w-5 h-5" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div>
+                          <h2 className="text-base font-semibold text-[#022B3A]">{s.name}</h2>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {s.totalEntries} record{s.totalEntries === 1 ? '' : 's'} available. Click to
+                            {expandedStudentId === s.uid ? ' hide' : ' view'} details.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700">
+                          Meetings: {s.attendanceTotal}
+                        </span>
+                        <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">
+                          Present: {s.attendancePresent}
+                        </span>
+                        <span className="px-2 py-1 rounded-full bg-rose-50 text-rose-700">
+                          Absent: {s.attendanceAbsent}
+                        </span>
+                        <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                          Attendance: {s.attendanceRate}%
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-xs text-slate-500 mb-2">
-                    Showing compact attendance summary plus up to 5 most recent entries.
-                  </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-left text-slate-500">
-                          <th className="py-2 pr-2">When</th>
-                          <th className="py-2 pr-2">Category</th>
-                          <th className="py-2 pr-2">Score</th>
-                          <th className="py-2 pr-2">Title</th>
-                          <th className="py-2">Notes</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {s.recentEntries.map((e) => (
-                          <tr key={e.id} className="border-b border-slate-100">
-                            <td className="py-2 pr-2 whitespace-nowrap text-slate-700">
-                              {e.recorded_at ? new Date(e.recorded_at).toLocaleString() : '—'}
-                            </td>
-                            <td className="py-2 pr-2">
-                              {e.category === 'meeting_attendance' ? 'attendance' : e.category}
-                            </td>
-                            <td className="py-2 pr-2">
-                              {e.points != null && e.max_points != null
-                                ? `${e.points} / ${e.max_points}`
-                                : e.points != null
-                                  ? String(e.points)
-                                  : '—'}
-                            </td>
-                            <td className="py-2 pr-2 max-w-[200px] truncate">{e.title || '—'}</td>
-                            <td className="py-2 max-w-[240px] truncate text-slate-600">{e.notes || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  </button>
+                  {expandedStudentId === s.uid && (
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left text-slate-500">
+                              <th className="py-2 pr-2">When</th>
+                              <th className="py-2 pr-2">Category</th>
+                              <th className="py-2 pr-2">Score</th>
+                              <th className="py-2 pr-2">Title</th>
+                              <th className="py-2">Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {s.entries.map((e) => (
+                              <tr key={e.id} className="border-b border-slate-100 align-top">
+                                <td className="py-2 pr-2 whitespace-nowrap text-slate-700">
+                                  {e.recorded_at ? new Date(e.recorded_at).toLocaleString() : '—'}
+                                </td>
+                                <td className="py-2 pr-2">
+                                  {e.category === 'meeting_attendance' ? 'attendance' : e.category}
+                                </td>
+                                <td className="py-2 pr-2">
+                                  {e.points != null && e.max_points != null
+                                    ? `${e.points} / ${e.max_points}`
+                                    : e.points != null
+                                      ? String(e.points)
+                                      : '—'}
+                                </td>
+                                <td className="py-2 pr-2 max-w-[220px] text-slate-800">
+                                  {e.title || '—'}
+                                </td>
+                                <td className="py-2 max-w-[320px] text-slate-600 whitespace-pre-wrap break-words">
+                                  {e.notes || '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               );
             })}

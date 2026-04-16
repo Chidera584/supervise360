@@ -741,18 +741,25 @@ export class GroupFormationService {
     const connection = await this.db.getConnection();
     try {
       const trimmed = matricNumber.trim();
+      const compact = trimmed.replace(/\s+/g, '');
+      const compactNoSlash = compact.replace(/\//g, '');
       const useDept = !!department && String(department).trim().length > 0;
       const useSession = sessionId != null && sessionId !== undefined;
       const [rows] = await connection.execute(
         `SELECT gm.group_id
          FROM group_members gm
          INNER JOIN project_groups pg ON pg.id = gm.group_id
-         WHERE (gm.matric_number = ? OR TRIM(COALESCE(gm.matric_number,'')) = ?)
+         WHERE (
+           gm.matric_number = ?
+           OR TRIM(COALESCE(gm.matric_number,'')) = ?
+           OR REPLACE(TRIM(COALESCE(gm.matric_number,'')), ' ', '') = ?
+           OR REPLACE(REPLACE(TRIM(COALESCE(gm.matric_number,'')), ' ', ''), '/', '') = ?
+         )
            AND (? = 0 OR TRIM(COALESCE(pg.department,'')) = TRIM(?))
            AND (? = 0 OR pg.session_id = ?)
          ORDER BY gm.group_id DESC
          LIMIT 1`,
-        [trimmed, trimmed, useDept ? 1 : 0, department || '', useSession ? 1 : 0, sessionId ?? 0]
+        [trimmed, trimmed, compact, compactNoSlash, useDept ? 1 : 0, department || '', useSession ? 1 : 0, sessionId ?? 0]
       );
 
       const memberRows = rows as any[];

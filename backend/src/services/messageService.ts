@@ -194,7 +194,7 @@ export class MessageService {
   /** Get list of contacts for messaging. Students: supervisor only. Supervisors: groups + broadcast. */
   async getContacts(
     _db: Pool,
-    groupService: { getGroupByMatricNumber(matric: string): Promise<{ id?: number } | null> },
+    groupService: { getGroupForStudentUser(userId: number): Promise<{ id?: number } | null> },
     reportService: { getSupervisorGroupIds(supervisorUserId: number): Promise<number[]> },
     userId: number,
     role: string,
@@ -221,30 +221,7 @@ export class MessageService {
 
     if (role === 'student') {
       // Student: only their supervisor (no group members)
-      const [studentRows] = await this.db.execute('SELECT matric_number FROM students WHERE user_id = ?', [userId]);
-      const matric = (studentRows as any[])[0]?.matric_number;
-      let group = matric && String(matric).trim()
-        ? await groupService.getGroupByMatricNumber(String(matric).trim())
-        : null;
-      // Fallback: matric may not match (format diff between registration vs CSV) - try by student name
-      if (!group || group.id == null) {
-        const [userRows] = await this.db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
-        const u = (userRows as any[])[0];
-        const fullName = u ? `${(u.first_name || '')} ${(u.last_name || '')}`.trim().replace(/\s+/g, ' ') : '';
-        if (fullName) {
-          const [gmRows] = await this.db.execute(
-            `SELECT gm.group_id FROM group_members gm
-             WHERE TRIM(COALESCE(gm.student_name,'')) = ? OR gm.student_name LIKE ? OR gm.student_name LIKE ?`,
-            [fullName, `%${fullName.split(' ')[0]}%`, `%${fullName.split(' ').pop()}%`]
-          );
-          const gid = (gmRows as any[])[0]?.group_id;
-          if (gid) {
-            const [pgRows] = await this.db.execute('SELECT id, supervisor_name FROM project_groups WHERE id = ?', [gid]);
-            const pg = (pgRows as any[])[0];
-            if (pg) group = { id: pg.id, supervisor: pg.supervisor_name } as any;
-          }
-        }
-      }
+      const group = await groupService.getGroupForStudentUser(userId);
       if (!group || group.id == null) return contacts;
 
       const resolved = await this.resolveSupervisorUserForGroup(group.id);
@@ -254,28 +231,6 @@ export class MessageService {
           `${resolved.first_name || ''} ${resolved.last_name || ''}`.trim(),
           resolved.email || '',
           'Supervisor'
-        );
-      }
-
-      const [peerRows] = await this.db.execute(
-        `SELECT DISTINCT s.user_id, u.first_name, u.last_name, u.email
-         FROM group_members gm
-         INNER JOIN students s ON (
-           (TRIM(COALESCE(s.matric_number,'')) <> '' AND TRIM(COALESCE(gm.matric_number,'')) <> ''
-            AND TRIM(s.matric_number) = TRIM(gm.matric_number))
-         )
-         INNER JOIN users u ON u.id = s.user_id
-         WHERE gm.group_id = ? AND s.user_id <> ?`,
-        [group.id, userId]
-      );
-      for (const row of peerRows as any[]) {
-        const uid = Number(row.user_id);
-        if (!uid) continue;
-        addUser(
-          uid,
-          `${row.first_name || ''} ${row.last_name || ''}`.trim(),
-          row.email || '',
-          'Group member'
         );
       }
     } else if (role === 'supervisor') {

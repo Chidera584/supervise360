@@ -33,8 +33,7 @@ export function createMessagesRouter(db: Pool) {
         const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
         let debug: Record<string, unknown> = { role, userId, matric: (studentRows as any[])[0]?.matric_number, userName: (userRows as any[])[0] };
         if (role === 'student') {
-          const matric = (studentRows as any[])[0]?.matric_number;
-          const group = matric ? await groupService.getGroupByMatricNumber(String(matric).trim()) : null;
+          const group = await groupService.getGroupForStudentUser(userId);
           const [pgRows] = group?.id ? await db.execute('SELECT supervisor_name FROM project_groups WHERE id = ?', [group.id]) : [[]];
           debug = { ...debug, groupFound: !!group, groupId: group?.id, supervisorName: (pgRows as any[])[0]?.supervisor_name };
         } else {
@@ -99,24 +98,8 @@ export function createMessagesRouter(db: Pool) {
         if (!parentMsg) return res.status(404).json({ success: false, message: 'Original message not found' });
         let senderGroupId = parentMsg.group_id;
         if (!senderGroupId) {
-          const [parentStudentRows] = await db.execute('SELECT matric_number FROM students WHERE user_id = ?', [parentMsg.sender_id]);
-          const matric = (parentStudentRows as any[])[0]?.matric_number;
-          if (matric) {
-            const [gmRows] = await db.execute('SELECT group_id FROM group_members WHERE matric_number = ? OR TRIM(matric_number) = TRIM(?) LIMIT 1', [matric, matric]);
-            senderGroupId = (gmRows as any[])[0]?.group_id;
-          }
-          if (!senderGroupId) {
-            const [uRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [parentMsg.sender_id]);
-            const u = (uRows as any[])[0];
-            const fullName = u ? `${(u.first_name || '')} ${(u.last_name || '')}`.trim() : '';
-            if (fullName) {
-              const [gmRows] = await db.execute(
-                'SELECT group_id FROM group_members WHERE TRIM(student_name) = ? OR student_name LIKE ? LIMIT 1',
-                [fullName, `%${fullName.split(' ')[0]}%`]
-              );
-              senderGroupId = (gmRows as any[])[0]?.group_id;
-            }
-          }
+          const parentGroup = await groupService.getGroupForStudentUser(parentMsg.sender_id);
+          senderGroupId = parentGroup?.id;
         }
         if (!senderGroupId) return res.status(400).json({ success: false, message: 'Could not determine group for reply' });
         recipients = await messageService.getGroupMemberUserIds(senderGroupId);
@@ -147,35 +130,13 @@ export function createMessagesRouter(db: Pool) {
           const contacts = await messageService.getContacts(db, groupService, reportService, userId, 'student');
           const allowedIds = contacts.filter((c) => c.type === 'user').map((c) => c.id);
           if (recipients.some((r) => !allowedIds.includes(r))) {
-            return res.status(403).json({
-              success: false,
-              message: 'You can only message your supervisor or other members of your project group',
-            });
+            return res.status(403).json({ success: false, message: 'You can only message your assigned supervisor' });
           }
           const [studentRows] = await db.execute('SELECT matric_number FROM students WHERE user_id = ?', [userId]);
           const matric = (studentRows as any[])[0]?.matric_number;
-          const group = matric ? await groupService.getGroupByMatricNumber(String(matric).trim()) : null;
-          if (!group?.id) {
-            const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
-            const u = (userRows as any[])[0];
-            const fullName = u ? `${(u.first_name || '')} ${(u.last_name || '')}`.trim() : '';
-            if (fullName) {
-              const [gmRows] = await db.execute(
-                'SELECT group_id FROM group_members WHERE TRIM(student_name) = ? OR student_name LIKE ? LIMIT 1',
-                [fullName, `%${fullName.split(' ')[0]}%`]
-              );
-              const gid = (gmRows as any[])[0]?.group_id;
-              if (gid) groupId = gid;
-            }
-          } else {
-            groupId = group.id;
-          }
-          const supervisorIds = contacts
-            .filter((c: { label?: string }) => (c.label || '').toLowerCase() === 'supervisor')
-            .map((c: { id: number }) => c.id);
-          const toSupervisor =
-            recipients.length > 0 && recipients.every((r) => supervisorIds.includes(r));
-          msgType = toSupervisor ? 'student' : 'direct';
+          const group = matric ? await groupService.getGroupForStudentUser(userId) : null;
+          groupId = group?.id;
+          msgType = 'student';
         }
       }
 

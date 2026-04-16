@@ -383,16 +383,27 @@ export function createAdminRouter(db: Pool) {
           return res.status(404).json({ success: false, message: 'Members not found or group mismatch' });
         }
         const [[pgS1], [pgS2]] = await Promise.all([
-          conn.execute('SELECT session_id FROM project_groups WHERE id = ?', [g1]) as any,
-          conn.execute('SELECT session_id FROM project_groups WHERE id = ?', [g2]) as any,
+          conn.execute('SELECT session_id, department FROM project_groups WHERE id = ?', [g1]) as any,
+          conn.execute('SELECT session_id, department FROM project_groups WHERE id = ?', [g2]) as any,
         ]);
-        const sid1 = (pgS1 as any[])[0]?.session_id;
-        const sid2 = (pgS2 as any[])[0]?.session_id;
+        const group1 = (pgS1 as any[])[0];
+        const group2 = (pgS2 as any[])[0];
+        const sid1 = group1?.session_id;
+        const sid2 = group2?.session_id;
         if (sid1 != null && sid2 != null && Number(sid1) !== Number(sid2)) {
           await conn.rollback();
           return res.status(400).json({
             success: false,
             message: 'Groups must belong to the same academic session',
+          });
+        }
+        const dept1 = String(group1?.department || '').trim();
+        const dept2 = String(group2?.department || '').trim();
+        if (dept1 && dept2 && dept1 !== dept2) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Students can only be swapped between groups in the same department',
           });
         }
         const tier1 = r1.gpa_tier ?? null;
@@ -482,6 +493,15 @@ export function createAdminRouter(db: Pool) {
           return res.status(400).json({
             success: false,
             message: 'Source and target groups must belong to the same academic session',
+          });
+        }
+        const fromDept = String(fromG.department || '').trim();
+        const toDept = String(toG.department || '').trim();
+        if (fromDept && toDept && fromDept !== toDept) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: 'Students can only be moved between groups in the same department',
           });
         }
 

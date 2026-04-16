@@ -41,6 +41,12 @@ export interface VenueAllocation {
   groupRange?: GroupRange;
 }
 
+export interface PanelCompositionCounts {
+  leaders: number;
+  lecturers: number;
+  labTechs: number;
+}
+
 function normalizeRank(rank: string): string {
   return String(rank || '').trim();
 }
@@ -63,6 +69,55 @@ function isLecturer(rank: string): boolean {
 function isLabTech(rank: string): boolean {
   const r = normalizeRank(rank);
   return r.toLowerCase().includes(LAB_TECH_RANK.toLowerCase());
+}
+
+function getPanelCompositionCounts(members: StaffMember[]): PanelCompositionCounts {
+  return members.reduce(
+    (acc, member) => {
+      if (isLeader(member.rank)) acc.leaders += 1;
+      if (isLecturer(member.rank)) acc.lecturers += 1;
+      if (isLabTech(member.rank)) acc.labTechs += 1;
+      return acc;
+    },
+    { leaders: 0, lecturers: 0, labTechs: 0 }
+  );
+}
+
+export function validateVenuePanelComposition(allocation: VenueAllocation): void {
+  const counts = getPanelCompositionCounts(allocation.team.members);
+  if (counts.leaders !== 1) {
+    throw new Error(
+      `${allocation.venue.venue_name} must include exactly one Professor or Associate Professor.`
+    );
+  }
+  if (counts.lecturers < 1) {
+    throw new Error(`${allocation.venue.venue_name} must include at least one Lecturer.`);
+  }
+  if (counts.labTechs < 1) {
+    throw new Error(`${allocation.venue.venue_name} must include at least one Lab Technician.`);
+  }
+}
+
+export function validatePanelRoleAvailability(eligibleStaff: StaffMember[], venueCount: number): void {
+  const leaders = eligibleStaff.filter((s) => isLeader(s.rank)).length;
+  const lecturers = eligibleStaff.filter((s) => isLecturer(s.rank)).length;
+  const labTechs = eligibleStaff.filter((s) => isLabTech(s.rank)).length;
+
+  if (leaders < venueCount) {
+    throw new Error(
+      `Need exactly one Professor or Associate Professor per panel. You have ${leaders} eligible leader(s) for ${venueCount} venue(s).`
+    );
+  }
+  if (lecturers < venueCount) {
+    throw new Error(
+      `Need at least one Lecturer per panel. You have ${lecturers} eligible lecturer(s) for ${venueCount} venue(s).`
+    );
+  }
+  if (labTechs < venueCount) {
+    throw new Error(
+      `Need at least one Lab Technician per panel. You have ${labTechs} eligible lab technician(s) for ${venueCount} venue(s).`
+    );
+  }
 }
 
 /**
@@ -265,11 +320,15 @@ export function computeAllocation(
   const staff = parseStaffFromRows(staffRows);
   const eligible = filterEligibleStaff(staff);
   const excludedCount = staff.length - eligible.length;
+  const venues = parseVenuesFromRows(venueRows);
 
-  let allocations = spreadStaffAcrossVenues(eligible, parseVenuesFromRows(venueRows));
+  validatePanelRoleAvailability(eligible, venues.length);
+
+  let allocations = spreadStaffAcrossVenues(eligible, venues);
 
   validateGroupRanges(groupRanges);
   allocations = applyGroupRanges(allocations, groupRanges);
+  allocations.forEach(validateVenuePanelComposition);
 
   return { allocations, excludedCount };
 }

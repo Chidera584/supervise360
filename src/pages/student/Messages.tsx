@@ -552,7 +552,7 @@ export function Messages() {
                     <p className="text-xs text-amber-700 mt-1">No students found in your supervised groups.</p>
                   )}
                   {!isSupervisor && contacts.length === 0 && !loading && (
-                    <p className="text-xs text-amber-700 mt-1">No contacts yet—join a group with a supervisor.</p>
+                    <p className="text-xs text-amber-700 mt-1">No supervisor contact is available for your current group yet.</p>
                   )}
                 </div>
                 <div>
