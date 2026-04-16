@@ -268,6 +268,21 @@ class ApiClient {
     return this.request(`/supervision/meetings${q}`, { method: 'DELETE' });
   }
 
+  async clearSupervisionMeetingHistory(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/supervision/meetings/history${q}`, { method: 'DELETE' });
+  }
+
+  async deleteSupervisionMeeting(id: number): Promise<ApiResponse> {
+    return this.request(`/supervision/meetings/${id}`, { method: 'DELETE' });
+  }
+
+  async deleteSupervisionMeetingSeries(bulkSeriesId: string): Promise<ApiResponse> {
+    return this.request(`/supervision/meetings/series/${encodeURIComponent(bulkSeriesId)}`, {
+      method: 'DELETE',
+    });
+  }
+
   async saveMeetingAttendance(
     meetingId: number,
     attendance: { group_member_id: number; present: boolean }[]

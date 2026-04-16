@@ -422,6 +422,146 @@ export function createSupervisionRouter(db: Pool) {
     }
   });
 
+  router.delete('/meetings/history', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+      const fullName = await getSupervisorFullName(db, userId);
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : NaN;
+      const sessionFilter = !Number.isNaN(sessionId) ? 'AND pg.session_id = ?' : '';
+      const params: any[] = [fullName];
+      if (!Number.isNaN(sessionId)) params.push(sessionId);
+
+      const [rows] = await db.execute(
+        `SELECT m.id
+         FROM supervision_meetings m
+         INNER JOIN project_groups pg ON pg.id = m.group_id
+         WHERE TRIM(COALESCE(pg.supervisor_name,'')) = TRIM(?)
+           AND m.starts_at < NOW()
+           ${sessionFilter}`,
+        params
+      );
+      const meetings = rows as any[];
+      if (meetings.length === 0) {
+        return res.json({ success: true, data: { deleted: 0 } });
+      }
+
+      const meetingIds = meetings.map((r) => Number(r.id)).filter((id) => Number.isFinite(id) && id > 0);
+      const ph = meetingIds.map(() => '?').join(',');
+      const conn = await db.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.execute(`DELETE FROM meeting_attendance WHERE meeting_id IN (${ph})`, meetingIds);
+        await conn.execute(`DELETE FROM student_assessment_entries WHERE meeting_id IN (${ph})`, meetingIds);
+        await conn.execute(`DELETE FROM supervision_meetings WHERE id IN (${ph})`, meetingIds);
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
+      }
+
+      res.json({ success: true, data: { deleted: meetingIds.length } });
+    } catch (error) {
+      console.error('Clear history meetings error:', error);
+      res.status(500).json({ success: false, message: 'Failed to clear meeting history' });
+    }
+  });
+
+  router.delete('/meetings/:id', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const meetingId = Number(req.params.id);
+      if (!Number.isFinite(meetingId) || meetingId <= 0) {
+        return res.status(400).json({ success: false, message: 'Invalid meeting id' });
+      }
+      const [mRows] = await db.execute(
+        `SELECT m.id, m.supervisor_user_id, m.bulk_series_id
+         FROM supervision_meetings m
+         WHERE m.id = ?`,
+        [meetingId]
+      );
+      const meeting = (mRows as any[])[0];
+      if (!meeting) return res.status(404).json({ success: false, message: 'Meeting not found' });
+      if (Number(meeting.supervisor_user_id) !== Number(userId)) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+      }
+      if (meeting.bulk_series_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Delete this grouped meeting via the series delete route',
+          bulk_series_id: meeting.bulk_series_id,
+        });
+      }
+      const conn = await db.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.execute(`DELETE FROM meeting_attendance WHERE meeting_id = ?`, [meetingId]);
+        await conn.execute(`DELETE FROM student_assessment_entries WHERE meeting_id = ?`, [meetingId]);
+        await conn.execute(`DELETE FROM supervision_meetings WHERE id = ?`, [meetingId]);
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
+      }
+      res.json({ success: true, message: 'Meeting deleted' });
+    } catch (error) {
+      console.error('Delete meeting error:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete meeting' });
+    }
+  });
+
+  router.delete(
+    '/meetings/series/:bulkSeriesId',
+    authenticateToken,
+    requireSupervisor,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const bulkSeriesId = String(req.params.bulkSeriesId || '').trim();
+        if (!bulkSeriesId) {
+          return res.status(400).json({ success: false, message: 'bulk_series_id required' });
+        }
+        const fullName = await getSupervisorFullName(db, userId);
+        const [mRows] = await db.execute(
+          `SELECT m.id
+           FROM supervision_meetings m
+           INNER JOIN project_groups pg ON pg.id = m.group_id
+           WHERE m.bulk_series_id = ? AND TRIM(COALESCE(pg.supervisor_name,'')) = TRIM(?)`,
+          [bulkSeriesId, fullName]
+        );
+        const meetings = (mRows as any[]).map((r) => Number(r.id)).filter((id) => Number.isFinite(id) && id > 0);
+        if (meetings.length === 0) {
+          return res.status(404).json({ success: false, message: 'Meeting series not found' });
+        }
+        const ph = meetings.map(() => '?').join(',');
+        const conn = await db.getConnection();
+        try {
+          await conn.beginTransaction();
+          await conn.execute(`DELETE FROM meeting_attendance WHERE meeting_id IN (${ph})`, meetings);
+          await conn.execute(`DELETE FROM student_assessment_entries WHERE meeting_id IN (${ph})`, meetings);
+          await conn.execute(`DELETE FROM supervision_meetings WHERE id IN (${ph})`, meetings);
+          await conn.commit();
+        } catch (e) {
+          await conn.rollback();
+          throw e;
+        } finally {
+          conn.release();
+        }
+        res.json({ success: true, data: { deleted: meetings.length } });
+      } catch (error) {
+        console.error('Delete meeting series error:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete meeting series' });
+      }
+    }
+  );
+
   router.get(
     '/meetings/series/:bulkSeriesId/attendance',
     authenticateToken,

@@ -21,6 +21,16 @@ type Entry = {
   email?: string;
 };
 
+type StudentSummary = {
+  uid: number;
+  name: string;
+  attendanceTotal: number;
+  attendancePresent: number;
+  attendanceAbsent: number;
+  attendanceRate: number;
+  recentEntries: Entry[];
+};
+
 export function ProgressiveAssessment() {
   const [sessions, setSessions] = useState<{ id: number; label: string }[]>([]);
   const [sessionId, setSessionId] = useState<number | ''>('');
@@ -65,6 +75,32 @@ export function ProgressiveAssessment() {
     });
   }, [rows]);
 
+  const summaries = useMemo<StudentSummary[]>(() => {
+    return byStudent.map(([uid, list]) => {
+      const name = `${list[0]?.first_name || ''} ${list[0]?.last_name || ''}`.trim() || `Student #${uid}`;
+      const attendanceRows = list.filter((e) => e.category === 'meeting_attendance');
+      const attendanceTotal = attendanceRows.length;
+      const attendancePresent = attendanceRows.filter((e) => Number(e.points) >= 1).length;
+      const attendanceAbsent = attendanceTotal - attendancePresent;
+      const attendanceRate =
+        attendanceTotal > 0 ? Math.round((attendancePresent / Math.max(attendanceTotal, 1)) * 100) : 0;
+      const nonAttendance = list.filter((e) => e.category !== 'meeting_attendance');
+      const recentEntries = [...nonAttendance, ...attendanceRows.slice(0, 2)]
+        .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
+        .slice(0, 5);
+
+      return {
+        uid,
+        name,
+        attendanceTotal,
+        attendancePresent,
+        attendanceAbsent,
+        attendanceRate,
+        recentEntries,
+      };
+    });
+  }, [byStudent]);
+
   return (
     <MainLayout title="Progressive assessment">
       <div className="space-y-6">
@@ -101,18 +137,35 @@ export function ProgressiveAssessment() {
 
         {loading ? (
           <p className="text-slate-600 text-sm">Loading…</p>
-        ) : byStudent.length === 0 ? (
+        ) : summaries.length === 0 ? (
           <Card>
             <p className="text-slate-600 text-sm">No assessment entries yet. Meeting attendance appears here after you save attendance.</p>
           </Card>
         ) : (
           <div className="space-y-4">
-            {byStudent.map(([uid, list]) => {
-              const name =
-                `${list[0]?.first_name || ''} ${list[0]?.last_name || ''}`.trim() || `Student #${uid}`;
+            {summaries.map((s) => {
               return (
-                <Card key={uid}>
-                  <h2 className="text-base font-semibold text-[#022B3A] mb-3">{name}</h2>
+                <Card key={s.uid}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <h2 className="text-base font-semibold text-[#022B3A]">{s.name}</h2>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700">
+                        Meetings: {s.attendanceTotal}
+                      </span>
+                      <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">
+                        Present: {s.attendancePresent}
+                      </span>
+                      <span className="px-2 py-1 rounded-full bg-rose-50 text-rose-700">
+                        Absent: {s.attendanceAbsent}
+                      </span>
+                      <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                        Attendance: {s.attendanceRate}%
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-2">
+                    Showing compact attendance summary plus up to 5 most recent entries.
+                  </p>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -125,12 +178,14 @@ export function ProgressiveAssessment() {
                         </tr>
                       </thead>
                       <tbody>
-                        {list.map((e) => (
+                        {s.recentEntries.map((e) => (
                           <tr key={e.id} className="border-b border-slate-100">
                             <td className="py-2 pr-2 whitespace-nowrap text-slate-700">
                               {e.recorded_at ? new Date(e.recorded_at).toLocaleString() : '—'}
                             </td>
-                            <td className="py-2 pr-2">{e.category}</td>
+                            <td className="py-2 pr-2">
+                              {e.category === 'meeting_attendance' ? 'attendance' : e.category}
+                            </td>
                             <td className="py-2 pr-2">
                               {e.points != null && e.max_points != null
                                 ? `${e.points} / ${e.max_points}`

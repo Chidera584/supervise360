@@ -3,7 +3,7 @@ import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { apiClient } from '../../lib/api';
-import { CalendarClock, RefreshCw, ClipboardList, X } from 'lucide-react';
+import { CalendarClock, RefreshCw, ClipboardList, X, Trash2 } from 'lucide-react';
 
 const ALL_GROUPS = '__ALL__';
 
@@ -53,7 +53,8 @@ export function SupervisorSupervision() {
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [sessionInitDone, setSessionInitDone] = useState(false);
   const [meetingView, setMeetingView] = useState<'upcoming' | 'history'>('upcoming');
-  const [clearingMeetings, setClearingMeetings] = useState(false);
+  const [clearingHistory, setClearingHistory] = useState(false);
+  const [deletingMeetingKey, setDeletingMeetingKey] = useState<string | null>(null);
 
   const sessionIdNum = supervisorSession === '' ? undefined : Number(supervisorSession);
 
@@ -263,28 +264,53 @@ export function SupervisorSupervision() {
     }
   };
 
-  const clearUpcomingMeetings = async () => {
-    if (upcomingMeetings.length === 0) {
-      alert('No upcoming meetings to clear.');
+  const clearMeetingHistory = async () => {
+    if (historyMeetings.length === 0) {
+      alert('No meeting history to clear.');
       return;
     }
     const ok = window.confirm(
-      `Clear ${upcomingMeetings.length} upcoming meeting(s) for this session? Past meetings will stay in history.`
+      `Clear ${historyMeetings.length} past meeting(s) for this session from history?`
     );
     if (!ok) return;
 
-    setClearingMeetings(true);
+    setClearingHistory(true);
     try {
-      const res = await apiClient.clearUpcomingSupervisionMeetings(sessionIdNum);
+      const res = await apiClient.clearSupervisionMeetingHistory(sessionIdNum);
       if (res.success) {
         const deleted = Number((res.data as any)?.deleted ?? 0);
         await loadMeetings();
-        alert(`Cleared ${deleted} upcoming meeting(s).`);
+        alert(`Cleared ${deleted} past meeting(s).`);
       } else {
-        alert((res as any).message || 'Failed to clear upcoming meetings');
+        alert((res as any).message || 'Failed to clear meeting history');
       }
     } finally {
-      setClearingMeetings(false);
+      setClearingHistory(false);
+    }
+  };
+
+  const deleteMeeting = async (m: MeetingListItem) => {
+    const key = m.kind === 'series' ? `s-${m.bulk_series_id}` : `m-${m.id}`;
+    const label =
+      m.kind === 'series'
+        ? 'this grouped all-groups meeting'
+        : `"${m.title || 'this meeting'}"${m.group_name ? ` for ${m.group_name}` : ''}`;
+    const ok = window.confirm(`Delete ${label}?`);
+    if (!ok) return;
+
+    setDeletingMeetingKey(key);
+    try {
+      const res =
+        m.kind === 'series'
+          ? await apiClient.deleteSupervisionMeetingSeries(m.bulk_series_id)
+          : await apiClient.deleteSupervisionMeeting(m.id);
+      if (res.success) {
+        await loadMeetings();
+      } else {
+        alert((res as any).message || 'Failed to delete meeting');
+      }
+    } finally {
+      setDeletingMeetingKey(null);
     }
   };
 
@@ -341,9 +367,9 @@ export function SupervisorSupervision() {
               >
                 History ({historyMeetings.length})
               </Button>
-              {meetingView === 'upcoming' && (
-                <Button variant="outline" onClick={clearUpcomingMeetings} disabled={clearingMeetings}>
-                  {clearingMeetings ? 'Clearing…' : 'Clear upcoming'}
+              {meetingView === 'history' && (
+                <Button variant="outline" onClick={clearMeetingHistory} disabled={clearingHistory}>
+                  {clearingHistory ? 'Clearing…' : 'Clear history'}
                 </Button>
               )}
             </div>
@@ -370,22 +396,31 @@ export function SupervisorSupervision() {
                   >
                     <div>
                       <span className="font-medium">{primary}</span>
-                      <span className="text-slate-500 ml-2">
-                        {m.starts_at ? new Date(m.starts_at).toLocaleString() : ''}
-                      </span>
+                      <span className="text-slate-500 ml-2">{m.starts_at ? new Date(m.starts_at).toLocaleString() : ''}</span>
                       {locked && (
                         <span className="ml-2 text-xs font-semibold text-emerald-700">Attendance saved</span>
                       )}
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="!text-xs"
-                      onClick={() => openAttendance(m)}
-                    >
-                      <ClipboardList className="w-3.5 h-3.5 mr-1" />
-                      {locked ? 'View attendance' : 'Attendance'}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="!text-xs"
+                        onClick={() => openAttendance(m)}
+                      >
+                        <ClipboardList className="w-3.5 h-3.5 mr-1" />
+                        {locked ? 'View attendance' : 'Attendance'}
+                      </Button>
+                      <button
+                        type="button"
+                        aria-label="Delete meeting"
+                        className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => deleteMeeting(m)}
+                        disabled={deletingMeetingKey === key}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </li>
                 );
               })}
@@ -393,74 +428,76 @@ export function SupervisorSupervision() {
           )}
         </Card>
 
-        <Card>
-          <h3 className="text-base font-semibold text-[#022B3A] mb-3">Schedule a meeting</h3>
-          <p className="text-sm text-slate-600 mb-3">
-            Pick one group or <span className="font-medium">All groups</span> to schedule the same time for every
-            group you supervise in the selected session.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
-            <div className="sm:col-span-2">
-              <label className="text-xs text-slate-600">Group</label>
-              <select
-                className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
-                value={form.group_id}
-                onChange={(e) => setForm({ ...form, group_id: e.target.value })}
-              >
-                <option value="">Select group…</option>
-                <option value={ALL_GROUPS}>All groups (this session)</option>
-                {groups.map((g: any) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name} ({g.department})
-                  </option>
-                ))}
-              </select>
+        {meetingView === 'upcoming' && (
+          <Card>
+            <h3 className="text-base font-semibold text-[#022B3A] mb-3">Schedule a meeting</h3>
+            <p className="text-sm text-slate-600 mb-3">
+              Pick one group or <span className="font-medium">All groups</span> to schedule the same time for every
+              group you supervise in the selected session.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+              <div className="sm:col-span-2">
+                <label className="text-xs text-slate-600">Group</label>
+                <select
+                  className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
+                  value={form.group_id}
+                  onChange={(e) => setForm({ ...form, group_id: e.target.value })}
+                >
+                  <option value="">Select group…</option>
+                  <option value={ALL_GROUPS}>All groups (this session)</option>
+                  {groups.map((g: any) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.department})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-600">Session</label>
+                <select
+                  className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
+                  value={form.session_id}
+                  onChange={(e) => setForm({ ...form, session_id: e.target.value })}
+                >
+                  <option value="">Select…</option>
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-slate-600">Title</label>
+                <input
+                  className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600">Starts at (local)</label>
+                <input
+                  type="datetime-local"
+                  className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
+                  value={form.starts_at}
+                  onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600">Location</label>
+                <input
+                  className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-slate-600">Session</label>
-              <select
-                className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
-                value={form.session_id}
-                onChange={(e) => setForm({ ...form, session_id: e.target.value })}
-              >
-                <option value="">Select…</option>
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-xs text-slate-600">Title</label>
-              <input
-                className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-600">Starts at (local)</label>
-              <input
-                type="datetime-local"
-                className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
-                value={form.starts_at}
-                onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-600">Location</label>
-              <input
-                className="w-full border rounded-lg px-2 py-2 text-sm mt-1"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-              />
-            </div>
-          </div>
-          <Button className="mt-4 bg-[#022B3A]" onClick={scheduleMeeting}>
-            Schedule meeting
-          </Button>
-        </Card>
+            <Button className="mt-4 bg-[#022B3A]" onClick={scheduleMeeting}>
+              Schedule meeting
+            </Button>
+          </Card>
+        )}
 
         {attendanceCtx && (
           <div
