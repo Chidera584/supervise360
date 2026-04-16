@@ -374,6 +374,54 @@ export function createSupervisionRouter(db: Pool) {
     }
   });
 
+  router.delete('/meetings', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+      const fullName = await getSupervisorFullName(db, userId);
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : NaN;
+      const sessionFilter = !Number.isNaN(sessionId) ? 'AND pg.session_id = ?' : '';
+      const params: any[] = [fullName];
+      if (!Number.isNaN(sessionId)) params.push(sessionId);
+
+      const [rows] = await db.execute(
+        `SELECT m.id
+         FROM supervision_meetings m
+         INNER JOIN project_groups pg ON pg.id = m.group_id
+         WHERE TRIM(COALESCE(pg.supervisor_name,'')) = TRIM(?)
+           AND m.starts_at >= NOW()
+           ${sessionFilter}`,
+        params
+      );
+      const meetings = rows as any[];
+      if (meetings.length === 0) {
+        return res.json({ success: true, data: { deleted: 0 } });
+      }
+
+      const meetingIds = meetings.map((r) => Number(r.id)).filter((id) => Number.isFinite(id) && id > 0);
+      const ph = meetingIds.map(() => '?').join(',');
+      const conn = await db.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.execute(`DELETE FROM meeting_attendance WHERE meeting_id IN (${ph})`, meetingIds);
+        await conn.execute(`DELETE FROM student_assessment_entries WHERE meeting_id IN (${ph})`, meetingIds);
+        await conn.execute(`DELETE FROM supervision_meetings WHERE id IN (${ph})`, meetingIds);
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
+      }
+
+      res.json({ success: true, data: { deleted: meetingIds.length } });
+    } catch (error) {
+      console.error('Clear upcoming meetings error:', error);
+      res.status(500).json({ success: false, message: 'Failed to clear upcoming meetings' });
+    }
+  });
+
   router.get(
     '/meetings/series/:bulkSeriesId/attendance',
     authenticateToken,

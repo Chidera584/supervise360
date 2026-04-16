@@ -52,6 +52,8 @@ export function SupervisorSupervision() {
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [sessionInitDone, setSessionInitDone] = useState(false);
+  const [meetingView, setMeetingView] = useState<'upcoming' | 'history'>('upcoming');
+  const [clearingMeetings, setClearingMeetings] = useState(false);
 
   const sessionIdNum = supervisorSession === '' ? undefined : Number(supervisorSession);
 
@@ -103,6 +105,17 @@ export function SupervisorSupervision() {
 
   const normalizeStartsAt = (raw: string) =>
     raw.length === 16 ? `${raw}:00`.replace('T', ' ') : raw;
+
+  const nowTs = Date.now();
+  const upcomingMeetings = meetings.filter((m) => {
+    const ts = m.starts_at ? new Date(m.starts_at).getTime() : 0;
+    return ts >= nowTs;
+  });
+  const historyMeetings = meetings.filter((m) => {
+    const ts = m.starts_at ? new Date(m.starts_at).getTime() : 0;
+    return ts > 0 && ts < nowTs;
+  });
+  const visibleMeetings = meetingView === 'upcoming' ? upcomingMeetings : historyMeetings;
 
   const scheduleMeeting = async () => {
     const sid = Number(form.session_id);
@@ -250,6 +263,31 @@ export function SupervisorSupervision() {
     }
   };
 
+  const clearUpcomingMeetings = async () => {
+    if (upcomingMeetings.length === 0) {
+      alert('No upcoming meetings to clear.');
+      return;
+    }
+    const ok = window.confirm(
+      `Clear ${upcomingMeetings.length} upcoming meeting(s) for this session? Past meetings will stay in history.`
+    );
+    if (!ok) return;
+
+    setClearingMeetings(true);
+    try {
+      const res = await apiClient.clearUpcomingSupervisionMeetings(sessionIdNum);
+      if (res.success) {
+        const deleted = Number((res.data as any)?.deleted ?? 0);
+        await loadMeetings();
+        alert(`Cleared ${deleted} upcoming meeting(s).`);
+      } else {
+        alert((res as any).message || 'Failed to clear upcoming meetings');
+      }
+    } finally {
+      setClearingMeetings(false);
+    }
+  };
+
   return (
     <MainLayout title="Supervision meetings">
       <div className="space-y-6">
@@ -290,14 +328,37 @@ export function SupervisorSupervision() {
               <CalendarClock className="w-5 h-5 text-[#1F7A8C]" />
               <h2 className="text-lg font-semibold text-[#022B3A]">Your meetings</h2>
             </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={meetingView === 'upcoming' ? 'primary' : 'outline'}
+                onClick={() => setMeetingView('upcoming')}
+              >
+                Upcoming ({upcomingMeetings.length})
+              </Button>
+              <Button
+                variant={meetingView === 'history' ? 'primary' : 'outline'}
+                onClick={() => setMeetingView('history')}
+              >
+                History ({historyMeetings.length})
+              </Button>
+              {meetingView === 'upcoming' && (
+                <Button variant="outline" onClick={clearUpcomingMeetings} disabled={clearingMeetings}>
+                  {clearingMeetings ? 'Clearing…' : 'Clear upcoming'}
+                </Button>
+              )}
+            </div>
           </div>
           {loading ? (
             <p className="text-slate-600 text-sm">Loading…</p>
-          ) : meetings.length === 0 ? (
-            <p className="text-slate-600 text-sm">No meetings yet.</p>
+          ) : visibleMeetings.length === 0 ? (
+            <p className="text-slate-600 text-sm">
+              {meetingView === 'upcoming'
+                ? 'No upcoming meetings. Use "Schedule meeting" to add a new one.'
+                : 'No past meetings yet.'}
+            </p>
           ) : (
             <ul className="space-y-2 text-sm">
-              {meetings.map((m) => {
+              {visibleMeetings.map((m) => {
                 const key = m.kind === 'series' ? `s-${m.bulk_series_id}` : `m-${m.id}`;
                 const primary =
                   m.kind === 'series' ? m.display_label || m.title : `${m.title} — ${m.group_name || ''}`;

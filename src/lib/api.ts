@@ -263,6 +263,11 @@ class ApiClient {
     return this.request(`/supervision/meetings/${id}`, { method: 'PUT', body: JSON.stringify(body) });
   }
 
+  async clearUpcomingSupervisionMeetings(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/supervision/meetings${q}`, { method: 'DELETE' });
+  }
+
   async saveMeetingAttendance(
     meetingId: number,
     attendance: { group_member_id: number; present: boolean }[]
