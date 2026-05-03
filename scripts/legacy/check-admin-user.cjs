@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
-// Dev default admin (spec sometimes typo "admim@gmail.com" — use this spelling).
 const DEV_EMAIL = 'admin@gmail.com';
 
 async function checkAndCreateAdmin() {
@@ -36,7 +35,7 @@ async function checkAndCreateAdmin() {
     const plain =
       process.env.ADMIN_SEED_PASSWORD ||
       (process.env.NODE_ENV === 'development' || process.env.ALLOW_ADMIN_SEED === 'true'
-        ? 'admin1'
+        ? 'admin1234'
         : '');
     if (!plain || String(plain).trim() === '') {
       console.error('Set ADMIN_SEED_PASSWORD or enable development / ALLOW_ADMIN_SEED.');
