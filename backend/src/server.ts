@@ -37,8 +37,9 @@ import {
 import { createSessionsRouter } from './routes/sessions';
 import { createSupervisionRouter } from './routes/supervision';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (repo root first, then backend/.env overrides)
+dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;

@@ -38,7 +38,19 @@ function loadEnvFile(filePath) {
     if (process.env[key] === undefined) process.env[key] = val;
   }
 }
-loadEnvFile(path.join(__dirname, '../../.env'));
+const rootEnv = path.join(__dirname, '../../.env');
+const backendEnv = path.join(__dirname, '../../backend/.env');
+loadEnvFile(rootEnv);
+loadEnvFile(backendEnv); // overrides root — backend often holds real DB_* vars
+
+// Root .env may only have VITE_DB_* (frontend); map to DB_* if DB_* missing
+if (!process.env.DB_HOST && process.env.VITE_DB_HOST) process.env.DB_HOST = process.env.VITE_DB_HOST;
+if (!process.env.DB_USER && process.env.VITE_DB_USER) process.env.DB_USER = process.env.VITE_DB_USER;
+if (process.env.DB_PASSWORD === undefined && process.env.VITE_DB_PASSWORD !== undefined) {
+  process.env.DB_PASSWORD = process.env.VITE_DB_PASSWORD;
+}
+if (!process.env.DB_NAME && process.env.VITE_DB_NAME) process.env.DB_NAME = process.env.VITE_DB_NAME;
+if (!process.env.DB_PORT && process.env.VITE_DB_PORT) process.env.DB_PORT = process.env.VITE_DB_PORT;
 
 const OLD_EMAIL =
   process.env.ADMIN_OLD_EMAIL || 'sharonmesigo246@gmail.com';
@@ -52,7 +64,7 @@ async function main() {
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'supervise360',
-    port: parseInt(process.env.DB_PORT || '3307', 10),
+    port: parseInt(process.env.DB_PORT || '3306', 10),
   };
 
   const connection = await mysql.createConnection(dbConfig);

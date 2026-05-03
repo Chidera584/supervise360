@@ -1,7 +1,10 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config();
+// Must load before pool is created (this module is imported early). Same roots as server.ts.
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Support Railway MYSQL_URL or individual vars
 const mysqlUrl = process.env.MYSQL_URL;
