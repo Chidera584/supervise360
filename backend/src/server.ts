@@ -23,6 +23,7 @@ import { createNotificationsRouter } from './routes/notifications';
 import { NotificationService } from './services/notificationService';
 import { createDefensePanelsRouter } from './routes/defensePanels';
 import { authenticateToken, requireAdmin, requireSupervisor } from './middleware/auth';
+import { assertAllRoutesAuthenticated } from './middleware/authAssertion';
 import type { AuthenticatedRequest } from './types';
 import { computeAllocation } from './services/defenseSchedulingService';
 import { DefenseAllocationService } from './services/defenseAllocationService';
@@ -41,6 +42,17 @@ import { createSupervisionRouter } from './routes/supervision';
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Fail fast: every login/session token is signed with this secret. If it's missing or weak,
+// tokens are forgeable (or every request silently 403s the moment jwt.verify/jwt.sign is
+// first called) - better to refuse to boot with a clear message than fail unpredictably later.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  console.error(
+    '✖ JWT_SECRET is missing or too short (must be at least 32 characters). ' +
+      'Set it in backend/.env. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"'
+  );
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -54,21 +66,35 @@ app.use(
   })
 );
 
-// CORS configuration - allow frontend URL, localhost, and Railway domains
+// CORS configuration - allow frontend URL, localhost, and known deploy-platform domains.
+// Extra origins (e.g. a custom domain) can be added without a code change via
+// EXTRA_CORS_ORIGINS (comma-separated) in the environment.
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const extraOrigins = (process.env.EXTRA_CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+const allowedOrigins = new Set([
+  frontendUrl,
+  frontendUrl.replace(/\/$/, ''),
+  'http://localhost:5173',
+  'http://localhost:5174',
+  ...extraOrigins,
+]);
+const allowedOriginSuffixes = ['.railway.app', '.up.railway.app', '.vercel.app', '.onrender.com'];
+
 const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
-    const allowed = [
-      frontendUrl,
-      frontendUrl.replace(/\/$/, ''),
-      'http://localhost:5173',
-      'http://localhost:5174'
-    ];
-    if (!origin || allowed.includes(origin) || origin.endsWith('.railway.app') || origin.endsWith('.up.railway.app')) {
+    // No Origin header (server-to-server, curl, health checks) - allow.
+    if (!origin) {
       cb(null, true);
-    } else {
-      cb(null, true); // Allow for deployment flexibility
+      return;
     }
+    if (allowedOrigins.has(origin) || allowedOriginSuffixes.some((suffix) => origin.endsWith(suffix))) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error(`CORS: origin ${origin} is not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -97,8 +123,9 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static file serving for uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// NOTE: uploaded files are intentionally NOT served statically. Report files must only be
+// reachable through the authorized /api/reports/:id/download route (see reports.ts), which
+// checks the caller is the submitter, a group member, the group's supervisor, or an admin.
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -294,14 +321,20 @@ async function startServer() {
     // Global error handler
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
       console.error('Global error handler:', err);
-      
+
       res.status(err.status || 500).json({
         success: false,
         message: err.message || 'Internal server error',
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
       });
     });
-    
+
+    // Safety net: refuse to boot if any non-public route is missing authenticateToken.
+    // Catches the exact class of bug that previously shipped the settings router and
+    // the destructive groups/supervisors routes with no auth check at all.
+    assertAllRoutesAuthenticated((app as unknown as { _router: { stack: unknown[] } })._router.stack);
+    console.log('✅ Startup auth assertion passed: every non-public route requires authenticateToken');
+
     // Start server (capture instance so we can handle errors like EADDRINUSE)
     const server = app.listen(Number(PORT), () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -1,8 +1,13 @@
 import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
+import { authenticateToken, requireAdmin } from '../middleware/auth';
 
 export function createSettingsRouter(db: Pool) {
   const router = Router();
+
+  // All settings routes (GPA threshold reads and writes) are admin-only: every
+  // consumer is the admin Settings page or admin group-formation preview.
+  router.use(authenticateToken, requireAdmin);
 
   router.get('/gpa-thresholds/global', async (_req, res) => {
     try {

@@ -130,7 +130,7 @@ export function createSupervisorsRouter(db: Pool) {
   });
 
   // Get all supervisors workload
-  router.get('/workload', authenticateToken, async (req, res) => {
+  router.get('/workload', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const [supervisors] = await db.execute(`
         SELECT 
@@ -194,7 +194,7 @@ export function createSupervisorsRouter(db: Pool) {
   });
 
   // Upload supervisors data
-  router.post('/upload', authenticateToken, async (req, res) => {
+  router.post('/upload', authenticateToken, requireAdmin, async (req, res) => {
     try {
       console.log('🔍 Supervisor upload endpoint called');
       const { supervisors } = req.body;
@@ -281,7 +281,7 @@ export function createSupervisorsRouter(db: Pool) {
   });
 
   // Auto-assign supervisors to groups using ASP-based algorithm
-  router.post('/auto-assign', authenticateToken, async (req, res) => {
+  router.post('/auto-assign', authenticateToken, requireAdmin, async (req, res) => {
     try {
       console.log('🔍 ASP-based auto-assign supervisors endpoint called');
       const department = String(req.body?.department || '').trim();
@@ -426,7 +426,7 @@ export function createSupervisorsRouter(db: Pool) {
   });
 
   // Sync supervisor workload from actual assignments
-  router.post('/sync-workload', authenticateToken, async (req, res) => {
+  router.post('/sync-workload', authenticateToken, requireAdmin, async (req, res) => {
     try {
       console.log('🔄 Syncing supervisor workload...');
       
@@ -446,7 +446,7 @@ export function createSupervisorsRouter(db: Pool) {
   });
 
   // Get workload statistics
-  router.get('/stats', authenticateToken, async (req, res) => {
+  router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const stats = await assignmentService.getSupervisorWorkloadStats();
       res.json(stats);
@@ -538,7 +538,7 @@ export function createSupervisorsRouter(db: Pool) {
   });
 
   // Validate assignments
-  router.get('/validate', authenticateToken, async (req, res) => {
+  router.get('/validate', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const validation = await assignmentService.validateAssignments();
       res.json(validation);

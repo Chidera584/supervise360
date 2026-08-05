@@ -28,7 +28,7 @@ export function createMessagesRouter(db: Pool) {
       const role = (supRows as any[]).length > 0 ? 'supervisor' : (sRows as any[]).length > 0 ? 'student' : 'student';
       const data = await messageService.getContacts(db, groupService, reportService, userId, role, groupId);
       const json: Record<string, unknown> = { success: true, data };
-      if (data.length === 0 && req.query.debug === '1') {
+      if (data.length === 0 && req.query.debug === '1' && process.env.NODE_ENV === 'development') {
         const [studentRows] = await db.execute('SELECT matric_number FROM students WHERE user_id = ?', [userId]);
         const [userRows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
         let debug: Record<string, unknown> = { role, userId, matric: (studentRows as any[])[0]?.matric_number, userName: (userRows as any[])[0] };

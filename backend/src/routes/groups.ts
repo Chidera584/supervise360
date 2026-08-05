@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
 import { GroupFormationService } from '../services/groupFormationService';
-import { authenticateToken, requireStudent } from '../middleware/auth';
+import { authenticateToken, requireStudent, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import {
   notifyGroupingAndSupervisor,
@@ -178,7 +178,7 @@ export function createGroupsRouter(db: Pool) {
   });
 
   // Form groups from uploaded student data
-  router.post('/form', authenticateToken, async (req, res) => {
+  router.post('/form', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { students, department, sessionId: sessionIdRaw } = req.body;
       
@@ -279,7 +279,7 @@ export function createGroupsRouter(db: Pool) {
   });
 
   // Assign supervisor to group
-  router.put('/:groupId/supervisor', authenticateToken, async (req, res) => {
+  router.put('/:groupId/supervisor', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { groupId } = req.params;
       const { supervisorName } = req.body;
@@ -441,7 +441,7 @@ export function createGroupsRouter(db: Pool) {
   });
 
   // Clear groups (department-specific when provided)
-  router.delete('/clear', authenticateToken, async (req, res) => {
+  router.delete('/clear', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const department = String((req.query.department as string) || '').trim();
       const connection = await db.getConnection();

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { Pool } from 'mysql2/promise';
 import path from 'path';
 import fs from 'fs';
@@ -104,9 +104,45 @@ export function createReportsRouter(db: Pool) {
     }
   });
 
-  const upload = multer({ storage });
+  const ALLOWED_MIME_TYPES = new Set([
+    'application/pdf',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  ]);
+  const ALLOWED_EXTENSIONS = new Set(['.pdf', '.doc', '.docx']);
+  const maxFileSize = Number(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024; // 10MB default
 
-  router.post('/upload', authenticateToken, requireStudent, upload.single('file'), async (req: AuthenticatedRequest, res) => {
+  const upload = multer({
+    storage,
+    limits: { fileSize: maxFileSize },
+    fileFilter: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (!ALLOWED_MIME_TYPES.has(file.mimetype) || !ALLOWED_EXTENSIONS.has(ext)) {
+        cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
+        return;
+      }
+      cb(null, true);
+    },
+  });
+
+  /** Wraps multer so size/type rejections come back as a clean 400 instead of a generic 500. */
+  function handleReportUpload(req: Request, res: Response, next: NextFunction) {
+    upload.single('file')(req, res, (err: unknown) => {
+      if (err) {
+        const isSizeError = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE';
+        const message = isSizeError
+          ? `File too large. Maximum size is ${Math.round(maxFileSize / (1024 * 1024))}MB.`
+          : err instanceof Error
+            ? err.message
+            : 'File upload failed';
+        res.status(400).json({ success: false, message });
+        return;
+      }
+      next();
+    });
+  }
+
+  router.post('/upload', authenticateToken, requireStudent, handleReportUpload, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
@@ -225,32 +261,6 @@ export function createReportsRouter(db: Pool) {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
       const data = await reportService.listPendingReviews(userId);
-
-      if (data.length === 0) {
-        const [userRows] = await db.execute('SELECT id, first_name, last_name FROM users WHERE id = ?', [userId]);
-        const groupIds = await reportService.getSupervisorGroupIds(userId);
-        const [allUnreviewed] = await db.execute(
-          `SELECT r.id, r.title, r.reviewed, r.group_id as r_group_id, r.project_id, p.group_id as p_group_id, pg.supervisor_name
-           FROM reports r
-           LEFT JOIN projects p ON r.project_id = p.id
-           LEFT JOIN project_groups pg ON COALESCE(p.group_id, r.group_id) = pg.id
-           WHERE r.reviewed = 0 OR r.reviewed = FALSE OR r.reviewed IS NULL`
-        );
-        const [allGroups] = await db.execute(
-          'SELECT id, name, supervisor_name FROM project_groups WHERE supervisor_name IS NOT NULL'
-        );
-        return res.json({
-          success: true,
-          data,
-          _debug: {
-            userId,
-            userName: (userRows as any[])[0],
-            myGroupIds: groupIds,
-            allUnreviewedReports: allUnreviewed,
-            allGroupsWithSupervisor: allGroups,
-          },
-        });
-      }
       res.json({ success: true, data });
     } catch (error) {
       console.error('Pending review reports error:', error);
@@ -261,10 +271,16 @@ export function createReportsRouter(db: Pool) {
   router.post('/:id/review', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+      const role = req.user?.role;
+      if (!userId || !role) return res.status(401).json({ success: false, message: 'Authentication required' });
       const { comments, approved } = req.body;
       if (!comments) return res.status(400).json({ success: false, message: 'Review comments are required' });
       const reportId = Number(req.params.id);
+
+      const canAccess = await reportService.userCanAccessReport(reportId, userId, role);
+      if (!canAccess) {
+        return res.status(403).json({ success: false, message: 'You can only review reports from your own groups' });
+      }
 
       // Get report and submitter before review
       const [reportRows] = await db.execute(
@@ -272,6 +288,7 @@ export function createReportsRouter(db: Pool) {
         [reportId]
       );
       const report = (reportRows as any[])[0];
+      if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
       const submittedBy = report?.submitted_by;
 
       await reportService.reviewReport(reportId, userId, comments, !!approved);
@@ -304,9 +321,19 @@ export function createReportsRouter(db: Pool) {
     }
   });
 
-  router.get('/:id/download', authenticateToken, async (req, res) => {
+  router.get('/:id/download', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const [rows] = await db.execute('SELECT file_path, file_name FROM reports WHERE id = ?', [req.params.id]);
+      const userId = req.user?.id;
+      const role = req.user?.role;
+      if (!userId || !role) return res.status(401).json({ success: false, message: 'Authentication required' });
+
+      const reportId = Number(req.params.id);
+      const canAccess = await reportService.userCanAccessReport(reportId, userId, role);
+      if (!canAccess) {
+        return res.status(403).json({ success: false, message: 'You do not have access to this report' });
+      }
+
+      const [rows] = await db.execute('SELECT file_path, file_name FROM reports WHERE id = ?', [reportId]);
       const report = (rows as any[])[0];
       if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
 
@@ -389,7 +416,10 @@ export function createReportsRouter(db: Pool) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      await reportService.deleteReport(Number(req.params.id), userId);
+      const deleted = await reportService.deleteReport(Number(req.params.id), userId);
+      if (!deleted) {
+        return res.status(404).json({ success: false, message: 'Report not found or you do not own it' });
+      }
       res.json({ success: true, message: 'Report deleted' });
     } catch (error) {
       console.error('Delete report error:', error);

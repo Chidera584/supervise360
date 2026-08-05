@@ -29,7 +29,9 @@ export const registerSchema = Joi.object({
   last_name: Joi.string().min(2).max(50).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
-  role: Joi.string().valid('student', 'supervisor', 'admin').required(),
+  // 'admin' is intentionally excluded: admin accounts must be provisioned out-of-band
+  // (see scripts/legacy/set-admin-credentials.cjs), never via public self-registration.
+  role: Joi.string().valid('student', 'supervisor').required(),
   department: Joi.string().max(100).optional(),
   matric_number: Joi.string().max(50).when('role', {
     is: 'student',

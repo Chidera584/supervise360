@@ -115,6 +115,53 @@ export class ReportService {
     return rows as any[];
   }
 
+  /**
+   * True if userId may view/review this report: the student who submitted it, any member
+   * of the report's group, the group's assigned supervisor, or an admin.
+   */
+  async userCanAccessReport(reportId: number, userId: number, role: string): Promise<boolean> {
+    if (role === 'admin') return true;
+
+    const [reportRows] = await this.db.execute(
+      'SELECT submitted_by, group_id FROM reports WHERE id = ?',
+      [reportId]
+    );
+    const report = (reportRows as any[])[0];
+    if (!report) return false;
+    if (Number(report.submitted_by) === Number(userId)) return true;
+    if (!report.group_id) return false;
+
+    if (role === 'supervisor' || role === 'external_supervisor') {
+      const groupIds = await this.getSupervisorGroupIds(userId);
+      return groupIds.includes(Number(report.group_id));
+    }
+
+    // Student: allowed if they're a member of the report's group (same matric matching
+    // used across the app for group membership - see groupFormationService).
+    const [studentRows] = await this.db.execute(
+      'SELECT matric_number FROM students WHERE user_id = ?',
+      [userId]
+    );
+    const matric = (studentRows as any[])[0]?.matric_number;
+    if (!matric) return false;
+    const raw = String(matric).trim();
+    const compact = raw.replace(/\s+/g, '');
+    const compactNoSlash = compact.replace(/\//g, '');
+    const [memberRows] = await this.db.execute(
+      `SELECT 1 FROM group_members
+       WHERE group_id = ?
+         AND (
+           matric_number = ?
+           OR TRIM(COALESCE(matric_number, '')) = ?
+           OR REPLACE(TRIM(COALESCE(matric_number, '')), ' ', '') = ?
+           OR REPLACE(REPLACE(TRIM(COALESCE(matric_number, '')), ' ', ''), '/', '') = ?
+         )
+       LIMIT 1`,
+      [report.group_id, raw, raw, compact, compactNoSlash]
+    );
+    return (memberRows as any[]).length > 0;
+  }
+
   async reviewReport(reportId: number, reviewerId: number, comments: string, approved: boolean) {
     await this.db.execute(
       `UPDATE reports 
@@ -124,10 +171,12 @@ export class ReportService {
     );
   }
 
-  async deleteReport(reportId: number, userId: number) {
-    await this.db.execute(
+  /** Deletes only if the caller is the submitter. Returns false if not found or not owned. */
+  async deleteReport(reportId: number, userId: number): Promise<boolean> {
+    const [result] = await this.db.execute(
       'DELETE FROM reports WHERE id = ? AND submitted_by = ?',
       [reportId, userId]
     );
+    return ((result as any).affectedRows ?? 0) > 0;
   }
 }
