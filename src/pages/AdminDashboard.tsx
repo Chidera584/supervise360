@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   LayoutGrid,
   Calendar,
+  Link2Off,
+  ChevronDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -24,13 +26,19 @@ export function AdminDashboard() {
   const [studentCount, setStudentCount] = useState<number | null>(null);
   const [supervisorCount, setSupervisorCount] = useState<number | null>(null);
   const [deptStats, setDeptStats] = useState<any[]>([]);
+  const [unmatchedLinks, setUnmatchedLinks] = useState<{
+    students: { groupMemberId: number; groupName: string; studentName: string; matricNumber: string | null }[];
+    supervisors: { groupId: number; groupName: string; department: string | null; supervisorName: string }[];
+  } | null>(null);
+  const [unmatchedExpanded, setUnmatchedExpanded] = useState(false);
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      const [dashRes, workloadRes, deptRes] = await Promise.all([
+      const [dashRes, workloadRes, deptRes, unmatchedRes] = await Promise.all([
         apiClient.getAdminDashboard(),
         apiClient.getSupervisorWorkload(),
         apiClient.getDepartmentStats().catch(() => ({ success: false, data: [] })),
+        apiClient.getUnmatchedLinks().catch(() => ({ success: false, data: null })),
       ]);
       if (dashRes.success) setDashboard(dashRes.data);
       const totals = dashRes.data?.totals || {};
@@ -43,10 +51,15 @@ export function AdminDashboard() {
       if (deptRes.success && Array.isArray(deptRes.data)) {
         setDeptStats(deptRes.data);
       }
+      if (unmatchedRes.success && unmatchedRes.data) {
+        setUnmatchedLinks(unmatchedRes.data);
+      }
       setLoading(false);
     };
     fetchDashboard();
   }, []);
+
+  const unmatchedTotal = (unmatchedLinks?.students.length || 0) + (unmatchedLinks?.supervisors.length || 0);
 
   const totals = dashboard?.totals || {};
   const displayStudents = studentCount ?? totals.students ?? 0;
@@ -90,6 +103,65 @@ export function AdminDashboard() {
             View full analytics
           </Link>
         </div>
+
+        {/* Unmatched student/supervisor account links */}
+        {unmatchedTotal > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setUnmatchedExpanded((v) => !v)}
+              className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Link2Off className="w-5 h-5 text-amber-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-amber-900">
+                    {unmatchedTotal} record{unmatchedTotal === 1 ? '' : 's'} not linked to a user account
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    {unmatchedLinks?.students.length || 0} student(s), {unmatchedLinks?.supervisors.length || 0} supervisor(s) - name/matric didn't confidently match an existing account. They still display by name; linking enables reliable messaging, ownership checks, and reporting.
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-amber-600 shrink-0 transition-transform ${unmatchedExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {unmatchedExpanded && (
+              <div className="px-5 pb-5 space-y-4">
+                {unmatchedLinks && unmatchedLinks.students.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1.5">Unlinked students</p>
+                    <div className="bg-white rounded-lg border border-amber-100 divide-y divide-amber-50 max-h-56 overflow-y-auto">
+                      {unmatchedLinks.students.map((s) => (
+                        <div key={s.groupMemberId} className="px-3 py-2 text-sm flex items-center justify-between gap-3">
+                          <span className="text-slate-700">{s.studentName} <span className="text-slate-400">({s.matricNumber || 'no matric'})</span></span>
+                          <span className="text-slate-400 text-xs shrink-0">{s.groupName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {unmatchedLinks && unmatchedLinks.supervisors.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1.5">Unlinked supervisors</p>
+                    <div className="bg-white rounded-lg border border-amber-100 divide-y divide-amber-50 max-h-56 overflow-y-auto">
+                      {unmatchedLinks.supervisors.map((s) => (
+                        <div key={s.groupId} className="px-3 py-2 text-sm flex items-center justify-between gap-3">
+                          <span className="text-slate-700">{s.supervisorName}</span>
+                          <span className="text-slate-400 text-xs shrink-0">{s.groupName} · {s.department}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-amber-700">
+                  Fix by correcting the name/matric on the group (Groups page) or creating the missing account (Users page), then it will link automatically on the next server restart.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

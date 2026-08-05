@@ -400,6 +400,10 @@ class ApiClient {
     return this.request(`/admin/departments/${id}`, { method: 'DELETE' });
   }
 
+  async getUnmatchedLinks(): Promise<ApiResponse> {
+    return this.request('/admin/unmatched-links');
+  }
+
   async getDepartmentStats(): Promise<ApiResponse> {
     return this.request('/admin/departments/stats');
   }

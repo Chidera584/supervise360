@@ -27,14 +27,10 @@ import { assertAllRoutesAuthenticated } from './middleware/authAssertion';
 import type { AuthenticatedRequest } from './types';
 import { computeAllocation } from './services/defenseSchedulingService';
 import { DefenseAllocationService } from './services/defenseAllocationService';
-import {
-  ensureProjectGroupsSchema,
-  ensureReportsApprovedColumn,
-  backfillProjectsForGroups,
-  ensureDepartmentsTables,
-  ensureFeatureExpansionSchema,
-  ensureSupervisionMeetingsColumns,
-} from './services/schemaFixService';
+import { backfillProjectsForGroups, pruneDeprecatedDepartments } from './services/schemaFixService';
+import { runMigrations } from './db/migrationRunner';
+import { migrations } from './db/migrations';
+import { IdLinkingService } from './services/idLinkingService';
 import { createSessionsRouter } from './routes/sessions';
 import { createSupervisionRouter } from './routes/supervision';
 
@@ -143,16 +139,40 @@ async function startServer() {
     // Initialize database connection
     const db = await initializeDatabase();
 
-    // Fix schema (projects/reports FKs) and backfill projects so report submission works
-    await ensureProjectGroupsSchema(db);
-    await ensureReportsApprovedColumn(db);
+    // Versioned, tracked schema migrations - a failure here throws and aborts startup (see
+    // migrationRunner.ts) rather than logging a warning and serving 500s for whatever depended
+    // on the column/table that didn't get created.
+    await runMigrations(db, migrations);
+
+    // Ongoing data-repair/cleanup steps (not schema migrations - safe and cheap to re-run every
+    // boot, failures here are logged and skipped rather than aborting startup).
     const backfilled = await backfillProjectsForGroups(db);
     if (backfilled > 0) {
       console.log(`✅ Backfilled ${backfilled} project(s) for groups`);
     }
-    await ensureDepartmentsTables(db);
-    await ensureFeatureExpansionSchema(db);
-    await ensureSupervisionMeetingsColumns(db);
+    await pruneDeprecatedDepartments(db);
+
+    try {
+      const idLinkingService = new IdLinkingService(db);
+      const studentLinkResult = await idLinkingService.backfillStudentUserIds();
+      const supervisorLinkResult = await idLinkingService.backfillSupervisorUserIds();
+      if (studentLinkResult.matched > 0 || supervisorLinkResult.matched > 0) {
+        console.log(
+          `✅ ID-linked ${studentLinkResult.matched}/${studentLinkResult.total} student(s), ` +
+            `${supervisorLinkResult.matched}/${supervisorLinkResult.total} supervisor(s)`
+        );
+      }
+      const stillUnmatchedStudents = studentLinkResult.total - studentLinkResult.matched;
+      const stillUnmatchedSupervisors = supervisorLinkResult.total - supervisorLinkResult.matched;
+      if (stillUnmatchedStudents > 0 || stillUnmatchedSupervisors > 0) {
+        console.warn(
+          `⚠️  ${stillUnmatchedStudents} student(s) and ${stillUnmatchedSupervisors} supervisor(s) ` +
+            'could not be confidently ID-linked (ambiguous or no match) - see GET /api/admin/unmatched-links'
+        );
+      }
+    } catch (err) {
+      console.warn('ID-linking backfill failed (non-fatal):', (err as Error).message);
+    }
 
     // Create and register routes that need database connection
     const groupsRouter = createGroupsRouter(db);

@@ -11,6 +11,7 @@ import { computeAllocation } from '../services/defenseSchedulingService';
 import { notifyUnassignedStudentsAlert } from '../services/notificationEmailService';
 import { sendTestEmail, isEmailConfigured } from '../services/emailService';
 import { GroupFormationService } from '../services/groupFormationService';
+import { IdLinkingService } from '../services/idLinkingService';
 
 const router = Router();
 
@@ -21,6 +22,21 @@ export function createAdminRouter(db: Pool) {
   const defenseService = new DefensePanelService(db);
   const defenseAllocService = new DefenseAllocationService(db);
   const projectService = new ProjectService(db);
+  const idLinkingService = new IdLinkingService(db);
+
+  // Group members / group supervisors that couldn't be confidently linked to a user account
+  // (ambiguous name match, or no matching account) by the id-linking backfill. Surfaced here
+  // instead of silently guessing with LIMIT 1 - an admin resolving a handful of these once is
+  // strictly better than the app guessing wrong forever.
+  router.get('/unmatched-links', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const data = await idLinkingService.getUnmatchedLinks();
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error('Unmatched links error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch unmatched links' });
+    }
+  });
 
   router.get('/dashboard', authenticateToken, requireAdmin, async (req, res) => {
     try {

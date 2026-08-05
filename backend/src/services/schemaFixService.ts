@@ -58,7 +58,8 @@ export async function ensureProjectGroupsSchema(db: Pool): Promise<void> {
       }
     }
   } catch (err) {
-    console.warn('Schema fix (non-fatal):', (err as Error).message);
+    console.error('Schema fix (projects/reports FKs) failed:', (err as Error).message);
+    throw err;
   }
 }
 
@@ -79,7 +80,8 @@ export async function ensureReportsApprovedColumn(db: Pool): Promise<void> {
     );
     console.log('✅ Added reports.approved column (report review)');
   } catch (err) {
-    console.warn('Schema fix reports.approved (non-fatal):', (err as Error).message);
+    console.error('Schema fix reports.approved failed:', (err as Error).message);
+    throw err;
   }
 }
 
@@ -116,6 +118,8 @@ export async function backfillProjectsForGroups(db: Pool): Promise<number> {
 
 /**
  * Ensure departments and admin_departments tables exist (multi-department admin support).
+ * Schema-critical (a migration) - table creation failing should abort startup, not limp on
+ * without a table half the app depends on.
  */
 export async function ensureDepartmentsTables(db: Pool): Promise<void> {
   try {
@@ -123,8 +127,8 @@ export async function ensureDepartmentsTables(db: Pool): Promise<void> {
       "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'departments'"
     );
     const tableExists = (tables as any[]).length > 0;
+    if (tableExists) return;
 
-    if (!tableExists) {
     await db.execute(`
       CREATE TABLE departments (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -157,28 +161,34 @@ export async function ensureDepartmentsTables(db: Pool): Promise<void> {
       ) ENGINE=InnoDB
     `);
     console.log('✅ Created departments and admin_departments tables');
-    }
-
-    // Always remove deprecated departments (Cybersecurity, Data Science, Information Systems)
-    if (tableExists) {
-      const toRemove = ['Cybersecurity', 'Data Science', 'Information Systems'];
-      for (const name of toRemove) {
-        try {
-          const [check] = await db.execute('SELECT id FROM departments WHERE name = ?', [name]);
-          if ((check as any[]).length === 0) continue;
-          const id = (check as any[])[0].id;
-          await db.execute('DELETE FROM admin_departments WHERE department_id = ?', [id]);
-          await db.execute('DELETE FROM departments WHERE id = ?', [id]);
-          console.log(`✅ Removed deprecated department: ${name}`);
-        } catch (_) {}
-      }
-    }
   } catch (err) {
-    console.warn('Departments tables (non-fatal):', (err as Error).message);
+    console.error('Departments tables migration failed:', (err as Error).message);
+    throw err;
   }
 }
 
-async function columnExists(db: Pool, table: string, column: string): Promise<boolean> {
+/**
+ * Ongoing cleanup (not a schema migration): remove departments retired from the product but
+ * possibly still present in older databases. Safe to run every boot; failures are logged and
+ * skipped per-department rather than aborting startup.
+ */
+export async function pruneDeprecatedDepartments(db: Pool): Promise<void> {
+  const toRemove = ['Cybersecurity', 'Data Science', 'Information Systems'];
+  for (const name of toRemove) {
+    try {
+      const [check] = await db.execute('SELECT id FROM departments WHERE name = ?', [name]);
+      if ((check as any[]).length === 0) continue;
+      const id = (check as any[])[0].id;
+      await db.execute('DELETE FROM admin_departments WHERE department_id = ?', [id]);
+      await db.execute('DELETE FROM departments WHERE id = ?', [id]);
+      console.log(`✅ Removed deprecated department: ${name}`);
+    } catch (err) {
+      console.warn(`Prune deprecated department "${name}" failed (non-fatal):`, (err as Error).message);
+    }
+  }
+}
+
+export async function columnExists(db: Pool, table: string, column: string): Promise<boolean> {
   const [rows] = await db.execute(
     `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
@@ -187,7 +197,7 @@ async function columnExists(db: Pool, table: string, column: string): Promise<bo
   return (rows as any[]).length > 0;
 }
 
-async function tableExists(db: Pool, name: string): Promise<boolean> {
+export async function tableExists(db: Pool, name: string): Promise<boolean> {
   const [rows] = await db.execute(
     `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
     [name]
@@ -423,7 +433,8 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
       await db.execute('UPDATE students SET session_id = ? WHERE session_id IS NULL', [sid]);
     }
   } catch (err) {
-    console.warn('Feature expansion schema (non-fatal):', (err as Error).message);
+    console.error('Feature expansion schema migration failed:', (err as Error).message);
+    throw err;
   }
 }
 
@@ -453,6 +464,7 @@ export async function ensureSupervisionMeetingsColumns(db: Pool): Promise<void> 
       console.log('✅ Added supervision_meetings.attendance_locked (redundant ensure)');
     }
   } catch (err) {
-    console.warn('ensureSupervisionMeetingsColumns (non-fatal):', (err as Error).message);
+    console.error('ensureSupervisionMeetingsColumns migration failed:', (err as Error).message);
+    throw err;
   }
 }
