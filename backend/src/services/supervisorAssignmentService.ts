@@ -1,5 +1,5 @@
 import { Pool } from 'mysql2/promise';
-import { trySupervisorAssignmentWithClingo } from './asp/aspEncodings';
+import { trySupervisorAssignmentWithClingo, type SolverMeta } from './asp/aspEncodings';
 import { syncSupervisorWorkloadWithConnection } from './workloadService';
 
 /**
@@ -46,6 +46,7 @@ export class SupervisorAssignmentService {
     assignments: AssignmentResult[];
     unassigned: GroupData[];
     message: string;
+    solverStatus: SolverMeta;
   }> {
     const connection = await this.db.getConnection();
 
@@ -72,7 +73,8 @@ export class SupervisorAssignmentService {
           success: true,
           assignments: [],
           unassigned: [],
-          message: 'No unassigned groups found'
+          message: 'No unassigned groups found',
+          solverStatus: { path: 'heuristic', message: 'Nothing to assign' },
         };
       }
 
@@ -97,11 +99,12 @@ export class SupervisorAssignmentService {
           success: false,
           assignments: [],
           unassigned: unassignedGroups,
-          message: 'No available supervisors found'
+          message: 'No available supervisors found',
+          solverStatus: { path: 'heuristic', message: 'No supervisors available' },
         };
       }
 
-      const assignments = await this.computeOptimalAssignment(unassignedGroups, supervisors);
+      const { assignments, solverStatus } = await this.computeOptimalAssignment(unassignedGroups, supervisors);
 
       console.log(`✅ Computed ${assignments.length} assignments`);
 
@@ -136,7 +139,8 @@ export class SupervisorAssignmentService {
         success: true,
         assignments,
         unassigned: stillUnassigned,
-        message: `Successfully assigned ${assignments.length} groups to supervisors`
+        message: `Successfully assigned ${assignments.length} groups to supervisors`,
+        solverStatus,
       };
 
     } catch (error) {
@@ -155,10 +159,12 @@ export class SupervisorAssignmentService {
   private async computeOptimalAssignment(
     groups: GroupData[],
     supervisors: SupervisorData[]
-  ): Promise<AssignmentResult[]> {
+  ): Promise<{ assignments: AssignmentResult[]; solverStatus: SolverMeta }> {
     const anyCap = supervisors.some((s) => s.maxGroups != null);
-    const asp = anyCap ? null : await trySupervisorAssignmentWithClingo(groups, supervisors);
-    if (asp) return asp;
+    const asp = anyCap
+      ? null
+      : await trySupervisorAssignmentWithClingo(groups, supervisors);
+    if (asp) return { assignments: asp.assignments, solverStatus: asp.meta };
 
     const assignments: AssignmentResult[] = [];
     
@@ -209,7 +215,15 @@ export class SupervisorAssignmentService {
       console.log(`📋 Assignment: ${group.name} → ${selectedSupervisor.name} (${newLoad} groups)`);
     }
 
-    return assignments;
+    return {
+      assignments,
+      solverStatus: {
+        path: 'heuristic',
+        message: anyCap
+          ? 'Per-supervisor caps are set - Clingo assignment is skipped when any cap applies (heuristic respects caps directly)'
+          : undefined,
+      },
+    };
   }
 
   /**

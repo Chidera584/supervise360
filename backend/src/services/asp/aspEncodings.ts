@@ -1,6 +1,29 @@
 import type { StudentData, GroupData } from '../groupFormationService';
 import type { SupervisorData, GroupData as SupGroupData, AssignmentResult } from '../supervisorAssignmentService';
-import { parseAnswerSet, runClingoProgram, type ClingoAtom } from './clingoRunner';
+import { parseAnswerSet, runClingoProgram, type ClingoAtom, type ClingoRunResult } from './clingoRunner';
+
+/**
+ * Bounds how long an HTTP request can spend waiting on the solver before falling back. Both
+ * values are well under typical reverse-proxy timeouts (Render/Railway free tier ~30s).
+ * Empirically (see aspEncodings tests / dev notes): group formation finds a good candidate
+ * within tens of milliseconds even on tier-skewed 17-31 student instances - the time budget
+ * mostly affects whether that answer is *proven* optimal (ClingoRunResult.optimal) versus just
+ * the best one found in time. Supervisor assignment needs closer to the full budget to find its
+ * first candidate at 15-40 groups, hence the larger allowance.
+ */
+const GROUP_FORMATION_TIMEOUT_MS = 15_000;
+const SUPERVISOR_ASSIGNMENT_TIMEOUT_MS = 10_000;
+
+/** Reported back to the caller (and ultimately the admin UI) so it's visible which path actually ran. */
+export interface SolverMeta {
+  path: 'asp' | 'heuristic';
+  solveTimeMs?: number;
+  optimization?: number[] | null;
+  /** False when the time budget was hit before clingo could prove the answer optimal. */
+  optimal?: boolean;
+  solverLabel?: string | null;
+  message?: string;
+}
 
 function clingoHint(): string {
   return process.env.CLINGO_PATH
@@ -12,6 +35,16 @@ function escComment(s: string): string {
   return String(s).replace(/\r?\n/g, ' ').replace(/%/g, 'pct');
 }
 
+function metaFromResult(res: ClingoRunResult): SolverMeta {
+  return {
+    path: 'asp',
+    solveTimeMs: res.solveTimeMs,
+    optimization: res.optimization,
+    optimal: res.optimal,
+    solverLabel: res.solverLabel,
+  };
+}
+
 /**
  * Group formation as ASP: partition students into groups of 1–3 with the same hard rules as
  * validateGroupFormation (2-member = H+M only; 1-member = HIGH only). Symmetry breaking: group id
@@ -20,14 +53,14 @@ function escComment(s: string): string {
 export async function tryGroupFormationWithClingo(
   students: StudentData[],
   namePrefix: string
-): Promise<GroupData[] | null> {
+): Promise<{ groups: GroupData[]; meta: SolverMeta } | null> {
   if (students.length === 0) return null;
 
   const n = students.length;
   const lines: string[] = [
     '% Auto-generated group formation (Potassco clingo)',
     `student(1..${n}).`,
-    'group(1..n).',
+    `group(1..${n}).`,
     '',
     '% Each student in exactly one group',
     `1 { in_group(S,G) : group(G) } 1 :- student(S).`,
@@ -65,8 +98,14 @@ export async function tryGroupFormationWithClingo(
     '% 3) minimize number of 1-member groups (still allowed only for HIGH)',
     'solo(G) :- cnt(G,1).',
     '#minimize { 1@2,G : solo(G) }.',
-    '% 4) deterministic tie-break: prefer lower group labels for lower student ids',
-    '#minimize { S*1000+G@1 : in_group(S,G) }.',
+    // NOTE: an earlier 4th priority level here (`#minimize { S*1000+G@1 : in_group(S,G) }`)
+    // was meant as a cosmetic tie-break among equally-good partitions, but it sums a distinct
+    // weight over every (student, group) pair - for any realistic tier-skewed cohort (e.g. many
+    // HIGH, few MEDIUM) there are a huge number of ties on priorities 1-3, and proving THIS term
+    // optimal too turned a sub-second solve into one that hadn't finished after 90s for just 17
+    // students. It added no group-quality benefit (fully covered by priorities 1-3 above), only
+    // a specific labeling preference among ties, so it's dropped. clingo's search is
+    // deterministic for identical input, so results are still reproducible run-to-run.
     '',
     '#show in_group/2.',
   ];
@@ -79,7 +118,7 @@ export async function tryGroupFormationWithClingo(
   }
 
   const program = lines.join('\n');
-  const res = await runClingoProgram(program, { timeoutMs: 120_000 });
+  const res = await runClingoProgram(program, { timeoutMs: GROUP_FORMATION_TIMEOUT_MS });
   if (!res.ok) {
     console.warn(`⚠️  [ASP] Clingo not available (${res.stderr || 'ENOENT'}). ${clingoHint()}`);
     return null;
@@ -134,8 +173,10 @@ export async function tryGroupFormationWithClingo(
     return null;
   }
 
-  console.log(`✅ [ASP] Group formation solved with Clingo (${groups.length} groups, maximize H+M+L triples).`);
-  return groups;
+  console.log(
+    `✅ [ASP] Group formation solved with Clingo (${groups.length} groups, ${res.solveTimeMs}ms, optimal=${res.optimal}).`
+  );
+  return { groups, meta: metaFromResult(res) };
 }
 
 /**
@@ -145,8 +186,8 @@ export async function tryGroupFormationWithClingo(
 export async function trySupervisorAssignmentWithClingo(
   groups: SupGroupData[],
   supervisors: SupervisorData[]
-): Promise<AssignmentResult[] | null> {
-  if (groups.length === 0) return [];
+): Promise<{ assignments: AssignmentResult[]; meta: SolverMeta } | null> {
+  if (groups.length === 0) return { assignments: [], meta: { path: 'asp' } };
 
   const gCount = groups.length;
   const sCount = supervisors.length;
@@ -189,12 +230,19 @@ export async function trySupervisorAssignmentWithClingo(
 
   lines.push(
     '',
-    '{ assign(G,S) : eligible(G,S) } 1 :- group(G).',
+    // NOTE: must be `1 { ... } 1` (exactly one), not `{ ... } 1` (at most one) - the latter lets
+    // the solver satisfy every objective by assigning NO groups at all (trivially minimizes
+    // both max load and overload to 0), which is what "optimal" but empty answers were doing.
+    '1 { assign(G,S) : eligible(G,S) } 1 :- group(G).',
     '',
     'tot(S,T) :- supervisor(S), base(S,B), C = #count { G : assign(G,S) }, T = B + C.',
     '',
     `gen(M) :- M = 0..${maxBound}.`,
-    '{ maxb(M) : gen(M) } 1.',
+    // Same "exactly one, not at most one" fix as assign/2 above: without the lower bound, the
+    // solver could pick NO maxb(M) at all, making the `T > M` constraint vacuously true for
+    // every supervisor and the #minimize below sum over nothing - i.e. "prove" a max load of 0
+    // regardless of how many groups actually got assigned.
+    '1 { maxb(M) : gen(M) } 1.',
     ':- supervisor(S), tot(S,T), maxb(M), T > M.',
     '#minimize { M@3 : maxb(M) }.',
     '% Secondary objective: minimize overload above current load',
@@ -207,7 +255,14 @@ export async function trySupervisorAssignmentWithClingo(
   );
 
   const program = lines.join('\n');
-  const res = await runClingoProgram(program, { timeoutMs: 60_000 });
+  // bb (branch-and-bound) beats usc here empirically: this encoding's "guess a bound, minimize
+  // the bound" idiom (maxb/gen) doesn't suit unsatisfiable-core-guided search the way group
+  // formation's weighted-sum objectives do - usc found zero candidates within budget at 15+
+  // groups, while bb reliably finds a full valid assignment.
+  const res = await runClingoProgram(program, {
+    timeoutMs: SUPERVISOR_ASSIGNMENT_TIMEOUT_MS,
+    optStrategy: 'bb',
+  });
   if (!res.ok) {
     console.warn(`⚠️  [ASP] Clingo not available for supervisor assignment. ${clingoHint()}`);
     return null;
@@ -250,6 +305,8 @@ export async function trySupervisorAssignmentWithClingo(
     });
   }
 
-  console.log('✅ [ASP] Supervisor assignment optimized with Clingo (minimize max total load).');
-  return out;
+  console.log(
+    `✅ [ASP] Supervisor assignment optimized with Clingo (minimize max total load, ${res.solveTimeMs}ms, optimal=${res.optimal}).`
+  );
+  return { assignments: out, meta: metaFromResult(res) };
 }

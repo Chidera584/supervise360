@@ -219,3 +219,15 @@ export interface AuthResponse extends ApiResponse {
     token?: string;
   };
 }
+
+/** Which path actually produced a group-formation / supervisor-assignment result: the Potassco
+ * Clingo (ASP) solver, or the deterministic heuristic fallback. Mirrors backend SolverMeta. */
+export interface SolverStatus {
+  path: 'asp' | 'heuristic';
+  solveTimeMs?: number;
+  optimization?: number[] | null;
+  /** False when the solver hit its time budget before proving the answer optimal. */
+  optimal?: boolean;
+  solverLabel?: string | null;
+  message?: string;
+}

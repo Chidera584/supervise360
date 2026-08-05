@@ -407,13 +407,15 @@ export function createSupervisorsRouter(db: Pool) {
           assignedCount: result.assignments.length,
           totalGroups: result.assignments.length + result.unassigned.length,
           assignments: result.assignments,
-          unassigned: result.unassigned
+          unassigned: result.unassigned,
+          solverStatus: result.solverStatus,
         });
       } else {
         res.status(400).json({
           success: false,
           message: result.message,
-          unassigned: result.unassigned
+          unassigned: result.unassigned,
+          solverStatus: result.solverStatus,
         });
       }
     } catch (error) {

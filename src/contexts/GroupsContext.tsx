@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Group } from '../lib/asp-group-formation';
 import { apiClient } from '../lib/api';
+import type { SolverStatus } from '../types/database';
 
 interface GroupsContextType {
   groups: Group[];
@@ -11,7 +12,7 @@ interface GroupsContextType {
   formGroupsFromStudents: (
     students: any[],
     sessionId: number
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; solverStatus?: SolverStatus }>;
   syncWithDatabase: () => Promise<void>;
   forceRefresh: () => Promise<void>;
 }
@@ -215,7 +216,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const formGroupsFromStudents = useCallback(async (
     students: any[],
     sessionId: number
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; solverStatus?: SolverStatus }> => {
     try {
       // Extract department from first student (all should have same department)
       const department = students[0]?.department;
@@ -283,11 +284,11 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
 
         // Add to existing groups
         addGroups(newGroups);
-        
+
         // Sync with database to get the latest data
         await syncWithDatabase();
-        
-        return { success: true };
+
+        return { success: true, solverStatus: response.data.solverStatus };
       } else {
         console.error('API call failed - invalid response structure:', response);
         return { success: false, error: 'Invalid response from server - no groups data received' };

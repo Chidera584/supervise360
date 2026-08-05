@@ -10,6 +10,8 @@ import { useGroups } from '../../contexts/GroupsContext';
 import { useDepartment } from '../../contexts/DepartmentContext';
 import { useGpaThresholds } from '../../hooks/useGpaThresholds';
 import { apiClient } from '../../lib/api';
+import { SolverStatusBadge } from '../../components/UI/SolverStatusBadge';
+import type { SolverStatus } from '../../types/database';
 
 export function Groups() {
   const navigate = useNavigate();
@@ -34,6 +36,7 @@ export function Groups() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showThresholdNotice, setShowThresholdNotice] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [solverStatus, setSolverStatus] = useState<SolverStatus | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if thresholds have changed and listen for updates
@@ -221,6 +224,11 @@ export function Groups() {
                   'Select a department above to get started'
                 )}
               </p>
+              {solverStatus && (
+                <div className="mt-2">
+                  <SolverStatusBadge status={solverStatus} />
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-3">
               <Button
@@ -533,6 +541,7 @@ export function Groups() {
               }));
 
               const result = await formGroupsFromStudents(studentsWithDepartment, Number(selectedSessionId));
+              setSolverStatus(result.solverStatus || null);
 
               if (result.success) {
                 await syncWithDatabase();

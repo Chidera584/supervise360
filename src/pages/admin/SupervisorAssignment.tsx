@@ -13,6 +13,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useGroups } from '../../contexts/GroupsContext';
 import { useDepartment } from '../../contexts/DepartmentContext';
 import { apiClient } from '../../lib/api';
+import { SolverStatusBadge } from '../../components/UI/SolverStatusBadge';
+import type { SolverStatus } from '../../types/database';
 
 export function SupervisorAssignment() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,6 +35,7 @@ export function SupervisorAssignment() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [solverStatus, setSolverStatus] = useState<SolverStatus | null>(null);
   const [uploadedSupervisors, setUploadedSupervisors] = useState<any[]>([]);
   const [viewGroupsSupervisor, setViewGroupsSupervisor] = useState<string | null>(null);
   const [editSwapModal, setEditSwapModal] = useState(false);
@@ -282,6 +285,7 @@ export function SupervisorAssignment() {
 
       // Then auto-assign supervisors to groups
       const assignResponse = await apiClient.autoAssignSupervisors(selectedDepartment || undefined);
+      setSolverStatus((assignResponse as any).solverStatus || null);
       if (!assignResponse.success) {
         throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
       }
@@ -313,6 +317,7 @@ export function SupervisorAssignment() {
     setAssigning(true);
     try {
       const assignResponse = await apiClient.autoAssignSupervisors(selectedDepartment || undefined);
+      setSolverStatus((assignResponse as any).solverStatus || null);
       if (!assignResponse.success) {
         throw new Error(assignResponse.message || 'Failed to auto-assign supervisors');
       }
@@ -564,6 +569,11 @@ export function SupervisorAssignment() {
                 <Building size={14} />
                 {selectedDepartment || (isSystemAdmin ? 'Select a department above' : userDepartment)}
               </p>
+              {solverStatus && (
+                <div className="mt-2">
+                  <SolverStatusBadge status={solverStatus} />
+                </div>
+              )}
             </div>
             <div className="relative" ref={actionsDropdownRef}>
               <Button

@@ -1,5 +1,5 @@
 import { Pool } from 'mysql2/promise';
-import { tryGroupFormationWithClingo } from './asp/aspEncodings';
+import { tryGroupFormationWithClingo, type SolverMeta } from './asp/aspEncodings';
 
 export interface StudentData {
   name: string;
@@ -221,7 +221,10 @@ export class GroupFormationService {
 
   // Group formation: try Potassco Clingo (ASP) first; else heuristic below.
   // CRITICAL (heuristic path): No student is ever excluded. 2-member groups → H+M only; 1-member → HIGH only (rebalance as needed).
-  async formGroupsUsingASP(students: StudentData[], department?: string): Promise<GroupData[]> {
+  async formGroupsUsingASP(
+    students: StudentData[],
+    department?: string
+  ): Promise<{ groups: GroupData[]; solverStatus: SolverMeta }> {
     console.log('🔍 ASP Group Formation - Input students:', students.length);
     
     // Get thresholds for logging purposes - ALWAYS fetch fresh
@@ -249,12 +252,12 @@ export class GroupFormationService {
     console.log('👥 LOW tier students:', lowTier.map(s => `${s.name} (${s.gpa})`));
 
     const namePrefix = department ? `${department} - ` : '';
-    const clingoGroups = await tryGroupFormationWithClingo(students, namePrefix);
-    if (clingoGroups) {
-      const v = this.validateGroupFormation(clingoGroups);
+    const clingoResult = await tryGroupFormationWithClingo(students, namePrefix);
+    if (clingoResult) {
+      const v = this.validateGroupFormation(clingoResult.groups);
       if (v.isValid) {
         console.log('✅ [ASP] Using Clingo answer set for group formation.');
-        return clingoGroups;
+        return { groups: clingoResult.groups, solverStatus: clingoResult.meta };
       }
       console.warn('⚠️  [ASP] Clingo grouping failed validation; using heuristic.', v.violations);
     }
@@ -619,7 +622,7 @@ export class GroupFormationService {
       throw new Error('Cannot form any groups: Need at least 3 students total.');
     }
 
-    return groups;
+    return { groups, solverStatus: { path: 'heuristic' } };
   }
 
   // Clear groups for a department before forming new ones (avoids duplicates, ensures clean formation)
@@ -660,7 +663,11 @@ export class GroupFormationService {
   }
 
   // Save groups to database
-  async saveGroupsToDatabase(groups: GroupData[], sessionId: number): Promise<number[]> {
+  async saveGroupsToDatabase(
+    groups: GroupData[],
+    sessionId: number,
+    formationMethod: 'asp' | 'heuristic' = 'heuristic'
+  ): Promise<number[]> {
     const connection = await this.db.getConnection();
     const groupIds: number[] = [];
 
@@ -670,12 +677,12 @@ export class GroupFormationService {
       for (const group of groups) {
         // Get department from first member or default
         const department = group.members[0]?.department || 'Software Engineering';
-        
+
         // Insert group into project_groups table (not 'groups' which is reserved)
         const [groupResult] = await connection.execute(
-          `INSERT INTO project_groups (name, avg_gpa, status, department, session_id, formation_method, formation_date, created_at) 
-           VALUES (?, ?, ?, ?, ?, 'asp', NOW(), NOW())`,
-          [group.name, group.avg_gpa, group.status, department, sessionId]
+          `INSERT INTO project_groups (name, avg_gpa, status, department, session_id, formation_method, formation_date, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [group.name, group.avg_gpa, group.status, department, sessionId, formationMethod]
         );
 
         const groupId = (groupResult as any).insertId;

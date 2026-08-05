@@ -235,24 +235,26 @@ export function createGroupsRouter(db: Pool) {
       console.log('🔄 [GROUPS/FORM] Processing students with department:', department);
       const processedStudents = await groupService.processStudentData(students, department);
       
-      // Form groups using ASP algorithm
+      // Form groups: tries Potassco Clingo (ASP) first, falls back to the heuristic if the
+      // solver is unavailable, UNSAT, or can't find any valid answer in time.
       console.log('🔄 [GROUPS/FORM] Forming groups using ASP algorithm');
-      const groups = await groupService.formGroupsUsingASP(processedStudents, department);
-      
+      const { groups, solverStatus } = await groupService.formGroupsUsingASP(processedStudents, department);
+
       // Validate formation
       const validation = groupService.validateGroupFormation(groups);
       if (!validation.isValid) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: 'Group formation validation failed', 
+          error: 'Group formation validation failed',
           message: 'Group formation validation failed',
-          violations: validation.violations 
+          violations: validation.violations
         });
       }
 
-      // Save to database
-      const groupIds = await groupService.saveGroupsToDatabase(groups, sessionId);
-      
+      // Save to database - formation_method reflects which path actually produced these
+      // groups (asp vs heuristic), not a hardcoded value.
+      const groupIds = await groupService.saveGroupsToDatabase(groups, sessionId, solverStatus.path);
+
       // Return formed groups with IDs
       const groupsWithIds = groups.map((group, index) => ({
         ...group,
@@ -263,7 +265,8 @@ export function createGroupsRouter(db: Pool) {
         success: true,
         data: {
           groups: groupsWithIds,
-          statistics: groupService.calculateGroupStatistics(groups)
+          statistics: groupService.calculateGroupStatistics(groups),
+          solverStatus,
         },
         message: `Successfully formed ${groupsWithIds.length} groups`
       });
