@@ -775,14 +775,53 @@ export class GroupFormationService {
       }
 
       const groupId = memberRows[0].group_id;
-      const allGroups = await this.getAllGroups();
-      return allGroups.find(g => g.id === groupId) || null;
+      return await this.getGroupById(connection, groupId);
     } catch (error) {
       console.error('Error fetching group by matric:', error);
       throw error;
     } finally {
       connection.release();
     }
+  }
+
+  /**
+   * Fetch exactly one group by id (2 queries total: group row + its members). Used instead of
+   * `getAllGroups()` on lookup paths (my-group, report upload, messaging) that only need one
+   * group - those previously loaded every group in the database for a single-group lookup.
+   */
+  async getGroupById(connection: any, groupId: number): Promise<GroupData | null> {
+    const [groupRows] = await connection.execute(
+      'SELECT * FROM project_groups WHERE id = ? LIMIT 1',
+      [groupId]
+    );
+    const group = (groupRows as any[])[0];
+    if (!group) return null;
+
+    const [memberRows] = await connection.execute(
+      'SELECT * FROM group_members WHERE group_id = ? ORDER BY member_order ASC',
+      [groupId]
+    );
+    const members = (memberRows as any[]).map((member) => ({
+      id: member.id,
+      name: member.student_name,
+      gpa: member.student_gpa,
+      tier: member.gpa_tier as 'HIGH' | 'MEDIUM' | 'LOW',
+      matricNumber: member.matric_number || member.student_id || null,
+      email: member.email ?? null,
+      phone: member.phone ?? null,
+    }));
+
+    return {
+      id: group.id,
+      name: group.name,
+      members,
+      avg_gpa: group.avg_gpa,
+      status: group.status,
+      supervisor_id: group.supervisor_id,
+      supervisor: group.supervisor_name || null,
+      department: group.department,
+      session_id: group.session_id != null ? Number(group.session_id) : undefined,
+    };
   }
 
   /** Preferred for /groups/my-group: uses student's session_id when set. */
