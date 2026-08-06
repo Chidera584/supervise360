@@ -9,7 +9,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { jsPDF } from 'jspdf';
 
 const TEAL = '#006D6D';
 const BROWN = '#92400e';
@@ -62,7 +61,8 @@ export function ReportsAnalytics() {
 
   const donutRadius = 44;
   const donutCirc = 2 * Math.PI * donutRadius;
-  const downloadAnalyticsPdf = () => {
+  const downloadAnalyticsPdf = async () => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text('Supervise360 Reports & Analytics', 14, 16);

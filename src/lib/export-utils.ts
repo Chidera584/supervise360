@@ -1,8 +1,16 @@
 /**
  * Export utilities for PDF and Word (HTML) downloads
  */
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
+// jspdf/jspdf-autotable are only needed when a user clicks an export button, so they're loaded
+// on demand rather than bundled into every page that imports this module.
+async function loadPdf() {
+  const [{ jsPDF }, autoTableModule] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+  return { jsPDF, autoTable: autoTableModule.default };
+}
 
 export type AllocationColumn = {
   venue: string;
@@ -10,7 +18,8 @@ export type AllocationColumn = {
   assessors: string[];
 };
 
-export function downloadAllocationAsPDF(allocations: AllocationColumn[], excludedCount: number): void {
+export async function downloadAllocationAsPDF(allocations: AllocationColumn[], excludedCount: number): Promise<void> {
+  const { jsPDF, autoTable } = await loadPdf();
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const margin = 10;
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -153,10 +162,11 @@ export function downloadAssignmentsAsCSV(
   URL.revokeObjectURL(link.href);
 }
 
-export function downloadAssignmentsAsPDF(
+export async function downloadAssignmentsAsPDF(
   groups: Array<{ id: number; name: string; members: string[]; supervisor: string | null }>,
   getMemberMatric: (groupId: number, memberIndex: number) => string
-): void {
+): Promise<void> {
+  const { jsPDF, autoTable } = await loadPdf();
   const rows = buildGroupedAssignmentRows(groups, getMemberMatric);
   const doc = new jsPDF();
   autoTable(doc, {
