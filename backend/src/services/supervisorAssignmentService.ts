@@ -1,6 +1,7 @@
 import { Pool } from 'mysql2/promise';
 import { trySupervisorAssignmentWithClingo, type SolverMeta } from './asp/aspEncodings';
 import { syncSupervisorWorkloadWithConnection } from './workloadService';
+import { resolveSupervisorUserIdByName } from './idLinkingService';
 
 /**
  * Supervisor assignment: uses Potassco Clingo (answer set programming) when available to minimize
@@ -29,6 +30,7 @@ export interface AssignmentResult {
   groupName: string;
   supervisorName: string;
   supervisorDepartment: string; // supervisor's dept (for workload table lookup)
+  supervisorUserId?: number | null;
 }
 
 export class SupervisorAssignmentService {
@@ -111,11 +113,17 @@ export class SupervisorAssignmentService {
       // Apply assignments to database
       for (const assignment of assignments) {
         // Update project_groups table
+        const supervisorUserId = await resolveSupervisorUserIdByName(
+          connection,
+          assignment.supervisorName,
+          assignment.supervisorDepartment
+        );
+        assignment.supervisorUserId = supervisorUserId;
         await connection.execute(
-          `UPDATE project_groups 
-           SET supervisor_name = ?, updated_at = NOW() 
+          `UPDATE project_groups
+           SET supervisor_name = ?, supervisor_user_id = ?, updated_at = NOW()
            WHERE id = ?`,
-          [assignment.supervisorName, assignment.groupId]
+          [assignment.supervisorName, supervisorUserId, assignment.groupId]
         );
 
         // Update supervisor_workload table

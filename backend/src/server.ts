@@ -204,10 +204,10 @@ async function startServer() {
         const lastName = (user?.last_name || '').trim();
         const fullName = `${firstName} ${lastName}`.trim().replace(/\s+/g, ' ');
         if (!fullName && !firstName && !lastName) return res.json({ success: true, data: [] });
-        const groupParams: any[] = [fullName, fullName];
-        let groupWhere = `WHERE TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%')`;
+        const groupParams: any[] = [userId, fullName, fullName];
+        let groupWhere = `WHERE supervisor_user_id = ? OR (supervisor_user_id IS NULL AND (TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%')))`;
         if (firstName && lastName) {
-          groupWhere += ` OR (supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))`;
+          groupWhere += ` OR (supervisor_user_id IS NULL AND supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))`;
           groupParams.push(firstName, lastName);
         }
         const sessionIdQ = req.query.sessionId ? Number(req.query.sessionId) : NaN;

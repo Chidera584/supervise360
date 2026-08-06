@@ -12,6 +12,7 @@ import {
   checkSupervisorCap,
   syncSupervisorWorkloadWithConnection,
 } from '../services/workloadService';
+import { resolveSupervisorUserIdByName } from '../services/idLinkingService';
 
 const router = Router();
 
@@ -297,7 +298,8 @@ export function createGroupsRouter(db: Pool) {
 
       const connection = await db.getConnection();
       let supervisorChanged = false;
-      
+      let newSupervisorUserId: number | null = null;
+
       try {
         await connection.beginTransaction();
 
@@ -341,9 +343,12 @@ export function createGroupsRouter(db: Pool) {
             // student_evaluations may not exist in older environments
           }
 
+          newSupervisorUserId = newSup
+            ? await resolveSupervisorUserIdByName(connection, newSup, dept)
+            : null;
           await connection.execute(
-            'UPDATE project_groups SET supervisor_name = ?, updated_at = NOW() WHERE id = ?',
-            [supervisorName, groupId]
+            'UPDATE project_groups SET supervisor_name = ?, supervisor_user_id = ?, updated_at = NOW() WHERE id = ?',
+            [supervisorName, newSupervisorUserId, groupId]
           );
 
           if (oldSup) {
@@ -410,15 +415,25 @@ export function createGroupsRouter(db: Pool) {
           notifyGroupingAndSupervisor(db, studentUserIds, studentEmails, studentNames, groupName, supervisorName).catch(() => {});
         }
 
-        // Notify supervisor
-        const sn = String(supervisorName).trim().replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
-        const [supRows] = await db.execute(
-          `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
-           INNER JOIN supervisors s ON s.user_id = u.id
-           WHERE ? LIKE CONCAT('%', TRIM(u.first_name), '%') AND ? LIKE CONCAT('%', TRIM(u.last_name), '%') LIMIT 1`,
-          [sn, sn]
-        );
-        const supUser = (supRows as any[])[0];
+        // Notify supervisor - use the id resolved (and persisted) above when available.
+        let supUser: { id: number; email: string; first_name: string; last_name: string } | undefined;
+        if (newSupervisorUserId != null) {
+          const [linkedRows] = await db.execute(
+            'SELECT id, email, first_name, last_name FROM users WHERE id = ? LIMIT 1',
+            [newSupervisorUserId]
+          );
+          supUser = (linkedRows as any[])[0];
+        }
+        if (!supUser) {
+          const sn = String(supervisorName).trim().replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
+          const [supRows] = await db.execute(
+            `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
+             INNER JOIN supervisors s ON s.user_id = u.id
+             WHERE ? LIKE CONCAT('%', TRIM(u.first_name), '%') AND ? LIKE CONCAT('%', TRIM(u.last_name), '%') LIMIT 1`,
+            [sn, sn]
+          );
+          supUser = (supRows as any[])[0];
+        }
         if (supUser) {
           const supFullName = `${supUser.first_name || ''} ${supUser.last_name || ''}`.trim();
           const studentCount = studentNames.length;

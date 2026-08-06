@@ -16,6 +16,37 @@ export interface UnmatchedSupervisorGroup {
 }
 
 /**
+ * Resolves a free-text supervisor name (optionally department-scoped) to exactly one user id,
+ * or null if zero or more than one candidate matches. Shared by the boot-time backfill below and
+ * by write paths (assign supervisor, auto-assign) that should link supervisor_user_id at the
+ * moment a supervisor is actually assigned, not wait for the next server restart.
+ */
+export async function resolveSupervisorUserIdByName(
+  db: Pool | { execute: Pool['execute'] },
+  supervisorName: string,
+  department?: string | null
+): Promise<number | null> {
+  const sn = String(supervisorName || '')
+    .trim()
+    .replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
+  if (!sn) return null;
+  const dept = String(department || '').trim();
+
+  const [supRows] = await db.execute(
+    `SELECT u.id FROM users u
+     INNER JOIN supervisors s ON s.user_id = u.id
+     WHERE ? LIKE CONCAT('%', TRIM(COALESCE(u.first_name,'')), '%')
+       AND ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%')
+       AND COALESCE(u.first_name,'') != '' AND COALESCE(u.last_name,'') != ''
+       AND (? = '' OR TRIM(COALESCE(u.department,'')) = TRIM(?))
+     LIMIT 2`,
+    [sn, sn, dept, dept]
+  );
+  const sups = supRows as { id: number }[];
+  return sups.length === 1 ? sups[0].id : null;
+}
+
+/**
  * Resolves group_members.student_user_id and project_groups.supervisor_user_id from the existing
  * free-text student_name/matric_number and supervisor_name columns, using the same fuzzy-matching
  * rules already used throughout the app (matric normalization, title-prefix stripping,
@@ -74,26 +105,10 @@ export class IdLinkingService {
     let matched = 0;
 
     for (const c of candidates) {
-      const sn = String(c.supervisor_name)
-        .trim()
-        .replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
-      if (!sn) continue;
-      const dept = String(c.department || '').trim();
-
-      const [supRows] = await this.db.execute(
-        `SELECT u.id FROM users u
-         INNER JOIN supervisors s ON s.user_id = u.id
-         WHERE ? LIKE CONCAT('%', TRIM(COALESCE(u.first_name,'')), '%')
-           AND ? LIKE CONCAT('%', TRIM(COALESCE(u.last_name,'')), '%')
-           AND COALESCE(u.first_name,'') != '' AND COALESCE(u.last_name,'') != ''
-           AND (? = '' OR TRIM(COALESCE(u.department,'')) = TRIM(?))
-         LIMIT 2`,
-        [sn, sn, dept, dept]
-      );
-      const sups = supRows as { id: number }[];
-      if (sups.length === 1) {
+      const userId = await resolveSupervisorUserIdByName(this.db, c.supervisor_name, c.department);
+      if (userId != null) {
         await this.db.execute('UPDATE project_groups SET supervisor_user_id = ? WHERE id = ?', [
-          sups[0].id,
+          userId,
           c.id,
         ]);
         matched++;

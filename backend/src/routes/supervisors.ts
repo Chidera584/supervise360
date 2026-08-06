@@ -225,7 +225,7 @@ export function createSupervisorsRouter(db: Pool) {
         // Also clear supervisor assignments from groups in those departments (avoid orphaned refs)
         for (const dept of departmentsInUpload) {
           await connection.execute(
-            'UPDATE project_groups SET supervisor_name = NULL WHERE department = ?',
+            'UPDATE project_groups SET supervisor_name = NULL, supervisor_user_id = NULL WHERE department = ?',
             [dept]
           );
           const [delResult] = await connection.execute(
@@ -364,18 +364,28 @@ export function createSupervisorsRouter(db: Pool) {
             console.warn(`📧 No students matched for group ${a.groupName} - check matric_number/student_name in group_members vs students table`);
           }
 
-          const snRaw = String(a.supervisorName).trim();
-          const sn = snRaw.replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
-          const snReversed = sn.includes(',') ? sn.split(',').map((x: string) => x.trim()).reverse().join(' ') : sn;
-          const [supRows] = await db.execute(
-            `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
-             INNER JOIN supervisors s ON s.user_id = u.id
-             WHERE (? LIKE CONCAT('%', TRIM(u.first_name), '%') AND ? LIKE CONCAT('%', TRIM(u.last_name), '%'))
-                OR (? LIKE CONCAT('%', TRIM(u.first_name), '%') AND ? LIKE CONCAT('%', TRIM(u.last_name), '%'))
-             LIMIT 1`,
-            [sn, sn, snReversed, snReversed]
-          );
-          const supUser = (supRows as any[])[0];
+          let supUser: any = null;
+          if (a.supervisorUserId) {
+            const [supRows] = await db.execute(
+              'SELECT id, email, first_name, last_name FROM users WHERE id = ?',
+              [a.supervisorUserId]
+            );
+            supUser = (supRows as any[])[0] || null;
+          }
+          if (!supUser) {
+            const snRaw = String(a.supervisorName).trim();
+            const sn = snRaw.replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
+            const snReversed = sn.includes(',') ? sn.split(',').map((x: string) => x.trim()).reverse().join(' ') : sn;
+            const [supRows] = await db.execute(
+              `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
+               INNER JOIN supervisors s ON s.user_id = u.id
+               WHERE (? LIKE CONCAT('%', TRIM(u.first_name), '%') AND ? LIKE CONCAT('%', TRIM(u.last_name), '%'))
+                  OR (? LIKE CONCAT('%', TRIM(u.first_name), '%') AND ? LIKE CONCAT('%', TRIM(u.last_name), '%'))
+               LIMIT 1`,
+              [sn, sn, snReversed, snReversed]
+            );
+            supUser = (supRows as any[])[0] || null;
+          }
           if (supUser) {
             const existing = supervisorStudentsMap.get(supUser.id);
             if (existing) {
@@ -477,7 +487,7 @@ export function createSupervisorsRouter(db: Pool) {
           await resetEvaluationsForGroupIds(connection, groupIds);
           await connection.execute(
             `UPDATE project_groups
-             SET supervisor_name = NULL
+             SET supervisor_name = NULL, supervisor_user_id = NULL
              WHERE TRIM(COALESCE(department,'')) = TRIM(?)`,
             [department]
           );
@@ -486,7 +496,7 @@ export function createSupervisorsRouter(db: Pool) {
             [department]
           );
         } else {
-          await connection.execute('UPDATE project_groups SET supervisor_name = NULL WHERE 1=1');
+          await connection.execute('UPDATE project_groups SET supervisor_name = NULL, supervisor_user_id = NULL WHERE 1=1');
           await connection.execute('DELETE FROM supervisor_workload');
           await connection.execute('DELETE FROM evaluations');
           try {

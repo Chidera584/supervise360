@@ -70,7 +70,12 @@ export class ReportService {
     return rows as any[];
   }
 
-  /** Get group IDs for a supervisor - same logic as my-groups endpoint */
+  /**
+   * Get group IDs for a supervisor - same logic as my-groups endpoint. Prefers the reliable
+   * supervisor_user_id link; falls back to fuzzy name matching only for groups that haven't
+   * been ID-linked yet (see IdLinkingService), so two supervisors with similar names can't
+   * cross-wire once linked.
+   */
   async getSupervisorGroupIds(supervisorUserId: number): Promise<number[]> {
     const [userRows] = await this.db.execute(
       'SELECT first_name, last_name, COALESCE(NULLIF(TRIM(department), \'\'), \'\') as department FROM users WHERE id = ?',
@@ -83,14 +88,17 @@ export class ReportService {
     const userDepartment = String(user?.department || '').trim();
     if (!fullName && !firstName && !lastName) return [];
 
-    const params: any[] = [fullName, fullName];
+    const params: any[] = [supervisorUserId, fullName, fullName];
     if (firstName && lastName) params.push(firstName, lastName);
     const bothClause = firstName && lastName
       ? "OR (supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))"
       : '';
     const [rows] = await this.db.execute(
       `SELECT id FROM project_groups
-       WHERE (TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause})
+       WHERE (
+         supervisor_user_id = ?
+         OR (supervisor_user_id IS NULL AND (TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause}))
+       )
          AND (? = '' OR TRIM(COALESCE(department,'')) = TRIM(?))`,
       [...params, userDepartment, userDepartment]
     );

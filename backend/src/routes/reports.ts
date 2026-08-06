@@ -196,11 +196,26 @@ export function createReportsRouter(db: Pool) {
       const submitterName = submitter ? `${submitter.first_name || ''} ${submitter.last_name || ''}`.trim() : 'Student';
       notifySubmissionConfirmation(db, userId, submitter?.email, submitterName, reportTitle, req.file.originalname).catch(() => {});
 
-      // Get supervisor for this group and notify them
-      const [pgRows] = await db.execute('SELECT supervisor_name, department FROM project_groups WHERE id = ?', [groupId]);
-      const supName = (pgRows as any[])[0]?.supervisor_name;
-      const groupDepartment = (pgRows as any[])[0]?.department || '';
-      if (supName) {
+      // Get supervisor for this group and notify them - prefer the reliable supervisor_user_id
+      // link; fall back to fuzzy name matching only if the group hasn't been ID-linked yet.
+      const [pgRows] = await db.execute(
+        'SELECT supervisor_name, supervisor_user_id, department FROM project_groups WHERE id = ?',
+        [groupId]
+      );
+      const pgRow = (pgRows as any[])[0];
+      const supName = pgRow?.supervisor_name;
+      const linkedSupervisorUserId = pgRow?.supervisor_user_id;
+      const groupDepartment = pgRow?.department || '';
+
+      let supUser: { id: number; email: string; first_name: string; last_name: string } | undefined;
+      if (linkedSupervisorUserId != null) {
+        const [linkedRows] = await db.execute(
+          'SELECT id, email, first_name, last_name FROM users WHERE id = ? LIMIT 1',
+          [linkedSupervisorUserId]
+        );
+        supUser = (linkedRows as any[])[0];
+      }
+      if (!supUser && supName) {
         const sn = String(supName).trim().replace(/^(Dr\.?|Prof\.?|Mr\.?|Mrs\.?|Ms\.?|Engr\.?)\s+/i, '');
         const parts = sn.split(/[\s,]+/).filter(Boolean);
         const lastPart = parts[parts.length - 1];
@@ -214,7 +229,7 @@ export function createReportsRouter(db: Pool) {
            LIMIT 1`,
           [sn, sn, groupDepartment, groupDepartment]
         );
-        let supUser = (supUserRows as any[])[0];
+        supUser = (supUserRows as any[])[0];
         if (!supUser && lastPart) {
           const [fallback] = await db.execute(
             `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
@@ -226,10 +241,10 @@ export function createReportsRouter(db: Pool) {
           );
           supUser = (fallback as any[])[0];
         }
-        if (supUser) {
-          const supFullName = `${supUser.first_name || ''} ${supUser.last_name || ''}`.trim();
-          notifyStudentSubmission(db, supUser.id, supUser.email, supFullName, submitterName, reportTitle, req.file.originalname).catch(() => {});
-        }
+      }
+      if (supUser) {
+        const supFullName = `${supUser.first_name || ''} ${supUser.last_name || ''}`.trim();
+        notifyStudentSubmission(db, supUser.id, supUser.email, supFullName, submitterName, reportTitle, req.file.originalname).catch(() => {});
       }
 
       res.json({ success: true, message: 'Report uploaded', data: { id: (result as any).insertId } });

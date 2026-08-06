@@ -47,18 +47,29 @@ export class MessageService {
 
   /**
    * Resolve the registered supervisor user for a group's messaging recipient.
-   * Prefer project_groups.supervisor_id → supervisors.user_id; otherwise match name only among
-   * users linked to the supervisors table (never arbitrary non-supervisor users).
+   * Prefer project_groups.supervisor_user_id (set when a supervisor is assigned or by the
+   * boot-time id-linking backfill - see idLinkingService.ts); then the legacy supervisor_id →
+   * supervisors.user_id column; otherwise match name only among users linked to the supervisors
+   * table (never arbitrary non-supervisor users).
    */
   private async resolveSupervisorUserForGroup(
     groupId: number
   ): Promise<{ id: number; first_name: string; last_name: string; email: string } | null> {
     const [pgRows] = await this.db.execute(
-      `SELECT supervisor_name, supervisor_id, department FROM project_groups WHERE id = ? LIMIT 1`,
+      `SELECT supervisor_name, supervisor_id, supervisor_user_id, department FROM project_groups WHERE id = ? LIMIT 1`,
       [groupId]
     );
     const pg = (pgRows as any[])[0];
     if (!pg) return null;
+
+    if (pg.supervisor_user_id != null) {
+      const [byLinkedId] = await this.db.execute(
+        `SELECT u.id, u.first_name, u.last_name, u.email FROM users u WHERE u.id = ? LIMIT 1`,
+        [pg.supervisor_user_id]
+      );
+      const linked = (byLinkedId as any[])[0];
+      if (linked) return linked;
+    }
 
     const sidRaw = pg.supervisor_id;
     if (sidRaw != null && sidRaw !== '' && !Number.isNaN(Number(sidRaw))) {
@@ -156,13 +167,13 @@ export class MessageService {
   /** Get user IDs for all members of a group (students with user accounts) */
   async getGroupMemberUserIds(groupId: number): Promise<number[]> {
     const [memberRows] = await this.db.execute(
-      'SELECT matric_number, student_name FROM group_members WHERE group_id = ?',
+      'SELECT student_user_id, matric_number, student_name FROM group_members WHERE group_id = ?',
       [groupId]
     );
     const userIds: number[] = [];
     for (const m of (memberRows as any[])) {
-      let uid: number | undefined;
-      if (m.matric_number) {
+      let uid: number | undefined = m.student_user_id ?? undefined;
+      if (!uid && m.matric_number) {
         const [sRows] = await this.db.execute(
           'SELECT user_id FROM students WHERE matric_number = ? OR TRIM(matric_number) = TRIM(?)',
           [m.matric_number, m.matric_number]
@@ -253,6 +264,9 @@ export class MessageService {
     const [rows] = await this.db.execute(
       `SELECT m.*, u.first_name, u.last_name, u.email as sender_email,
               COALESCE(
+                (SELECT pg.name FROM group_members gm
+                 INNER JOIN project_groups pg ON pg.id = gm.group_id
+                 WHERE gm.student_user_id = m.sender_id LIMIT 1),
                 (SELECT pg.name FROM students st
                  INNER JOIN group_members gm ON gm.matric_number = st.matric_number
                  INNER JOIN project_groups pg ON pg.id = gm.group_id
@@ -278,6 +292,9 @@ export class MessageService {
     const [rows] = await this.db.execute(
       `SELECT m.*, u.first_name, u.last_name, u.email as recipient_email,
               COALESCE(
+                (SELECT pg.name FROM group_members gm
+                 INNER JOIN project_groups pg ON pg.id = gm.group_id
+                 WHERE gm.student_user_id = m.recipient_id LIMIT 1),
                 (SELECT pg.name FROM students st
                  INNER JOIN group_members gm ON gm.matric_number = st.matric_number
                  INNER JOIN project_groups pg ON pg.id = gm.group_id

@@ -109,7 +109,10 @@ export class ProjectService {
     );
   }
 
-  /** Get group IDs for a supervisor - same flexible matching as my-groups and report reviews */
+  /**
+   * Get group IDs for a supervisor. Prefers the reliable supervisor_user_id link; falls back to
+   * fuzzy name matching only for groups that haven't been ID-linked yet (see IdLinkingService).
+   */
   async getSupervisorGroupIds(supervisorUserId: number): Promise<number[]> {
     const [userRows] = await this.db.execute(
       'SELECT first_name, last_name FROM users WHERE id = ?',
@@ -121,14 +124,15 @@ export class ProjectService {
     const fullName = `${firstName} ${lastName}`.trim().replace(/\s+/g, ' ');
     if (!fullName && !firstName && !lastName) return [];
 
-    const params: any[] = [fullName, fullName];
+    const params: any[] = [supervisorUserId, fullName, fullName];
     if (firstName && lastName) params.push(firstName, lastName);
     const bothClause = firstName && lastName
       ? "OR (supervisor_name LIKE CONCAT('%', ?, '%') AND supervisor_name LIKE CONCAT('%', ?, '%'))"
       : '';
     const [rows] = await this.db.execute(
       `SELECT id FROM project_groups
-       WHERE TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause}`,
+       WHERE supervisor_user_id = ?
+          OR (supervisor_user_id IS NULL AND (TRIM(COALESCE(supervisor_name, '')) = ? OR supervisor_name LIKE CONCAT('%', ?, '%') ${bothClause}))`,
       params
     );
     return (rows as any[]).map((r: any) => r.id);

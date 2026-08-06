@@ -53,7 +53,7 @@ export class EvaluationService {
     return `${(u.first_name || '').trim()} ${(u.last_name || '').trim()}`.replace(/\s+/g, ' ').trim();
   }
 
-  /** Get groups with projects for supervisor - matches by supervisor_name (same as my-groups) */
+  /** Get groups with projects for supervisor - prefers supervisor_user_id, falls back to name (same as my-groups) */
   async getGroupsWithProjects(userId: number) {
     const fullName = await this.getSupervisorFullName(userId);
     if (!fullName) return [];
@@ -62,9 +62,9 @@ export class EvaluationService {
       `SELECT pg.id as group_id, pg.name as group_name, p.id as project_id, p.title as project_title
        FROM project_groups pg
        LEFT JOIN projects p ON p.group_id = pg.id
-       WHERE TRIM(COALESCE(pg.supervisor_name, '')) = ?
+       WHERE (pg.supervisor_user_id = ? OR (pg.supervisor_user_id IS NULL AND TRIM(COALESCE(pg.supervisor_name, '')) = ?))
        AND p.id IS NOT NULL`,
-      [fullName]
+      [userId, fullName]
     );
     const groups = groupRows as any[];
 
@@ -218,11 +218,11 @@ export class EvaluationService {
         ? " OR (pg.supervisor_name LIKE CONCAT('%', ?, '%') AND pg.supervisor_name LIKE CONCAT('%', ?, '%'))"
         : '';
     const supervisorIdParam = supervisorId ?? -1;
-    const params: any[] = [supervisorIdParam, supervisorIdParam, fullName, fullName];
+    const params: any[] = [supervisorIdParam, userId, supervisorIdParam, fullName, fullName];
     if (firstName && lastName) params.push(firstName, lastName);
 
     const [rows] = await this.db.execute(
-      `SELECT 
+      `SELECT
          u.id as student_user_id,
          CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')) as student_name,
          s.matric_number,
@@ -234,12 +234,13 @@ export class EvaluationService {
          se.evaluated_at
        FROM project_groups pg
        INNER JOIN group_members gm ON gm.group_id = pg.id
-       INNER JOIN users u 
+       INNER JOIN users u
          ON u.role = 'student' AND COALESCE(u.is_active, TRUE) = TRUE
        INNER JOIN students s
          ON s.user_id = u.id
         AND (
-          s.matric_number = gm.matric_number
+          gm.student_user_id = u.id
+          OR s.matric_number = gm.matric_number
           OR TRIM(COALESCE(s.matric_number, '')) = TRIM(COALESCE(gm.matric_number, ''))
           OR REPLACE(COALESCE(s.matric_number, ''), '/', '') = REPLACE(COALESCE(gm.matric_number, ''), '/', '')
           OR TRIM(COALESCE(gm.student_name, '')) = TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')))
@@ -247,10 +248,11 @@ export class EvaluationService {
           OR gm.student_name LIKE CONCAT('%', COALESCE(u.last_name, ''), '%', COALESCE(u.first_name, ''), '%')
         )
        LEFT JOIN projects p ON p.group_id = pg.id
-       LEFT JOIN student_evaluations se 
+       LEFT JOIN student_evaluations se
          ON se.student_user_id = u.id AND se.supervisor_id = ?
        WHERE (
-         pg.supervisor_id = ?
+         pg.supervisor_user_id = ?
+         OR pg.supervisor_id = ?
          OR TRIM(COALESCE(pg.supervisor_name, '')) = ?
          OR pg.supervisor_name LIKE CONCAT('%', ?, '%')
          ${bothClause}
