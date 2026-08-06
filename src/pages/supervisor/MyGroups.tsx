@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Button } from '../../components/UI/Button';
-import { Card } from '../../components/UI/Card';
 import { apiClient } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Users, MessageSquare, FileText, Star, Clock, CheckCircle, AlertCircle, CalendarDays } from 'lucide-react';
 import { stripGroupName, stripProjectTitle, sortGroupsByNumber } from '../../utils/supervisorDisplay';
@@ -47,7 +45,6 @@ const formatCgpa = (gpa: number | string | undefined) => {
 };
 
 export function MyGroups() {
-  const { user, supervisor } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [groups, setGroups] = useState<SupervisorGroup[]>([]);

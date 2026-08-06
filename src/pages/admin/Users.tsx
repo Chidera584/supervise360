@@ -4,7 +4,7 @@ import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { apiClient } from '../../lib/api';
 import { useDepartment } from '../../contexts/DepartmentContext';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Users as UsersIcon, UserPlus, Edit, Trash2, Mail, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TEAL = '#006D6D';
@@ -133,8 +133,6 @@ export function Users() {
   }, [scopeFiltered]);
 
   const maxDept = Math.max(...deptBalance.map(([, c]) => c), 1);
-
-  const inactiveInScope = scopeFiltered.filter((u) => !isUserActive(u)).length;
 
   const exportCsv = () => {
     const headers = ['first_name', 'last_name', 'email', 'role', 'department', 'active'];

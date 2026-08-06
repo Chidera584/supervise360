@@ -90,7 +90,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
                 // Note: Tier classification is done by backend using current thresholds
                 // This is just for display of legacy data - actual classification happens server-side
                 // We'll use a generic tier here since we don't have access to current thresholds
-                let tier = 'LOW'; // Default, will be updated by backend during group formation
+                const tier = 'LOW'; // Default, will be updated by backend during group formation
                 return { name, gpa, tier, matricNumber: 'N/A' };
               }
               return { name: memberStr, gpa: 0, tier: 'LOW', matricNumber: 'N/A' };
@@ -261,7 +261,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
                 const gpa = parseFloat(match[2]);
                 // Note: Tier is classified by backend using current thresholds
                 // This is just for legacy display - actual classification happens server-side
-                let tier = 'LOW'; // Default, will be updated by backend during group formation
+                const tier = 'LOW'; // Default, will be updated by backend during group formation
                 
                 return { name, gpa, tier, matricNumber: 'N/A' };
               }

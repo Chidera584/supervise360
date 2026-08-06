@@ -28,7 +28,7 @@ interface GroupData {
 }
 
 export function MyGroup() {
-  const { user, student } = useAuth();
+  const { student } = useAuth();
   const [groupData, setGroupData] = useState<GroupData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

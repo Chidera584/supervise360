@@ -142,7 +142,9 @@ export function DefenseScheduling() {
     setError(null);
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch {}
+    } catch {
+      // localStorage may be unavailable (e.g. private browsing) - safe to ignore
+    }
     try {
       await apiClient.clearDefenseAllocations();
     } catch (e) {

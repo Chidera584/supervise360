@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
@@ -139,7 +139,6 @@ export function Evaluations() {
 
   useEffect(() => {
     loadEvaluations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-select first relevant pending student once (from navigation state).

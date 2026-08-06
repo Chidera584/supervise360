@@ -132,10 +132,10 @@ export class GroupFormationService {
     
     return rawData.map((student, index) => {
       // Handle both raw CSV data and pre-processed frontend data
-      let name, gpa, studentId, studentDepartment;
-      
+      let gpa;
+
       // Extract name - try multiple variations
-      name = student.name || student.Name || student.NAME || 
+      const name = student.name || student.Name || student.NAME ||
              student.student_name || student.StudentName || student['Student Name'];
       
       // Extract GPA - try multiple variations and log what we find
@@ -177,12 +177,12 @@ export class GroupFormationService {
       }
       
       // Extract student ID (matric number) - support various CSV column names
-      studentId = student.matricNumber || student.matric_number || student.MatricNumber ||
+      const studentId = student.matricNumber || student.matric_number || student.MatricNumber ||
                   student.Matric_Number || student['Matric Number'] || student['matric_number'] ||
                   student.student_id || student.StudentId || student.ID || student.id;
-      
+
       // Extract department from student data, fallback to function parameter, then default
-      studentDepartment = student.department || student.Department || student.DEPARTMENT || departmentParam || 'Computer Science';
+      const studentDepartment = student.department || student.Department || student.DEPARTMENT || departmentParam || 'Computer Science';
       
       // Classify tier using dynamic thresholds (fetched fresh from database)
       const tier = this.classifyGpaTier(gpa, thresholds);

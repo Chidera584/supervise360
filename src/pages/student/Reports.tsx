@@ -3,7 +3,6 @@ import { MainLayout } from '../../components/Layout/MainLayout';
 import { Button } from '../../components/UI/Button';
 import { apiClient } from '../../lib/api';
 import { useGroups } from '../../contexts/GroupsContext';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   Upload,
   FileText,
@@ -32,7 +31,6 @@ const STEPS = [
 ];
 
 export function Reports() {
-  const { student } = useAuth();
   const { syncWithDatabase } = useGroups();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -366,7 +364,7 @@ export function Reports() {
                     >
                       {studentGroup.supervisor
                         .split(' ')
-                        .map((n) => n[0])
+                        .map((n: string) => n[0])
                         .join('')
                         .slice(0, 2)}
                     </div>

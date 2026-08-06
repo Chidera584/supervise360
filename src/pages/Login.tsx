@@ -34,7 +34,7 @@ function AuthHeader({ onBackToRoleSelection }: { onBackToRoleSelection: () => vo
   );
 }
 
-function RoleBadge({ title, subtitle, selectedRole }: { title: string; subtitle: string; selectedRole: 'student' | 'supervisor' }) {
+function RoleBadge({ title, subtitle }: { title: string; subtitle: string; selectedRole: 'student' | 'supervisor' }) {
   return (
     <div className="text-center mb-8 animate-fade-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
       <img

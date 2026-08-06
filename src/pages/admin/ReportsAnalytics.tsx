@@ -6,25 +6,13 @@ import {
   FileDown,
   LayoutGrid,
   FolderKanban,
-  Award,
-  FileText,
-  CheckCircle2,
   Loader2,
-  Archive,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 
 const TEAL = '#006D6D';
 const BROWN = '#92400e';
-
-type ReportRow = {
-  id: string;
-  type: string;
-  generatedBy: string;
-  status: 'READY' | 'PROCESSING';
-  at: Date;
-};
 
 export function ReportsAnalytics() {
   const [stats, setStats] = useState<any>(null);
@@ -50,7 +38,6 @@ export function ReportsAnalytics() {
 
   const sp = stats?.systemPerformance || {};
   const totalGroups = sp.totalGroups ?? 0;
-  const totalProjects = sp.totalProjects ?? 0;
   const projectsSubmitted = sp.projectsSubmitted ?? 0;
   const totalReports = sp.totalReports ?? 0;
   const reviewedReports = sp.reviewedReports ?? 0;
@@ -72,51 +59,6 @@ export function ReportsAnalytics() {
   }, [stats]);
 
   const maxLoad = Math.max(...deptWorkload.map((d) => d.load), 1);
-
-  const recentReports = useMemo<ReportRow[]>(() => {
-    const now = Date.now();
-    return [
-      {
-        id: '1',
-        type: 'Group formation summary',
-        generatedBy: 'System',
-        status: 'READY',
-        at: new Date(now - 3600000),
-      },
-      {
-        id: '2',
-        type: 'Supervisor workload snapshot',
-        generatedBy: 'System',
-        status: 'READY',
-        at: new Date(now - 86400000),
-      },
-      {
-        id: '3',
-        type: 'Report completion digest',
-        generatedBy: 'System',
-        status: totalReports > reviewedReports ? 'PROCESSING' : 'READY',
-        at: new Date(now - 7200000),
-      },
-      {
-        id: '4',
-        type: 'Project pipeline overview',
-        generatedBy: 'System',
-        status: 'READY',
-        at: new Date(now - 172800000),
-      },
-    ];
-  }, [totalReports, reviewedReports]);
-
-  const filteredReports = useMemo(() => {
-    const q = headerSearch.trim().toLowerCase();
-    if (!q) return recentReports;
-    return recentReports.filter(
-      (r) =>
-        r.type.toLowerCase().includes(q) ||
-        r.generatedBy.toLowerCase().includes(q) ||
-        r.status.toLowerCase().includes(q)
-    );
-  }, [recentReports, headerSearch]);
 
   const donutRadius = 44;
   const donutCirc = 2 * Math.PI * donutRadius;

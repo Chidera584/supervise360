@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { apiClient } from '../lib/api';
 
@@ -56,14 +56,10 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
 
   const getUserDepartment = (): Department => {
     if (!user?.email) return 'Software Engineering';
-    if (user.role === 'admin' || user.role === 'system_admin') {
-      return (user as any).department || 'Software Engineering';
-    }
     return (user as any).department || 'Software Engineering';
   };
 
   const userDepartment = getUserDepartment();
-  const isSystemAdmin = managesAll || (adminDepartments !== null && adminDepartments.length === 0);
 
   const canAccessDepartment = (department: string): boolean => {
     if (user?.role === 'admin') {
