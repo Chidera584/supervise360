@@ -7,6 +7,7 @@ import {
   ensureSupervisionMeetingsColumns,
 } from '../services/schemaFixService';
 import { addIdLinkingColumns } from './migrations/006_id_linking_columns';
+import { dropStudentGroupsTable } from './migrations/007_drop_student_groups';
 
 /**
  * Ordered, versioned migrations - each runs exactly once (tracked in `schema_migrations`) and a
@@ -53,5 +54,12 @@ export const migrations: Migration[] = [
       'Add group_members.student_user_id and project_groups.supervisor_user_id so membership ' +
       'and supervisor assignment can be resolved by id instead of free-text name matching',
     up: addIdLinkingColumns,
+  },
+  {
+    id: '007_drop_student_groups',
+    description:
+      'Drop the unused student_groups table and students.group_id column; repoint messages.group_id ' +
+      'at project_groups (the table the app actually uses)',
+    up: dropStudentGroupsTable,
   },
 ];
