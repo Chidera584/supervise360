@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import { logger } from './logger';
 
 // Import database initialization
 import { initializeDatabase } from './config/database';
@@ -42,7 +43,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // tokens are forgeable (or every request silently 403s the moment jwt.verify/jwt.sign is
 // first called) - better to refuse to boot with a clear message than fail unpredictably later.
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-  console.error(
+  logger.error(
     '✖ JWT_SECRET is missing or too short (must be at least 32 characters). ' +
       'Set it in backend/.env. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"'
   );
@@ -148,7 +149,7 @@ async function startServer() {
     // boot, failures here are logged and skipped rather than aborting startup).
     const backfilled = await backfillProjectsForGroups(db);
     if (backfilled > 0) {
-      console.log(`✅ Backfilled ${backfilled} project(s) for groups`);
+      logger.info(`✅ Backfilled ${backfilled} project(s) for groups`);
     }
     await pruneDeprecatedDepartments(db);
 
@@ -157,7 +158,7 @@ async function startServer() {
       const studentLinkResult = await idLinkingService.backfillStudentUserIds();
       const supervisorLinkResult = await idLinkingService.backfillSupervisorUserIds();
       if (studentLinkResult.matched > 0 || supervisorLinkResult.matched > 0) {
-        console.log(
+        logger.info(
           `✅ ID-linked ${studentLinkResult.matched}/${studentLinkResult.total} student(s), ` +
             `${supervisorLinkResult.matched}/${supervisorLinkResult.total} supervisor(s)`
         );
@@ -165,13 +166,13 @@ async function startServer() {
       const stillUnmatchedStudents = studentLinkResult.total - studentLinkResult.matched;
       const stillUnmatchedSupervisors = supervisorLinkResult.total - supervisorLinkResult.matched;
       if (stillUnmatchedStudents > 0 || stillUnmatchedSupervisors > 0) {
-        console.warn(
+        logger.warn(
           `⚠️  ${stillUnmatchedStudents} student(s) and ${stillUnmatchedSupervisors} supervisor(s) ` +
             'could not be confidently ID-linked (ambiguous or no match) - see GET /api/admin/unmatched-links'
         );
       }
     } catch (err) {
-      console.warn('ID-linking backfill failed (non-fatal):', (err as Error).message);
+      logger.warn('ID-linking backfill failed (non-fatal):', (err as Error).message);
     }
 
     // Create and register routes that need database connection
@@ -270,7 +271,7 @@ async function startServer() {
         }));
         res.json({ success: true, data: result });
       } catch (err) {
-        console.error('[my-groups]', err);
+        logger.error('[my-groups]', err);
         res.status(500).json({ success: false, message: 'Failed to fetch your groups' });
       }
     });
@@ -289,7 +290,7 @@ async function startServer() {
         const count = await new NotificationService(db).getUnreadCount(userId);
         res.json({ success: true, data: count });
       } catch (error) {
-        console.error('Unread count error:', error);
+        logger.error('Unread count error:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
       }
     });
@@ -325,7 +326,7 @@ async function startServer() {
         res.json({ success: true, data: result });
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Allocation failed';
-        console.error('Defense scheduling allocate error:', error);
+        logger.error('Defense scheduling allocate error:', error);
         res.status(400).json({ success: false, message: msg });
       }
     });
@@ -340,7 +341,7 @@ async function startServer() {
 
     // Global error handler
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('Global error handler:', err);
+      logger.error('Global error handler:', err);
 
       res.status(err.status || 500).json({
         success: false,
@@ -353,52 +354,52 @@ async function startServer() {
     // Catches the exact class of bug that previously shipped the settings router and
     // the destructive groups/supervisors routes with no auth check at all.
     assertAllRoutesAuthenticated((app as unknown as { _router: { stack: unknown[] } })._router.stack);
-    console.log('✅ Startup auth assertion passed: every non-public route requires authenticateToken');
+    logger.info('✅ Startup auth assertion passed: every non-public route requires authenticateToken');
 
     // Start server (capture instance so we can handle errors like EADDRINUSE)
     const server = app.listen(Number(PORT), () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-      console.log(`📁 Upload directory: ${process.env.UPLOAD_DIR || 'uploads'}`);
-      console.log(`📧 Email: ${process.env.SMTP_HOST && process.env.SMTP_USER ? 'configured' : 'NOT configured (add SMTP_* to .env)'}`);
+      logger.info(`🚀 Server running on port ${PORT}`);
+      logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+      logger.info(`📁 Upload directory: ${process.env.UPLOAD_DIR || 'uploads'}`);
+      logger.info(`📧 Email: ${process.env.SMTP_HOST && process.env.SMTP_USER ? 'configured' : 'NOT configured (add SMTP_* to .env)'}`);
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`\n🔗 API Endpoints:`);
-        console.log(`   Health Check: http://localhost:${PORT}/health`);
-        console.log(`   Auth: http://localhost:${PORT}/api/auth`);
-        console.log(`   Users: http://localhost:${PORT}/api/users`);
-        console.log(`   Groups: http://localhost:${PORT}/api/groups`);
-        console.log(`   Supervisors: http://localhost:${PORT}/api/supervisors`);
-        console.log(`   Settings: http://localhost:${PORT}/api/settings`);
+        logger.info(`\n🔗 API Endpoints:`);
+        logger.info(`   Health Check: http://localhost:${PORT}/health`);
+        logger.info(`   Auth: http://localhost:${PORT}/api/auth`);
+        logger.info(`   Users: http://localhost:${PORT}/api/users`);
+        logger.info(`   Groups: http://localhost:${PORT}/api/groups`);
+        logger.info(`   Supervisors: http://localhost:${PORT}/api/supervisors`);
+        logger.info(`   Settings: http://localhost:${PORT}/api/settings`);
       }
     });
 
     // Handle server errors explicitly to provide clearer guidance
     server.on('error', (err: any) => {
       if (err && err.code === 'EADDRINUSE') {
-        console.error(`✖ Port ${PORT} is already in use. Kill the process using the port or set a different PORT environment variable.`);
-        console.error('  Example (PowerShell): netstat -ano | findstr :5000  then taskkill /PID <pid> /F');
+        logger.error(`✖ Port ${PORT} is already in use. Kill the process using the port or set a different PORT environment variable.`);
+        logger.error('  Example (PowerShell): netstat -ano | findstr :5000  then taskkill /PID <pid> /F');
         process.exit(1);
       }
 
-      console.error('Server error:', err);
+      logger.error('Server error:', err);
       process.exit(1);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
 }
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+  logger.info('SIGTERM received, shutting down gracefully');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
+  logger.info('SIGINT received, shutting down gracefully');
   process.exit(0);
 });
 

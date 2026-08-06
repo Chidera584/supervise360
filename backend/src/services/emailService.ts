@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../logger';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@supervise360.com';
@@ -20,16 +21,16 @@ function getLogoPath(): string | null {
 }
 
 if (getLogoPath()) {
-  console.log('📧 Email logo ready: backend/assets/logo-email.png');
+  logger.info('📧 Email logo ready: backend/assets/logo-email.png');
 } else {
-  console.warn('📧 Email logo NOT found - add backend/assets/logo-email.png for logo in emails');
+  logger.warn('📧 Email logo NOT found - add backend/assets/logo-email.png for logo in emails');
 }
 
 /** Logo attachment for nodemailer (CID embedding - works in all email clients) */
 function getLogoAttachment(): { filename: string; content: Buffer; cid: string } | null {
   const logoPath = getLogoPath();
   if (!logoPath) {
-    console.warn('📧 Email logo not found at backend/assets/logo-email.png - logo will not appear in emails');
+    logger.warn('📧 Email logo not found at backend/assets/logo-email.png - logo will not appear in emails');
     return null;
   }
   try {
@@ -119,7 +120,7 @@ function getTransporter(): nodemailer.Transporter | null {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) {
-    console.warn('⚠️ Email not configured: SMTP_HOST, SMTP_USER, SMTP_PASS required');
+    logger.warn('⚠️ Email not configured: SMTP_HOST, SMTP_USER, SMTP_PASS required');
     return null;
   }
   transporter = nodemailer.createTransport({
@@ -172,7 +173,7 @@ export async function sendEmailWithError(
   } catch (err: any) {
     const msg = err?.message || String(err);
     const smtp = err?.response ? ` | SMTP: ${err.response}` : '';
-    console.error('📧 Email send error:', msg, smtp);
+    logger.error('📧 Email send error:', msg, smtp);
     return { ok: false, error: msg + smtp };
   }
 }

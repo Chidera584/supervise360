@@ -4,6 +4,7 @@
  */
 import { Pool } from 'mysql2/promise';
 import { NotificationService } from './notificationService';
+import { logger } from '../logger';
 import {
   sendGroupingAndSupervisorEmail,
   sendSupervisorFeedbackEmail,
@@ -45,7 +46,7 @@ export async function notifyGroupingAndSupervisor(
     });
     if (isEmailConfigured() && studentEmails[i]) {
       sendGroupingAndSupervisorEmail(studentEmails[i], studentNames[i], groupNumber, supervisorName).catch((err) => {
-        console.error('📧 Grouping email failed:', err?.message || err);
+        logger.error('📧 Grouping email failed:', err?.message || err);
       });
     }
   }
@@ -84,7 +85,7 @@ export async function notifySupervisorFeedback(
       approved,
       requiredChanges
     ).catch((err) => {
-      console.error('📧 Supervisor feedback email failed:', err?.message || err);
+      logger.error('📧 Supervisor feedback email failed:', err?.message || err);
     });
   }
 }
@@ -111,7 +112,7 @@ export async function notifySubmissionConfirmation(
   });
   if (isEmailConfigured() && studentEmail) {
     sendSubmissionConfirmationEmail(studentEmail, studentName, reportTitle, fileName, timestamp).catch((err) => {
-      console.error('📧 Submission confirmation email failed:', err?.message || err);
+      logger.error('📧 Submission confirmation email failed:', err?.message || err);
     });
   }
 }
@@ -138,7 +139,7 @@ export async function notifySupervisorMessage(
   });
   if (isEmailConfigured() && recipientEmail) {
     sendSupervisorMessageEmail(recipientEmail, recipientName, senderName, messagePreview, messageSubject).catch((err) => {
-      console.error('📧 Supervisor message email failed:', err?.message || err);
+      logger.error('📧 Supervisor message email failed:', err?.message || err);
     });
   }
 }
@@ -164,7 +165,7 @@ export async function notifyNewStudentAssignment(
   });
   if (isEmailConfigured() && supervisorEmail) {
     sendNewStudentAssignmentEmail(supervisorEmail, supervisorName, studentCount, groupCount).catch((err) => {
-      console.error('📧 New student assignment email failed:', err?.message || err);
+      logger.error('📧 New student assignment email failed:', err?.message || err);
     });
   }
 }
@@ -191,7 +192,7 @@ export async function notifyStudentSubmission(
   });
   if (isEmailConfigured() && supervisorEmail) {
     sendStudentSubmissionEmail(supervisorEmail, supervisorName, studentName, submissionTitle, fileName).catch((err) => {
-      console.error('📧 Student submission email failed:', err?.message || err);
+      logger.error('📧 Student submission email failed:', err?.message || err);
     });
   }
 }
@@ -218,7 +219,7 @@ export async function notifyStudentMessage(
   });
   if (isEmailConfigured() && recipientEmail) {
     sendStudentMessageEmail(recipientEmail, recipientName, senderName, messagePreview, messageSubject).catch((err) => {
-      console.error('📧 Student message email failed:', err?.message || err);
+      logger.error('📧 Student message email failed:', err?.message || err);
     });
   }
 }
@@ -246,7 +247,7 @@ export async function notifyUnassignedStudentsAlert(
     });
     if (isEmailConfigured() && adminEmails[i]) {
       sendUnassignedStudentsAlertEmail(adminEmails[i], department, studentList, count).catch((err) => {
-        console.error('📧 Unassigned students alert email failed:', err?.message || err);
+        logger.error('📧 Unassigned students alert email failed:', err?.message || err);
       });
     }
   }
@@ -276,7 +277,7 @@ export async function notifyDefenseScheduled(
   });
   if (isEmailConfigured() && studentEmail) {
     sendDefenseScheduledEmail(studentEmail, studentName, venue, assessors, groupName).catch((err) => {
-      console.error('📧 Defense scheduled email failed:', err?.message || err);
+      logger.error('📧 Defense scheduled email failed:', err?.message || err);
     });
   }
 }
@@ -289,7 +290,7 @@ export async function sendWelcomeEmailOnly(
 ): Promise<void> {
   if (isEmailConfigured()) {
     sendWelcomeEmail(email, firstName, email, role, tempPassword).catch((err) => {
-      console.error('📧 Welcome email failed:', err?.message || err);
+      logger.error('📧 Welcome email failed:', err?.message || err);
     });
   }
 }
@@ -302,7 +303,7 @@ export async function sendPasswordResetEmailOnly(
 ): Promise<void> {
   if (isEmailConfigured()) {
     sendPasswordResetEmail(email, firstName, resetLink, expiryMinutes).catch((err) => {
-      console.error('📧 Password reset email failed:', err?.message || err);
+      logger.error('📧 Password reset email failed:', err?.message || err);
     });
   }
 }
@@ -315,7 +316,7 @@ export async function sendProfileUpdateEmailOnly(
 ): Promise<void> {
   if (isEmailConfigured()) {
     sendProfileUpdateConfirmationEmail(email, firstName, changes, timestamp).catch((err) => {
-      console.error('📧 Profile update email failed:', err?.message || err);
+      logger.error('📧 Profile update email failed:', err?.message || err);
     });
   }
 }
@@ -330,7 +331,7 @@ export async function sendSessionSecurityAlertOnly(
 ): Promise<void> {
   if (isEmailConfigured()) {
     sendSessionSecurityAlertEmail(email, firstName, deviceInfo, location, time, secureAccountLink).catch((err) => {
-      console.error('📧 Session security alert email failed:', err?.message || err);
+      logger.error('📧 Session security alert email failed:', err?.message || err);
     });
   }
 }

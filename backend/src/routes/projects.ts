@@ -4,6 +4,7 @@ import { authenticateToken, requireStudent, requireSupervisor } from '../middlew
 import { ProjectService } from '../services/projectService';
 import { GroupFormationService } from '../services/groupFormationService';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ export function createProjectsRouter(db: Pool) {
       const project = await projectService.getProjectByGroupId(groupId);
       res.json({ success: true, data: project });
     } catch (error) {
-      console.error('My project error:', error);
+      logger.error('My project error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch project' });
     }
   });
@@ -55,7 +56,7 @@ export function createProjectsRouter(db: Pool) {
 
       res.json({ success: true, message: 'Project submitted', data: { id: result.projectId } });
     } catch (error: any) {
-      console.error('Submit project error:', error);
+      logger.error('Submit project error:', error);
       const msg = error?.message || String(error);
       const isSchemaError = msg.toLowerCase().includes('foreign key') || msg.includes("doesn't exist");
       res.status(500).json({
@@ -80,7 +81,7 @@ export function createProjectsRouter(db: Pool) {
       }
       res.json({ success: true, message: 'Project proposal cleared' });
     } catch (error) {
-      console.error('Clear project error:', error);
+      logger.error('Clear project error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear project' });
     }
   });
@@ -100,7 +101,7 @@ export function createProjectsRouter(db: Pool) {
       }
       res.json({ success: true, message: 'Project updated' });
     } catch (error) {
-      console.error('Update project error:', error);
+      logger.error('Update project error:', error);
       res.status(500).json({ success: false, message: 'Failed to update project' });
     }
   });
@@ -113,7 +114,7 @@ export function createProjectsRouter(db: Pool) {
       const projects = await projectService.getPendingProjectsForSupervisor(userId);
       res.json({ success: true, data: projects });
     } catch (error) {
-      console.error('Pending projects error:', error);
+      logger.error('Pending projects error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch pending projects' });
     }
   });
@@ -126,7 +127,7 @@ export function createProjectsRouter(db: Pool) {
       const projects = await projectService.getAllProjectsForSupervisor(userId);
       res.json({ success: true, data: projects });
     } catch (error) {
-      console.error('All projects error:', error);
+      logger.error('All projects error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch project proposals' });
     }
   });
@@ -142,7 +143,7 @@ export function createProjectsRouter(db: Pool) {
       await projectService.approveProject(projectId);
       res.json({ success: true, message: 'Project approved' });
     } catch (error) {
-      console.error('Approve project error:', error);
+      logger.error('Approve project error:', error);
       res.status(500).json({ success: false, message: 'Failed to approve project' });
     }
   });
@@ -162,7 +163,7 @@ export function createProjectsRouter(db: Pool) {
       await projectService.rejectProject(projectId, reason.trim());
       res.json({ success: true, message: 'Project rejected' });
     } catch (error) {
-      console.error('Reject project error:', error);
+      logger.error('Reject project error:', error);
       res.status(500).json({ success: false, message: 'Failed to reject project' });
     }
   });

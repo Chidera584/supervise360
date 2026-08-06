@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
+import { logger } from '../logger';
 
 // Must load before pool is created (this module is imported early). Same roots as server.ts.
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
@@ -37,11 +38,11 @@ export { pool };
 export async function testConnection(): Promise<boolean> {
   try {
     const connection = await pool.getConnection();
-    console.log('✅ Database connected successfully');
+    logger.info('✅ Database connected successfully');
     connection.release();
     return true;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    logger.error('❌ Database connection failed:', error);
     return false;
   }
 }
@@ -52,7 +53,7 @@ export async function executeQuery(query: string, params: any[] = []): Promise<{
     const [results] = await pool.execute(query, params);
     return { success: true, data: results };
   } catch (error) {
-    console.error('Database query error:', error);
+    logger.error('Database query error:', error);
     return { success: false, error: error };
   }
 }
@@ -110,7 +111,7 @@ export async function deleteRecord(table: string, whereClause: string, wherePara
 export async function initializeDatabase(): Promise<mysql.Pool> {
   const isConnected = await testConnection();
   if (!isConnected) {
-    console.error('Failed to connect to database. Please check your configuration.');
+    logger.error('Failed to connect to database. Please check your configuration.');
     process.exit(1);
   }
   return pool;

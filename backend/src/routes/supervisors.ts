@@ -3,6 +3,7 @@ import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireAdmin, requireSupervisor } from '../middleware/auth';
 import { SupervisorAssignmentService } from '../services/supervisorAssignmentService';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 import {
   notifyGroupingAndSupervisor,
   notifyNewStudentAssignment,
@@ -35,7 +36,7 @@ export function createSupervisorsRouter(db: Pool) {
 
   // Get supervisor's assigned groups with real data (project, reports, members)
   router.get('/my-groups', authenticateToken, requireSupervisor, async (req: AuthenticatedRequest, res) => {
-    console.log('[my-groups] Request received for user:', req.user?.id);
+    logger.info('[my-groups] Request received for user:', req.user?.id);
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
@@ -47,7 +48,7 @@ export function createSupervisorsRouter(db: Pool) {
       const user = (userRows as any[])[0];
       const fullName = user ? `${(user.first_name || '')} ${(user.last_name || '')}`.trim().replace(/\s+/g, ' ') : '';
       if (!fullName) {
-        console.log('[my-groups] No user or name for userId:', userId);
+        logger.info('[my-groups] No user or name for userId:', userId);
         return res.json({ success: true, data: [] });
       }
 
@@ -121,10 +122,10 @@ export function createSupervisorsRouter(db: Pool) {
         };
       }));
 
-      console.log('[my-groups] Returning', result.length, 'groups for', fullName);
+      logger.info('[my-groups] Returning', result.length, 'groups for', fullName);
       res.json({ success: true, data: result });
     } catch (error) {
-      console.error('[my-groups] Error:', error);
+      logger.error('[my-groups] Error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch your groups' });
     }
   });
@@ -185,7 +186,7 @@ export function createSupervisorsRouter(db: Pool) {
         }
       });
     } catch (error) {
-      console.error('Error fetching supervisor workload:', error);
+      logger.error('Error fetching supervisor workload:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to fetch supervisor workload' 
@@ -196,9 +197,9 @@ export function createSupervisorsRouter(db: Pool) {
   // Upload supervisors data
   router.post('/upload', authenticateToken, requireAdmin, async (req, res) => {
     try {
-      console.log('🔍 Supervisor upload endpoint called');
+      logger.info('🔍 Supervisor upload endpoint called');
       const { supervisors } = req.body;
-      console.log('📊 Received supervisors:', supervisors);
+      logger.info('📊 Received supervisors:', supervisors);
       
       if (!supervisors || !Array.isArray(supervisors)) {
         return res.status(400).json({ error: 'Supervisors array is required' });
@@ -233,7 +234,7 @@ export function createSupervisorsRouter(db: Pool) {
             [dept]
           );
           const deleted = (delResult as any).affectedRows || 0;
-          console.log(`🗑️  Cleared ${deleted} existing supervisors for department: ${dept}`);
+          logger.info(`🗑️  Cleared ${deleted} existing supervisors for department: ${dept}`);
         }
 
         // Insert new supervisors
@@ -242,7 +243,7 @@ export function createSupervisorsRouter(db: Pool) {
           const name = (supervisor.name || '').trim();
           const department = (supervisor.department || '').trim();
           if (!name || !department) {
-            console.warn('⚠️  Skipping row with missing name or department:', supervisor);
+            logger.warn('⚠️  Skipping row with missing name or department:', supervisor);
             continue;
           }
           const email = supervisor.email != null ? String(supervisor.email).trim() || null : null;
@@ -262,7 +263,7 @@ export function createSupervisorsRouter(db: Pool) {
         }
 
         await connection.commit();
-        console.log('✅ Successfully uploaded', insertedCount, 'supervisors for departments:', departmentsInUpload.join(', '));
+        logger.info('✅ Successfully uploaded', insertedCount, 'supervisors for departments:', departmentsInUpload.join(', '));
         
         res.json({ 
           success: true, 
@@ -275,7 +276,7 @@ export function createSupervisorsRouter(db: Pool) {
         connection.release();
       }
     } catch (error) {
-      console.error('❌ Error uploading supervisors:', error);
+      logger.error('❌ Error uploading supervisors:', error);
       res.status(500).json({ error: 'Failed to upload supervisors' });
     }
   });
@@ -283,7 +284,7 @@ export function createSupervisorsRouter(db: Pool) {
   // Auto-assign supervisors to groups using ASP-based algorithm
   router.post('/auto-assign', authenticateToken, requireAdmin, async (req, res) => {
     try {
-      console.log('🔍 ASP-based auto-assign supervisors endpoint called');
+      logger.info('🔍 ASP-based auto-assign supervisors endpoint called');
       const department = String(req.body?.department || '').trim();
       const result = await assignmentService.assignSupervisorsToGroups(department || undefined);
 
@@ -299,9 +300,9 @@ export function createSupervisorsRouter(db: Pool) {
         } finally {
           connection.release();
         }
-        console.log(`✅ ${result.assignments.length} groups assigned successfully`);
+        logger.info(`✅ ${result.assignments.length} groups assigned successfully`);
         if (!isEmailConfigured()) {
-          console.warn('📧 Email not configured (SMTP_HOST, SMTP_USER, SMTP_PASS in .env) - no emails will be sent');
+          logger.warn('📧 Email not configured (SMTP_HOST, SMTP_USER, SMTP_PASS in .env) - no emails will be sent');
         }
 
         // Notify students (per group) and aggregate supervisor notifications
@@ -351,17 +352,18 @@ export function createSupervisorsRouter(db: Pool) {
                 studentNames.push(`${u.first_name || ''} ${u.last_name || ''}`.trim() || m.student_name);
               }
             } else {
-              console.warn(`📧 Could not match student for email: ${m.student_name || matric} (matric: ${matric})`);
+              logger.warn(`📧 Could not match student for email: ${m.student_name || matric} (matric: ${matric})`);
             }
           }
 
           if (studentUserIds.length > 0) {
-            console.log(`📧 Notifying ${studentUserIds.length} student(s) for ${a.groupName}: ${studentEmails.join(', ')}`);
+            logger.info(`📧 Notifying ${studentUserIds.length} student(s) for ${a.groupName}`);
+            logger.debug(`📧 Notified student emails for ${a.groupName}:`, studentEmails);
             notifyGroupingAndSupervisor(db, studentUserIds, studentEmails, studentNames, a.groupName, a.supervisorName).catch((err) => {
-              console.error('📧 notifyGroupingAndSupervisor error:', err);
+              logger.error('📧 notifyGroupingAndSupervisor error:', err);
             });
           } else {
-            console.warn(`📧 No students matched for group ${a.groupName} - check matric_number/student_name in group_members vs students table`);
+            logger.warn(`📧 No students matched for group ${a.groupName} - check matric_number/student_name in group_members vs students table`);
           }
 
           let supUser: any = null;
@@ -395,16 +397,16 @@ export function createSupervisorsRouter(db: Pool) {
               supervisorStudentsMap.set(supUser.id, { supUser, studentCount: studentNames.length, groupCount: 1 });
             }
           } else {
-            console.warn(`📧 Could not match supervisor "${a.supervisorName}" to a user - check supervisor_workload names vs users table`);
+            logger.warn(`📧 Could not match supervisor "${a.supervisorName}" to a user - check supervisor_workload names vs users table`);
           }
         }
 
         for (const { supUser, studentCount, groupCount } of supervisorStudentsMap.values()) {
           if (studentCount > 0) {
             const supFullName = `${supUser.first_name || ''} ${supUser.last_name || ''}`.trim();
-            console.log(`📧 Notifying supervisor ${supUser.email} with ${studentCount} student(s), ${groupCount} group(s)`);
+            logger.info(`📧 Notifying supervisor ${supUser.email} with ${studentCount} student(s), ${groupCount} group(s)`);
             notifyNewStudentAssignment(db, supUser.id, supUser.email, supFullName, studentCount, groupCount).catch((err) => {
-              console.error('📧 notifyNewStudentAssignment error:', err);
+              logger.error('📧 notifyNewStudentAssignment error:', err);
             });
           }
         }
@@ -429,7 +431,7 @@ export function createSupervisorsRouter(db: Pool) {
         });
       }
     } catch (error) {
-      console.error('❌ Error auto-assigning supervisors:', error);
+      logger.error('❌ Error auto-assigning supervisors:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to auto-assign supervisors' 
@@ -440,7 +442,7 @@ export function createSupervisorsRouter(db: Pool) {
   // Sync supervisor workload from actual assignments
   router.post('/sync-workload', authenticateToken, requireAdmin, async (req, res) => {
     try {
-      console.log('🔄 Syncing supervisor workload...');
+      logger.info('🔄 Syncing supervisor workload...');
       
       await assignmentService.syncSupervisorWorkload();
       
@@ -449,7 +451,7 @@ export function createSupervisorsRouter(db: Pool) {
         message: 'Supervisor workload synced successfully'
       });
     } catch (error) {
-      console.error('❌ Error syncing workload:', error);
+      logger.error('❌ Error syncing workload:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to sync supervisor workload' 
@@ -463,7 +465,7 @@ export function createSupervisorsRouter(db: Pool) {
       const stats = await assignmentService.getSupervisorWorkloadStats();
       res.json(stats);
     } catch (error) {
-      console.error('❌ Error fetching stats:', error);
+      logger.error('❌ Error fetching stats:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to fetch supervisor statistics' 
@@ -519,7 +521,7 @@ export function createSupervisorsRouter(db: Pool) {
         connection.release();
       }
     } catch (error) {
-      console.error('Error clearing supervisors:', error);
+      logger.error('Error clearing supervisors:', error);
       res.status(500).json({ success: false, error: 'Failed to clear supervisors' });
     }
   });
@@ -544,7 +546,7 @@ export function createSupervisorsRouter(db: Pool) {
       ]);
       res.json({ success: true, message: 'Workload cap updated' });
     } catch (error) {
-      console.error('Workload cap update error:', error);
+      logger.error('Workload cap update error:', error);
       res.status(500).json({ success: false, message: 'Failed to update cap' });
     }
   });
@@ -555,7 +557,7 @@ export function createSupervisorsRouter(db: Pool) {
       const validation = await assignmentService.validateAssignments();
       res.json(validation);
     } catch (error) {
-      console.error('❌ Error validating assignments:', error);
+      logger.error('❌ Error validating assignments:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to validate assignments' 

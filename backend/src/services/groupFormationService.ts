@@ -1,5 +1,6 @@
 import { Pool } from 'mysql2/promise';
 import { tryGroupFormationWithClingo, type SolverMeta } from './asp/aspEncodings';
+import { logger } from '../logger';
 
 export interface StudentData {
   name: string;
@@ -34,7 +35,7 @@ export class GroupFormationService {
   // to ensure it uses the latest threshold settings
   async getGpaTierThresholds(department?: string): Promise<{ high: number; medium: number; low: number }> {
     try {
-      console.log(`🔍 [FRESH FETCH] Fetching GPA thresholds for department: ${department || 'global'}`);
+      logger.info(`🔍 [FRESH FETCH] Fetching GPA thresholds for department: ${department || 'global'}`);
       
       // Try to get department-specific settings first
       if (department) {
@@ -59,21 +60,21 @@ export class GroupFormationService {
             // Only proceed if all values are valid numbers
             if (high !== null && !isNaN(high) && medium !== null && !isNaN(medium) && low !== null && !isNaN(low)) {
               const thresholds = { high, medium, low };
-              console.log(`✅ [DEPARTMENT] Using department-specific thresholds for ${department}:`, thresholds);
+              logger.info(`✅ [DEPARTMENT] Using department-specific thresholds for ${department}:`, thresholds);
               return thresholds;
             } else {
-              console.log(`⚠️  Department ${department} has invalid threshold values, falling back to global`);
+              logger.info(`⚠️  Department ${department} has invalid threshold values, falling back to global`);
             }
           } else {
-            console.log(`ℹ️  Department ${department} exists but doesn't use custom thresholds, falling back to global`);
+            logger.info(`ℹ️  Department ${department} exists but doesn't use custom thresholds, falling back to global`);
           }
         } else {
-          console.log(`ℹ️  No department settings found for ${department}, using global thresholds`);
+          logger.info(`ℹ️  No department settings found for ${department}, using global thresholds`);
         }
       }
 
       // Fall back to global settings - ALWAYS fetch fresh from database
-      console.log('📊 [FRESH FETCH] Fetching global thresholds from system_settings...');
+      logger.info('📊 [FRESH FETCH] Fetching global thresholds from system_settings...');
       const [globalRows] = await this.db.execute(
         `SELECT setting_key, setting_value 
          FROM system_settings 
@@ -93,21 +94,21 @@ export class GroupFormationService {
 
       // Validate that we have all three thresholds from database
       if (thresholds.high !== undefined && thresholds.medium !== undefined && thresholds.low !== undefined) {
-        console.log(`✅ [GLOBAL] Using global thresholds from database:`, thresholds);
+        logger.info(`✅ [GLOBAL] Using global thresholds from database:`, thresholds);
         return thresholds as { high: number; medium: number; low: number };
       } else {
-        console.error(`❌ [ERROR] Missing threshold values in database. Found:`, thresholds);
-        console.error(`   This should not happen if database is properly initialized.`);
+        logger.error(`❌ [ERROR] Missing threshold values in database. Found:`, thresholds);
+        logger.error(`   This should not happen if database is properly initialized.`);
         // Only use defaults if database query failed or returned incomplete data
         const defaults = { high: 3.80, medium: 3.30, low: 0.00 };
-        console.warn(`⚠️  Using fallback defaults:`, defaults);
+        logger.warn(`⚠️  Using fallback defaults:`, defaults);
         return defaults;
       }
     } catch (error) {
-      console.error('❌ [ERROR] Exception fetching GPA thresholds:', error);
+      logger.error('❌ [ERROR] Exception fetching GPA thresholds:', error);
       // Only use defaults on actual error
       const defaults = { high: 3.80, medium: 3.30, low: 0.00 };
-      console.warn(`⚠️  Using fallback defaults due to error:`, defaults);
+      logger.warn(`⚠️  Using fallback defaults due to error:`, defaults);
       return defaults;
     }
   }
@@ -121,13 +122,13 @@ export class GroupFormationService {
 
   // Process uploaded student data
   async processStudentData(rawData: any[], departmentParam?: string): Promise<StudentData[]> {
-    console.log('🔍 [PROCESS STUDENTS] Processing student data. Sample student object:', rawData[0]);
-    console.log('🔍 [PROCESS STUDENTS] Available keys in first student:', Object.keys(rawData[0] || {}));
-    console.log('🔍 [PROCESS STUDENTS] Department parameter:', departmentParam || 'not provided');
+    logger.debug('🔍 [PROCESS STUDENTS] Processing student data. Sample student object:', rawData[0]);
+    logger.info('🔍 [PROCESS STUDENTS] Available keys in first student:', Object.keys(rawData[0] || {}));
+    logger.info('🔍 [PROCESS STUDENTS] Department parameter:', departmentParam || 'not provided');
     
     // Get thresholds for this department - use the parameter passed to function
     const thresholds = await this.getGpaTierThresholds(departmentParam);
-    console.log(`📊 [PROCESS STUDENTS] Using GPA thresholds for ${departmentParam || 'global'}:`, thresholds);
+    logger.info(`📊 [PROCESS STUDENTS] Using GPA thresholds for ${departmentParam || 'global'}:`, thresholds);
     
     return rawData.map((student, index) => {
       // Handle both raw CSV data and pre-processed frontend data
@@ -144,34 +145,34 @@ export class GroupFormationService {
                        student['GPA'] || student['CGPA'] || student['Grade'];
       
       if (index === 0) {
-        console.log('🔍 First student GPA extraction:');
-        console.log('   - student.gpa:', student.gpa);
-        console.log('   - student.GPA:', student.GPA);
-        console.log('   - student.cgpa:', student.cgpa);
-        console.log('   - student.CGPA:', student.CGPA);
-        console.log('   - Extracted gpaValue:', gpaValue);
+        logger.debug('🔍 First student GPA extraction:');
+        logger.debug('   - student.gpa:', student.gpa);
+        logger.debug('   - student.GPA:', student.GPA);
+        logger.debug('   - student.cgpa:', student.cgpa);
+        logger.debug('   - student.CGPA:', student.CGPA);
+        logger.debug('   - Extracted gpaValue:', gpaValue);
       }
-      
+
       // Parse GPA
       gpa = parseFloat(gpaValue);
-      
+
       // If GPA is still NaN, try to find any numeric value in the object
       if (isNaN(gpa)) {
-        console.warn(`⚠️  Could not parse GPA for ${name}. Student object:`, student);
+        logger.warn(`⚠️  Could not parse GPA for row ${index + 1}. Available fields:`, Object.keys(student));
         // Try to find any numeric field
         for (const key of Object.keys(student)) {
           const value = parseFloat(student[key]);
           if (!isNaN(value) && value >= 0 && value <= 5.0) {
-            console.log(`   Found potential GPA in field "${key}": ${value}`);
+            logger.debug(`   Found potential GPA in field "${key}": ${value}`);
             gpa = value;
             break;
           }
         }
       }
-      
+
       // If still NaN, default to 0
       if (isNaN(gpa)) {
-        console.error(`❌ No valid GPA found for ${name}, defaulting to 0`);
+        logger.warn(`❌ No valid GPA found for row ${index + 1}, defaulting to 0`);
         gpa = 0;
       }
       
@@ -187,7 +188,7 @@ export class GroupFormationService {
       const tier = this.classifyGpaTier(gpa, thresholds);
       
       if (index < 3) { // Log first 3 students for debugging
-        console.log(`📊 [PROCESS STUDENTS] Student ${index + 1}: ${name} (GPA: ${gpa}) → ${tier} (thresholds: H≥${thresholds.high}, M≥${thresholds.medium}, L≥${thresholds.low})`);
+        logger.debug(`📊 [PROCESS STUDENTS] Student ${index + 1}: ${name} (GPA: ${gpa}) → ${tier} (thresholds: H≥${thresholds.high}, M≥${thresholds.medium}, L≥${thresholds.low})`);
       }
       
       const emailRaw =
@@ -225,12 +226,12 @@ export class GroupFormationService {
     students: StudentData[],
     department?: string
   ): Promise<{ groups: GroupData[]; solverStatus: SolverMeta }> {
-    console.log('🔍 ASP Group Formation - Input students:', students.length);
+    logger.info('🔍 ASP Group Formation - Input students:', students.length);
     
     // Get thresholds for logging purposes - ALWAYS fetch fresh
     const thresholds = await this.getGpaTierThresholds(department);
-    console.log(`📊 [ASP GROUP FORMATION] Using GPA thresholds: HIGH≥${thresholds.high}, MEDIUM≥${thresholds.medium}, LOW≥${thresholds.low}`);
-    console.log(`📊 [ASP GROUP FORMATION] Department: ${department || 'global'}`);
+    logger.info(`📊 [ASP GROUP FORMATION] Using GPA thresholds: HIGH≥${thresholds.high}, MEDIUM≥${thresholds.medium}, LOW≥${thresholds.low}`);
+    logger.info(`📊 [ASP GROUP FORMATION] Department: ${department || 'global'}`);
     
     if (students.length < 1) {
       throw new Error('Cannot form groups: Need at least 1 student.');
@@ -241,25 +242,25 @@ export class GroupFormationService {
     const mediumTier = students.filter(s => s.tier === 'MEDIUM');
     const lowTier = students.filter(s => s.tier === 'LOW');
 
-    console.log('📊 [ASP GROUP FORMATION] Tier distribution:');
-    console.log(`   HIGH (≥${thresholds.high}): ${highTier.length} students`);
-    console.log(`   MEDIUM (≥${thresholds.medium}): ${mediumTier.length} students`);
-    console.log(`   LOW (≥${thresholds.low}): ${lowTier.length} students`);
+    logger.info('📊 [ASP GROUP FORMATION] Tier distribution:');
+    logger.info(`   HIGH (≥${thresholds.high}): ${highTier.length} students`);
+    logger.info(`   MEDIUM (≥${thresholds.medium}): ${mediumTier.length} students`);
+    logger.info(`   LOW (≥${thresholds.low}): ${lowTier.length} students`);
     
     // Log students in each tier
-    console.log('👥 HIGH tier students:', highTier.map(s => `${s.name} (${s.gpa})`));
-    console.log('👥 MEDIUM tier students:', mediumTier.map(s => `${s.name} (${s.gpa})`));
-    console.log('👥 LOW tier students:', lowTier.map(s => `${s.name} (${s.gpa})`));
+    logger.debug('👥 HIGH tier students:', highTier.map(s => `${s.name} (${s.gpa})`));
+    logger.debug('👥 MEDIUM tier students:', mediumTier.map(s => `${s.name} (${s.gpa})`));
+    logger.debug('👥 LOW tier students:', lowTier.map(s => `${s.name} (${s.gpa})`));
 
     const namePrefix = department ? `${department} - ` : '';
     const clingoResult = await tryGroupFormationWithClingo(students, namePrefix);
     if (clingoResult) {
       const v = this.validateGroupFormation(clingoResult.groups);
       if (v.isValid) {
-        console.log('✅ [ASP] Using Clingo answer set for group formation.');
+        logger.info('✅ [ASP] Using Clingo answer set for group formation.');
         return { groups: clingoResult.groups, solverStatus: clingoResult.meta };
       }
-      console.warn('⚠️  [ASP] Clingo grouping failed validation; using heuristic.', v.violations);
+      logger.warn('⚠️  [ASP] Clingo grouping failed validation; using heuristic.', v.violations);
     }
 
     const groups: GroupData[] = [];
@@ -278,7 +279,7 @@ export class GroupFormationService {
     // STRATEGY 1: Form ideal groups (1 HIGH + 1 MEDIUM + 1 LOW) when possible
     const idealGroups = Math.min(highTier.length, mediumTier.length, lowTier.length);
     
-    console.log(`🎯 Strategy 1: Can form ${idealGroups} ideal groups (1 HIGH + 1 MEDIUM + 1 LOW each)`);
+    logger.info(`🎯 Strategy 1: Can form ${idealGroups} ideal groups (1 HIGH + 1 MEDIUM + 1 LOW each)`);
     
     for (let i = 0; i < idealGroups; i++) {
       const groupMembers = [highTier[i], mediumTier[i], lowTier[i]];
@@ -286,10 +287,10 @@ export class GroupFormationService {
       // Mark students as used (use _key to avoid losing students with duplicate names)
       groupMembers.forEach(student => usedStudents.add(studentKey(student)));
       
-      console.log(`🏗️  Forming Group ${groupCounter}:`);
-      console.log(`   👑 LEADER (HIGH): ${groupMembers[0].name} (${groupMembers[0].gpa})`);
-      console.log(`   👥 MEMBER (MEDIUM): ${groupMembers[1].name} (${groupMembers[1].gpa})`);
-      console.log(`   👥 MEMBER (LOW): ${groupMembers[2].name} (${groupMembers[2].gpa})`);
+      logger.debug(`🏗️  Forming Group ${groupCounter}:`);
+      logger.debug(`   👑 LEADER (HIGH): ${groupMembers[0].name} (${groupMembers[0].gpa})`);
+      logger.debug(`   👥 MEMBER (MEDIUM): ${groupMembers[1].name} (${groupMembers[1].gpa})`);
+      logger.debug(`   👥 MEMBER (LOW): ${groupMembers[2].name} (${groupMembers[2].gpa})`);
 
       const avgGpa = parseFloat(
         (groupMembers.reduce((sum, member) => sum + member.gpa, 0) / 3).toFixed(2)
@@ -310,7 +311,7 @@ export class GroupFormationService {
     const remainingMedium = mediumTier.filter(s => !usedStudents.has(studentKey(s)));
     const remainingLow = lowTier.filter(s => !usedStudents.has(studentKey(s)));
     
-    console.log(`🔄 Strategy 2: Remaining students - HIGH: ${remainingHigh.length}, MEDIUM: ${remainingMedium.length}, LOW: ${remainingLow.length}`);
+    logger.info(`🔄 Strategy 2: Remaining students - HIGH: ${remainingHigh.length}, MEDIUM: ${remainingMedium.length}, LOW: ${remainingLow.length}`);
 
     // Form one H+H+x group early when possible - ensures we have a donor for rebalancing 2-remainder (M+L) or 1-remainder (M/L)
     const totalRemaining = remainingHigh.length + remainingMedium.length + remainingLow.length;
@@ -321,7 +322,7 @@ export class GroupFormationService {
         groupMembers.sort((a, b) => b.gpa - a.gpa);
         const avgGpa = parseFloat((groupMembers.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
-        console.log(`   📋 Pre-formed H+H+M (donor for possible solo remainder)`);
+        logger.info(`   📋 Pre-formed H+H+M (donor for possible solo remainder)`);
         groupCounter++;
       } else if (remainingLow.length >= 1) {
         const groupMembers = [remainingHigh.shift()!, remainingHigh.shift()!, remainingLow.shift()!];
@@ -329,7 +330,7 @@ export class GroupFormationService {
         groupMembers.sort((a, b) => b.gpa - a.gpa);
         const avgGpa = parseFloat((groupMembers.reduce((s, m) => s + m.gpa, 0) / 3).toFixed(2));
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: groupMembers, avg_gpa: avgGpa, status: 'formed' });
-        console.log(`   📋 Pre-formed H+H+L (donor for possible solo remainder)`);
+        logger.info(`   📋 Pre-formed H+H+L (donor for possible solo remainder)`);
         groupCounter++;
       }
     }
@@ -343,63 +344,63 @@ export class GroupFormationService {
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingMedium.shift()!);
         groupMembers.push(remainingLow.shift()!);
-        console.log(`   📋 Balanced group (H,M,L)`);
+        logger.info(`   📋 Balanced group (H,M,L)`);
       }
       // Priority 2: Two from one tier, one from another (prefer H,M,M or H,H,M over same tier)
       else if (remainingHigh.length >= 1 && remainingMedium.length >= 2) {
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingMedium.shift()!);
         groupMembers.push(remainingMedium.shift()!);
-        console.log(`   📋 Mixed group (H,M,M)`);
+        logger.info(`   📋 Mixed group (H,M,M)`);
       }
       else if (remainingHigh.length >= 2 && remainingMedium.length >= 1) {
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingMedium.shift()!);
-        console.log(`   📋 Mixed group (H,H,M)`);
+        logger.info(`   📋 Mixed group (H,H,M)`);
       }
       else if (remainingMedium.length >= 1 && remainingLow.length >= 2) {
         groupMembers.push(remainingMedium.shift()!);
         groupMembers.push(remainingLow.shift()!);
         groupMembers.push(remainingLow.shift()!);
-        console.log(`   📋 Mixed group (M,L,L)`);
+        logger.info(`   📋 Mixed group (M,L,L)`);
       }
       else if (remainingMedium.length >= 2 && remainingLow.length >= 1) {
         groupMembers.push(remainingMedium.shift()!);
         groupMembers.push(remainingMedium.shift()!);
         groupMembers.push(remainingLow.shift()!);
-        console.log(`   📋 Mixed group (M,M,L)`);
+        logger.info(`   📋 Mixed group (M,M,L)`);
       }
       else if (remainingHigh.length >= 1 && remainingLow.length >= 2) {
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingLow.shift()!);
         groupMembers.push(remainingLow.shift()!);
-        console.log(`   📋 Mixed group (H,L,L)`);
+        logger.info(`   📋 Mixed group (H,L,L)`);
       }
       else if (remainingHigh.length >= 2 && remainingLow.length >= 1) {
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingLow.shift()!);
-        console.log(`   📋 Mixed group (H,H,L)`);
+        logger.info(`   📋 Mixed group (H,H,L)`);
       }
       // Last resort: Same tier groups (only if no other option)
       else if (remainingHigh.length >= 3) {
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingHigh.shift()!);
         groupMembers.push(remainingHigh.shift()!);
-        console.log(`   ⚠️  Same tier group (H,H,H) - not ideal`);
+        logger.info(`   ⚠️  Same tier group (H,H,H) - not ideal`);
       }
       else if (remainingMedium.length >= 3) {
         groupMembers.push(remainingMedium.shift()!);
         groupMembers.push(remainingMedium.shift()!);
         groupMembers.push(remainingMedium.shift()!);
-        console.log(`   ⚠️  Same tier group (M,M,M) - not ideal`);
+        logger.info(`   ⚠️  Same tier group (M,M,M) - not ideal`);
       }
       else if (remainingLow.length >= 3) {
         groupMembers.push(remainingLow.shift()!);
         groupMembers.push(remainingLow.shift()!);
         groupMembers.push(remainingLow.shift()!);
-        console.log(`   ⚠️  Same tier group (L,L,L) - not ideal`);
+        logger.info(`   ⚠️  Same tier group (L,L,L) - not ideal`);
       }
       else {
         // Can't form a complete group of 3 - will handle remainder below
@@ -410,10 +411,10 @@ export class GroupFormationService {
         // Sort by GPA (highest first) for consistent leader assignment
         groupMembers.sort((a, b) => b.gpa - a.gpa);
         
-        console.log(`🏗️  Forming Group ${groupCounter}:`);
-        console.log(`   👑 LEADER: ${groupMembers[0].name} (${groupMembers[0].gpa}) - ${groupMembers[0].tier}`);
-        console.log(`   👥 MEMBER: ${groupMembers[1].name} (${groupMembers[1].gpa}) - ${groupMembers[1].tier}`);
-        console.log(`   👥 MEMBER: ${groupMembers[2].name} (${groupMembers[2].gpa}) - ${groupMembers[2].tier}`);
+        logger.debug(`🏗️  Forming Group ${groupCounter}:`);
+        logger.debug(`   👑 LEADER: ${groupMembers[0].name} (${groupMembers[0].gpa}) - ${groupMembers[0].tier}`);
+        logger.debug(`   👥 MEMBER: ${groupMembers[1].name} (${groupMembers[1].gpa}) - ${groupMembers[1].tier}`);
+        logger.debug(`   👥 MEMBER: ${groupMembers[2].name} (${groupMembers[2].gpa}) - ${groupMembers[2].tier}`);
 
         const avgGpa = parseFloat(
           (groupMembers.reduce((sum, member) => sum + member.gpa, 0) / 3).toFixed(2)
@@ -451,7 +452,7 @@ export class GroupFormationService {
       if (tiers === 'HIGH+MEDIUM') {
         const avgGpa = recomputeAvg(sortedRemainder);
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: sortedRemainder, avg_gpa: avgGpa, status: 'formed' });
-        console.log(`🏗️  Forming Group ${groupCounter} (2-member H+M): ${sortedRemainder[0].name} (${sortedRemainder[0].tier}) + ${sortedRemainder[1].name} (${sortedRemainder[1].tier})`);
+        logger.debug(`🏗️  Forming Group ${groupCounter} (2-member H+M): ${sortedRemainder[0].name} (${sortedRemainder[0].tier}) + ${sortedRemainder[1].name} (${sortedRemainder[1].tier})`);
         groupCounter++;
       } else if (tiers === 'HIGH+LOW') {
         // Need: convert H+L → H+M by borrowing a MEDIUM from any existing 3-member group, and placing our LOW into that donor.
@@ -471,7 +472,7 @@ export class GroupFormationService {
 
         const pair = sortByGpaDesc([ourH, borrowedM]);
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
-        console.log(`🏗️  Rebalanced HIGH+LOW remainder: formed H+M, moved LOW into donor group (${donorGroup.name})`);
+        logger.info(`🏗️  Rebalanced HIGH+LOW remainder: formed H+M, moved LOW into donor group (${donorGroup.name})`);
         groupCounter++;
       } else if (tiers === 'LOW+MEDIUM') {
         // Need: convert M+L → H+M by borrowing a HIGH from any existing 3-member group, and placing our LOW into that donor.
@@ -491,7 +492,7 @@ export class GroupFormationService {
 
         const pair = sortByGpaDesc([borrowedH, ourM]);
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
-        console.log(`🏗️  Rebalanced MEDIUM+LOW remainder: formed H+M, moved LOW into donor group (${donorGroup.name})`);
+        logger.info(`🏗️  Rebalanced MEDIUM+LOW remainder: formed H+M, moved LOW into donor group (${donorGroup.name})`);
         groupCounter++;
       } else if (tiers === 'HIGH+HIGH') {
         // Need: convert H+H → H+M by borrowing a MEDIUM from any existing 3-member group, and placing our extra HIGH into that donor.
@@ -511,7 +512,7 @@ export class GroupFormationService {
 
         const pair = sortByGpaDesc([h1, borrowedM]);
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
-        console.log(`🏗️  Rebalanced HIGH+HIGH remainder: formed H+M, moved extra HIGH into donor group (${donorGroup.name})`);
+        logger.info(`🏗️  Rebalanced HIGH+HIGH remainder: formed H+M, moved extra HIGH into donor group (${donorGroup.name})`);
         groupCounter++;
       } else if (tiers === 'MEDIUM+MEDIUM') {
         // Need: convert M+M → H+M by borrowing a HIGH from any existing 3-member group, and placing our extra MEDIUM into that donor.
@@ -530,7 +531,7 @@ export class GroupFormationService {
 
         const pair = sortByGpaDesc([borrowedH, m1]);
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: pair, avg_gpa: recomputeAvg(pair), status: 'formed' });
-        console.log(`🏗️  Rebalanced MEDIUM+MEDIUM remainder: formed H+M, moved extra MEDIUM into donor group (${donorGroup.name})`);
+        logger.info(`🏗️  Rebalanced MEDIUM+MEDIUM remainder: formed H+M, moved extra MEDIUM into donor group (${donorGroup.name})`);
         groupCounter++;
       } else if (tiers === 'LOW+LOW') {
         // Convert L+L → H+L+L by borrowing a HIGH from a donor that will become a valid 2-member H+M after removal.
@@ -553,7 +554,7 @@ export class GroupFormationService {
 
         const trio = sortByGpaDesc([borrowedH, ...sortedRemainder]);
         groups.push({ name: `${namePrefix}Group ${groupCounter}`, members: trio, avg_gpa: recomputeAvg(trio), status: 'formed' });
-        console.log(`🏗️  Rebalanced LOW+LOW remainder: borrowed HIGH from ${donorGroup.name}, formed H+L+L (3-member)`);
+        logger.info(`🏗️  Rebalanced LOW+LOW remainder: borrowed HIGH from ${donorGroup.name}, formed H+L+L (3-member)`);
         groupCounter++;
       } else {
         throw new Error(`Unhandled 2-student remainder tier combination: ${tiers}`);
@@ -568,7 +569,7 @@ export class GroupFormationService {
           avg_gpa: solo.gpa,
           status: 'formed'
         });
-        console.log(`🏗️  Forming Group ${groupCounter} (1-member HIGH): ${solo.name} (${solo.gpa})`);
+        logger.debug(`🏗️  Forming Group ${groupCounter} (1-member HIGH): ${solo.name} (${solo.gpa})`);
         groupCounter++;
       } else {
         // M or L alone: NOT allowed. 1-member groups must be HIGH tier only.
@@ -584,7 +585,7 @@ export class GroupFormationService {
           groupCounter++;
           donorGroup.members = donorMembers;
           donorGroup.avg_gpa = parseFloat((donorMembers.reduce((s, m) => s + m.gpa, 0) / donorMembers.length).toFixed(2));
-          console.log(`🏗️  Rebalanced: solo ${solo.tier} paired with H from donor. Group ${groupCounter - 1} (2-member).`);
+          logger.info(`🏗️  Rebalanced: solo ${solo.tier} paired with H from donor. Group ${groupCounter - 1} (2-member).`);
         } else {
           // Try 2: Swap solo M/L with any H from any group → group keeps 3 members, we get solo H
           donorGroup = groups.find(g => g.members.some(m => m.tier === 'HIGH'));
@@ -604,7 +605,7 @@ export class GroupFormationService {
               status: 'formed'
             });
             groupCounter++;
-            console.log(`🏗️  Swapped solo ${solo.tier} with H from group → 1-member group now has HIGH tier`);
+            logger.info(`🏗️  Swapped solo ${solo.tier} with H from group → 1-member group now has HIGH tier`);
           } else {
             throw new Error(`Cannot form groups: 1 leftover student (${solo.name}) is ${solo.tier} tier but 1-member groups require HIGH tier only. Add or remove students so the leftover is HIGH tier, or ensure at least one HIGH tier student exists.`);
           }
@@ -612,11 +613,11 @@ export class GroupFormationService {
       }
     }
 
-    console.log(`✅ Group formation completed:`);
-    console.log(`   📊 Total groups formed: ${groups.length}`);
-    console.log(`   👥 Students placed: ${groups.reduce((sum, g) => sum + g.members.length, 0)} / ${students.length}`);
-    console.log(`   🎯 Ideal groups (1:1:1 ratio): ${idealGroups}`);
-    console.log(`   🔄 Flexible groups: ${groups.length - idealGroups}`);
+    logger.info(`✅ Group formation completed:`);
+    logger.info(`   📊 Total groups formed: ${groups.length}`);
+    logger.info(`   👥 Students placed: ${groups.reduce((sum, g) => sum + g.members.length, 0)} / ${students.length}`);
+    logger.info(`   🎯 Ideal groups (1:1:1 ratio): ${idealGroups}`);
+    logger.info(`   🔄 Flexible groups: ${groups.length - idealGroups}`);
 
     if (groups.length === 0) {
       throw new Error('Cannot form any groups: Need at least 3 students total.');
@@ -696,7 +697,7 @@ export class GroupFormationService {
             [groupId, `Project for ${group.name}`, 'Auto-created for report submission.']
           );
         } catch (e) {
-          console.warn('Could not create project for group', groupId, (e as Error).message);
+          logger.warn('Could not create project for group', groupId, (e as Error).message);
         }
 
         // Insert group members in TIER ORDER (HIGH, MEDIUM, LOW) - NOT by GPA
@@ -723,7 +724,7 @@ export class GroupFormationService {
       }
 
       await connection.commit();
-      console.log(`✅ Saved ${groups.length} groups to database with departments`);
+      logger.info(`✅ Saved ${groups.length} groups to database with departments`);
       return groupIds;
     } catch (error) {
       await connection.rollback();
@@ -777,7 +778,7 @@ export class GroupFormationService {
       const groupId = memberRows[0].group_id;
       return await this.getGroupById(connection, groupId);
     } catch (error) {
-      console.error('Error fetching group by matric:', error);
+      logger.error('Error fetching group by matric:', error);
       throw error;
     } finally {
       connection.release();
@@ -848,7 +849,7 @@ export class GroupFormationService {
     const connection = await this.db.getConnection();
 
     try {
-      console.log('🔍 Getting database connection for getAllGroups');
+      logger.info('🔍 Getting database connection for getAllGroups');
       
       const [groupRows] = await connection.execute(`
         SELECT g.*, 
@@ -859,12 +860,12 @@ export class GroupFormationService {
         ORDER BY g.created_at DESC
       `);
 
-      console.log('✅ Groups query executed, found:', (groupRows as any[]).length, 'groups');
+      logger.info('✅ Groups query executed, found:', (groupRows as any[]).length, 'groups');
 
       const groups: GroupData[] = [];
 
       for (const group of groupRows as any[]) {
-        console.log('🔍 Processing group:', group.id, group.name);
+        logger.info('🔍 Processing group:', group.id, group.name);
         
         // Get group members ordered by TIER ORDER (member_order) - HIGH, MEDIUM, LOW
         const [memberRows] = await connection.execute(
@@ -872,7 +873,7 @@ export class GroupFormationService {
           [group.id]
         );
 
-        console.log('✅ Found', (memberRows as any[]).length, 'members for group', group.id);
+        logger.info('✅ Found', (memberRows as any[]).length, 'members for group', group.id);
 
         const members = (memberRows as any[]).map(member => ({
           id: member.id,
@@ -898,7 +899,7 @@ export class GroupFormationService {
         
         // Log first group to verify supervisor is included
         if (groups.length === 1) {
-          console.log('📋 First group data:', {
+          logger.info('📋 First group data:', {
             id: group.id,
             name: group.name,
             supervisor_name: group.supervisor_name,
@@ -920,10 +921,10 @@ export class GroupFormationService {
         return extractGroupNum(a.name) - extractGroupNum(b.name);
       });
 
-      console.log('✅ getAllGroups completed, returning', groups.length, 'groups (sorted 1,2,3...n)');
+      logger.info('✅ getAllGroups completed, returning', groups.length, 'groups (sorted 1,2,3...n)');
       return groups;
     } catch (error) {
-      console.error('❌ Error in getAllGroups:', error);
+      logger.error('❌ Error in getAllGroups:', error);
       throw error;
     } finally {
       connection.release();

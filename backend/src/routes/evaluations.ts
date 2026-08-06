@@ -3,6 +3,7 @@ import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireStudent, requireSupervisor } from '../middleware/auth';
 import { EvaluationService } from '../services/evaluationService';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ export function createEvaluationsRouter(db: Pool) {
       const data = await evaluationService.getStudentsForSupervisor(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Students evaluations overview error:', error);
+      logger.error('Students evaluations overview error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch students for evaluation' });
     }
   });
@@ -29,7 +30,7 @@ export function createEvaluationsRouter(db: Pool) {
       const data = await evaluationService.getGroupsWithProjects(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Groups with projects error:', error);
+      logger.error('Groups with projects error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch groups' });
     }
   });
@@ -43,7 +44,7 @@ export function createEvaluationsRouter(db: Pool) {
       const data = await evaluationService.getPendingEvaluations(supervisorId, userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Pending evaluations error:', error);
+      logger.error('Pending evaluations error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch evaluations' });
     }
   });
@@ -57,7 +58,7 @@ export function createEvaluationsRouter(db: Pool) {
       const data = await evaluationService.getCompletedEvaluations(supervisorId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Completed evaluations error:', error);
+      logger.error('Completed evaluations error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch evaluations' });
     }
   });
@@ -71,7 +72,7 @@ export function createEvaluationsRouter(db: Pool) {
       const result = await evaluationService.submitEvaluation(supervisorId, req.body);
       res.json({ success: true, data: result });
     } catch (error) {
-      console.error('Submit evaluation error:', error);
+      logger.error('Submit evaluation error:', error);
       res.status(500).json({ success: false, message: 'Failed to submit evaluation' });
     }
   });
@@ -86,7 +87,7 @@ export function createEvaluationsRouter(db: Pool) {
       const result = await evaluationService.submitStudentEvaluation(supervisorId, req.body);
       res.json({ success: true, data: result });
     } catch (error) {
-      console.error('Submit student evaluation error:', error);
+      logger.error('Submit student evaluation error:', error);
       res.status(500).json({ success: false, message: 'Failed to submit student evaluation' });
     }
   });
@@ -99,7 +100,7 @@ export function createEvaluationsRouter(db: Pool) {
       const data = row ? [row] : [];
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Student evaluation error:', error);
+      logger.error('Student evaluation error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch evaluation' });
     }
   });

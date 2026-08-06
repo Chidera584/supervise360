@@ -1,5 +1,6 @@
 import { Pool } from 'mysql2/promise';
 import { columnExists } from '../../services/schemaFixService';
+import { logger } from '../../logger';
 
 /**
  * Adds nullable FK columns so group membership and supervisor assignment can be resolved by
@@ -19,14 +20,14 @@ export async function addIdLinkingColumns(db: Pool): Promise<void> {
          FOREIGN KEY (student_user_id) REFERENCES users(id) ON DELETE SET NULL`
       );
     } catch (e) {
-      console.warn('group_members.student_user_id FK constraint skipped (non-fatal):', (e as Error).message);
+      logger.warn('group_members.student_user_id FK constraint skipped (non-fatal):', (e as Error).message);
     }
     try {
       await db.execute(`CREATE INDEX idx_group_members_student_user ON group_members(student_user_id)`);
     } catch {
       /* index may already exist */
     }
-    console.log('✅ Added group_members.student_user_id');
+    logger.info('✅ Added group_members.student_user_id');
   }
 
   if (!(await columnExists(db, 'project_groups', 'supervisor_user_id'))) {
@@ -37,13 +38,13 @@ export async function addIdLinkingColumns(db: Pool): Promise<void> {
          FOREIGN KEY (supervisor_user_id) REFERENCES users(id) ON DELETE SET NULL`
       );
     } catch (e) {
-      console.warn('project_groups.supervisor_user_id FK constraint skipped (non-fatal):', (e as Error).message);
+      logger.warn('project_groups.supervisor_user_id FK constraint skipped (non-fatal):', (e as Error).message);
     }
     try {
       await db.execute(`CREATE INDEX idx_project_groups_supervisor_user ON project_groups(supervisor_user_id)`);
     } catch {
       /* index may already exist */
     }
-    console.log('✅ Added project_groups.supervisor_user_id');
+    logger.info('✅ Added project_groups.supervisor_user_id');
   }
 }

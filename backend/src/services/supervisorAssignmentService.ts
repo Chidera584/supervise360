@@ -2,6 +2,7 @@ import { Pool } from 'mysql2/promise';
 import { trySupervisorAssignmentWithClingo, type SolverMeta } from './asp/aspEncodings';
 import { syncSupervisorWorkloadWithConnection } from './workloadService';
 import { resolveSupervisorUserIdByName } from './idLinkingService';
+import { logger } from '../logger';
 
 /**
  * Supervisor assignment: uses Potassco Clingo (answer set programming) when available to minimize
@@ -67,7 +68,7 @@ export class SupervisorAssignmentService {
       );
       const unassignedGroups = unassignedGroupsRows as GroupData[];
 
-      console.log(`📊 [Assign v2 - no limit] Found ${unassignedGroups.length} unassigned groups`);
+      logger.info(`📊 [Assign v2 - no limit] Found ${unassignedGroups.length} unassigned groups`);
 
       if (unassignedGroups.length === 0) {
         await connection.commit();
@@ -93,7 +94,7 @@ export class SupervisorAssignmentService {
       `);
       const supervisors = supervisorsRows as SupervisorData[];
 
-      console.log(`📊 [Assign v2 - no limit] Found ${supervisors.length} supervisors (all used, no capacity limit)`);
+      logger.info(`📊 [Assign v2 - no limit] Found ${supervisors.length} supervisors (all used, no capacity limit)`);
 
       if (supervisors.length === 0) {
         await connection.rollback();
@@ -108,7 +109,7 @@ export class SupervisorAssignmentService {
 
       const { assignments, solverStatus } = await this.computeOptimalAssignment(unassignedGroups, supervisors);
 
-      console.log(`✅ Computed ${assignments.length} assignments`);
+      logger.info(`✅ Computed ${assignments.length} assignments`);
 
       // Apply assignments to database
       for (const assignment of assignments) {
@@ -134,7 +135,7 @@ export class SupervisorAssignmentService {
           [assignment.supervisorName, assignment.supervisorDepartment]
         );
 
-        console.log(`✅ Assigned ${assignment.supervisorName} to ${assignment.groupName}`);
+        logger.info(`✅ Assigned ${assignment.supervisorName} to ${assignment.groupName}`);
       }
 
       await connection.commit();
@@ -153,7 +154,7 @@ export class SupervisorAssignmentService {
 
     } catch (error) {
       await connection.rollback();
-      console.error('❌ Error in supervisor assignment:', error);
+      logger.error('❌ Error in supervisor assignment:', error);
       throw error;
     } finally {
       connection.release();
@@ -196,7 +197,7 @@ export class SupervisorAssignmentService {
         return s.currentGroups + s.assignedInThisRound < cap;
       });
       if (eligibleSupervisors.length === 0) {
-        console.warn(`⚠️  No supervisor in department "${group.department}" for ${group.name} (or all at capacity)`);
+        logger.warn(`⚠️  No supervisor in department "${group.department}" for ${group.name} (or all at capacity)`);
         continue;
       }
 
@@ -220,7 +221,7 @@ export class SupervisorAssignmentService {
       selectedSupervisor.assignedInThisRound++;
       
       const newLoad = selectedSupervisor.currentGroups + selectedSupervisor.assignedInThisRound;
-      console.log(`📋 Assignment: ${group.name} → ${selectedSupervisor.name} (${newLoad} groups)`);
+      logger.info(`📋 Assignment: ${group.name} → ${selectedSupervisor.name} (${newLoad} groups)`);
     }
 
     return {
@@ -244,15 +245,15 @@ export class SupervisorAssignmentService {
     try {
       await connection.beginTransaction();
 
-      console.log('🔄 Syncing supervisor workload (per department)...');
+      logger.info('🔄 Syncing supervisor workload (per department)...');
       await syncSupervisorWorkloadWithConnection(connection);
 
       await connection.commit();
-      console.log('✅ Supervisor workload sync completed');
+      logger.info('✅ Supervisor workload sync completed');
 
     } catch (error) {
       await connection.rollback();
-      console.error('❌ Error syncing supervisor workload:', error);
+      logger.error('❌ Error syncing supervisor workload:', error);
       throw error;
     } finally {
       connection.release();

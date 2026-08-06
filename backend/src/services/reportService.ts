@@ -1,4 +1,5 @@
 import { Pool } from 'mysql2/promise';
+import { logger } from '../logger';
 
 export class ReportService {
   constructor(private db: Pool) {}
@@ -53,7 +54,7 @@ export class ReportService {
       );
       return (result as any).insertId ?? null;
     } catch (err) {
-      console.error('Auto-create project failed for group', groupId, (err as Error).message);
+      logger.error('Auto-create project failed for group', groupId, (err as Error).message);
       return null;
     }
   }

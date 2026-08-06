@@ -5,6 +5,7 @@ import { authenticateToken, requireStudent, requireSupervisor } from '../middlew
 import type { AuthenticatedRequest } from '../types';
 import { ReportService } from '../services/reportService';
 import { NotificationService } from '../services/notificationService';
+import { logger } from '../logger';
 
 async function getSupervisorFullName(db: Pool, userId: number): Promise<string> {
   const [rows] = await db.execute('SELECT first_name, last_name FROM users WHERE id = ?', [userId]);
@@ -207,7 +208,7 @@ export function createSupervisionRouter(db: Pool) {
       });
       res.json({ success: true, data: out });
     } catch (error) {
-      console.error('Supervisor meetings list error:', error);
+      logger.error('Supervisor meetings list error:', error);
       res.status(500).json({ success: false, message: 'Failed to list meetings' });
     }
   });
@@ -257,7 +258,7 @@ export function createSupervisionRouter(db: Pool) {
       await notifyStudentsMeetingScheduled(db, newId, gid, meetTitle, String(starts_at), supName);
       res.json({ success: true, data: { id: newId } });
     } catch (error) {
-      console.error('Create meeting error:', error);
+      logger.error('Create meeting error:', error);
       res.status(500).json({ success: false, message: 'Failed to create meeting' });
     }
   });
@@ -369,7 +370,7 @@ export function createSupervisionRouter(db: Pool) {
 
       res.json({ success: true, data: { ids: createdIds, count: createdIds.length } });
     } catch (error) {
-      console.error('Bulk create meetings error:', error);
+      logger.error('Bulk create meetings error:', error);
       res.status(500).json({ success: false, message: 'Failed to schedule meetings' });
     }
   });
@@ -417,7 +418,7 @@ export function createSupervisionRouter(db: Pool) {
 
       res.json({ success: true, data: { deleted: meetingIds.length } });
     } catch (error) {
-      console.error('Clear upcoming meetings error:', error);
+      logger.error('Clear upcoming meetings error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear upcoming meetings' });
     }
   });
@@ -465,7 +466,7 @@ export function createSupervisionRouter(db: Pool) {
 
       res.json({ success: true, data: { deleted: meetingIds.length } });
     } catch (error) {
-      console.error('Clear history meetings error:', error);
+      logger.error('Clear history meetings error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear meeting history' });
     }
   });
@@ -511,7 +512,7 @@ export function createSupervisionRouter(db: Pool) {
       }
       res.json({ success: true, message: 'Meeting deleted' });
     } catch (error) {
-      console.error('Delete meeting error:', error);
+      logger.error('Delete meeting error:', error);
       res.status(500).json({ success: false, message: 'Failed to delete meeting' });
     }
   });
@@ -556,7 +557,7 @@ export function createSupervisionRouter(db: Pool) {
         }
         res.json({ success: true, data: { deleted: meetings.length } });
       } catch (error) {
-        console.error('Delete meeting series error:', error);
+        logger.error('Delete meeting series error:', error);
         res.status(500).json({ success: false, message: 'Failed to delete meeting series' });
       }
     }
@@ -611,7 +612,7 @@ export function createSupervisionRouter(db: Pool) {
           },
         });
       } catch (error) {
-        console.error('Series attendance GET error:', error);
+        logger.error('Series attendance GET error:', error);
         res.status(500).json({ success: false, message: 'Failed to load attendance' });
       }
     }
@@ -698,7 +699,7 @@ export function createSupervisionRouter(db: Pool) {
           conn.release();
         }
       } catch (error) {
-        console.error('Series attendance POST error:', error);
+        logger.error('Series attendance POST error:', error);
         res.status(500).json({ success: false, message: 'Failed to save attendance' });
       }
     }
@@ -745,7 +746,7 @@ export function createSupervisionRouter(db: Pool) {
         },
       });
     } catch (error) {
-      console.error('Meeting attendance GET error:', error);
+      logger.error('Meeting attendance GET error:', error);
       res.status(500).json({ success: false, message: 'Failed to load attendance' });
     }
   });
@@ -803,7 +804,7 @@ export function createSupervisionRouter(db: Pool) {
       );
       res.json({ success: true, message: 'Meeting updated' });
     } catch (error) {
-      console.error('Update meeting error:', error);
+      logger.error('Update meeting error:', error);
       res.status(500).json({ success: false, message: 'Failed to update meeting' });
     }
   });
@@ -868,7 +869,7 @@ export function createSupervisionRouter(db: Pool) {
         conn.release();
       }
     } catch (error) {
-      console.error('Attendance save error:', error);
+      logger.error('Attendance save error:', error);
       res.status(500).json({ success: false, message: 'Failed to save attendance' });
     }
   });
@@ -919,7 +920,7 @@ export function createSupervisionRouter(db: Pool) {
       );
       res.json({ success: true, data: { id: (ins as any).insertId } });
     } catch (error: any) {
-      console.error('Assessment create error:', error);
+      logger.error('Assessment create error:', error);
       res.status(500).json({ success: false, message: error?.message || 'Failed to save assessment' });
     }
   });
@@ -942,7 +943,7 @@ export function createSupervisionRouter(db: Pool) {
       );
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('Supervisor assessments list error:', error);
+      logger.error('Supervisor assessments list error:', error);
       res.status(500).json({ success: false, message: 'Failed to list assessments' });
     }
   });
@@ -988,7 +989,7 @@ export function createSupervisionRouter(db: Pool) {
       );
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('Student meetings error:', error);
+      logger.error('Student meetings error:', error);
       res.status(500).json({ success: false, message: 'Failed to load meetings' });
     }
   });
@@ -1007,7 +1008,7 @@ export function createSupervisionRouter(db: Pool) {
       );
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('Student assessments error:', error);
+      logger.error('Student assessments error:', error);
       res.status(500).json({ success: false, message: 'Failed to load assessments' });
     }
   });

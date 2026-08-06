@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
+import { logger } from '../../logger';
 
 const execFileAsync = promisify(execFile);
 
@@ -180,7 +181,7 @@ export async function runClingoProgram(
         const sat = /Answer:\s*\d+/i.test(stdout) && !/UNSATISFIABLE/i.test(stdout);
         const atoms = sat ? parseAnswerSet(stdout) : [];
         const optimal = /OPTIMUM FOUND/i.test(stdout);
-        if (sat) console.log(`✅ [ASP] Solver used: ${inv.label} (${solveTimeMs}ms, optimal=${optimal})`);
+        if (sat) logger.info(`✅ [ASP] Solver used: ${inv.label} (${solveTimeMs}ms, optimal=${optimal})`);
         return {
           ok: true,
           sat,
@@ -206,7 +207,7 @@ export async function runClingoProgram(
         // not proven optimal.
         const salvageable = /Answer:\s*\d+/i.test(stdout);
         if (err.killed && salvageable) {
-          console.warn(
+          logger.warn(
             `⚠️  [ASP] ${inv.label} hit the ${timeoutMs}ms time budget before proving optimality; using best answer found so far.`
           );
           return {

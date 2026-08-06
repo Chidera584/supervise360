@@ -1,6 +1,7 @@
 import type { StudentData, GroupData } from '../groupFormationService';
 import type { SupervisorData, GroupData as SupGroupData, AssignmentResult } from '../supervisorAssignmentService';
 import { parseAnswerSet, runClingoProgram, type ClingoAtom, type ClingoRunResult } from './clingoRunner';
+import { logger } from '../../logger';
 
 /**
  * Bounds how long an HTTP request can spend waiting on the solver before falling back. Both
@@ -120,11 +121,11 @@ export async function tryGroupFormationWithClingo(
   const program = lines.join('\n');
   const res = await runClingoProgram(program, { timeoutMs: GROUP_FORMATION_TIMEOUT_MS });
   if (!res.ok) {
-    console.warn(`⚠️  [ASP] Clingo not available (${res.stderr || 'ENOENT'}). ${clingoHint()}`);
+    logger.warn(`⚠️  [ASP] Clingo not available (${res.stderr || 'ENOENT'}). ${clingoHint()}`);
     return null;
   }
   if (!res.sat) {
-    console.warn('⚠️  [ASP] Clingo reported UNSAT for group formation; using heuristic fallback.');
+    logger.warn('⚠️  [ASP] Clingo reported UNSAT for group formation; using heuristic fallback.');
     return null;
   }
 
@@ -169,11 +170,11 @@ export async function tryGroupFormationWithClingo(
 
   const placed = groups.reduce((s, g) => s + g.members.length, 0);
   if (placed !== students.length) {
-    console.warn(`⚠️  [ASP] Clingo parse mismatch (placed ${placed}/${students.length}); using heuristic.`);
+    logger.warn(`⚠️  [ASP] Clingo parse mismatch (placed ${placed}/${students.length}); using heuristic.`);
     return null;
   }
 
-  console.log(
+  logger.info(
     `✅ [ASP] Group formation solved with Clingo (${groups.length} groups, ${res.solveTimeMs}ms, optimal=${res.optimal}).`
   );
   return { groups, meta: metaFromResult(res) };
@@ -204,7 +205,7 @@ export async function trySupervisorAssignmentWithClingo(
 
   for (let gi = 0; gi < gCount; gi++) {
     if (!eligible.some((e) => e.g === gi + 1)) {
-      console.warn(`⚠️  [ASP] No eligible supervisor for group "${groups[gi].name}"; skipping Clingo assignment.`);
+      logger.warn(`⚠️  [ASP] No eligible supervisor for group "${groups[gi].name}"; skipping Clingo assignment.`);
       return null;
     }
   }
@@ -264,18 +265,18 @@ export async function trySupervisorAssignmentWithClingo(
     optStrategy: 'bb',
   });
   if (!res.ok) {
-    console.warn(`⚠️  [ASP] Clingo not available for supervisor assignment. ${clingoHint()}`);
+    logger.warn(`⚠️  [ASP] Clingo not available for supervisor assignment. ${clingoHint()}`);
     return null;
   }
   if (!res.sat) {
-    console.warn('⚠️  [ASP] Clingo UNSAT for supervisor assignment; using greedy fallback.');
+    logger.warn('⚠️  [ASP] Clingo UNSAT for supervisor assignment; using greedy fallback.');
     return null;
   }
 
   const atoms = res.atoms.length ? res.atoms : parseAnswerSet(res.stdout);
   const assignPairs: ClingoAtom[] = atoms.filter((a) => a.name === 'assign' && a.args.length === 2);
   if (assignPairs.length !== gCount) {
-    console.warn(`⚠️  [ASP] Expected ${gCount} assign/2 atoms, got ${assignPairs.length}; using greedy fallback.`);
+    logger.warn(`⚠️  [ASP] Expected ${gCount} assign/2 atoms, got ${assignPairs.length}; using greedy fallback.`);
     return null;
   }
 
@@ -287,7 +288,7 @@ export async function trySupervisorAssignmentWithClingo(
     byGroup.set(g, s);
   }
   if (byGroup.size !== gCount) {
-    console.warn('⚠️  [ASP] Duplicate or missing group in assign/2; using greedy fallback.');
+    logger.warn('⚠️  [ASP] Duplicate or missing group in assign/2; using greedy fallback.');
     return null;
   }
 
@@ -305,7 +306,7 @@ export async function trySupervisorAssignmentWithClingo(
     });
   }
 
-  console.log(
+  logger.info(
     `✅ [ASP] Supervisor assignment optimized with Clingo (minimize max total load, ${res.solveTimeMs}ms, optimal=${res.optimal}).`
   );
   return { assignments: out, meta: metaFromResult(res) };

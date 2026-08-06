@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { logger } from '../logger';
 
 export function createSettingsRouter(db: Pool) {
   const router = Router();
@@ -11,36 +12,36 @@ export function createSettingsRouter(db: Pool) {
 
   router.get('/gpa-thresholds/global', async (_req, res) => {
     try {
-      console.log('🔍 [API] Fetching global thresholds from database...');
+      logger.info('🔍 [API] Fetching global thresholds from database...');
       const [rows] = await db.execute(
         'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?)',
         ['gpa_tier_high_min', 'gpa_tier_medium_min', 'gpa_tier_low_min']
       );
       
-      console.log('📥 [API] Raw database rows:', rows);
+      logger.info('📥 [API] Raw database rows:', rows);
       
       const thresholds: { high?: number; medium?: number; low?: number } = {};
       
       (rows as any[]).forEach((row) => {
         const key = row.setting_key.replace('gpa_tier_', '').replace('_min', '');
         const value = parseFloat(row.setting_value);
-        console.log(`  → ${row.setting_key} = "${row.setting_value}" → parsed as ${value} → key: ${key}`);
+        logger.info(`  → ${row.setting_key} = "${row.setting_value}" → parsed as ${value} → key: ${key}`);
         if (!isNaN(value)) {
           thresholds[key as 'high' | 'medium' | 'low'] = value;
         } else {
-          console.error(`  ❌ Failed to parse value for ${row.setting_key}: "${row.setting_value}"`);
+          logger.error(`  ❌ Failed to parse value for ${row.setting_key}: "${row.setting_value}"`);
         }
       });
       
-      console.log('📊 [API] Parsed thresholds object:', thresholds);
+      logger.info('📊 [API] Parsed thresholds object:', thresholds);
       
       // Validate we have all three values - DO NOT use fallbacks if values exist but are wrong
       if (thresholds.high !== undefined && thresholds.medium !== undefined && thresholds.low !== undefined) {
-        console.log('✅ [API] All thresholds found in database:', thresholds);
+        logger.info('✅ [API] All thresholds found in database:', thresholds);
         res.json({ success: true, data: thresholds });
       } else {
-        console.error('❌ [API] Missing threshold values! Found:', thresholds);
-        console.error('   This means the database is missing required settings.');
+        logger.error('❌ [API] Missing threshold values! Found:', thresholds);
+        logger.error('   This means the database is missing required settings.');
         res.status(500).json({ 
           success: false, 
           message: 'Database is missing required threshold settings',
@@ -48,7 +49,7 @@ export function createSettingsRouter(db: Pool) {
         });
       }
     } catch (error) {
-      console.error('❌ [API] Error fetching global GPA thresholds:', error);
+      logger.error('❌ [API] Error fetching global GPA thresholds:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch global GPA thresholds' });
     }
   });
@@ -56,7 +57,7 @@ export function createSettingsRouter(db: Pool) {
   router.put('/gpa-thresholds/global', async (req, res) => {
     try {
       const { high, medium, low } = req.body;
-      console.log('💾 [API] Updating global thresholds:', { high, medium, low });
+      logger.info('💾 [API] Updating global thresholds:', { high, medium, low });
       
       if (high === undefined || medium === undefined || low === undefined) {
         return res.status(400).json({ success: false, message: 'All threshold values required' });
@@ -68,7 +69,7 @@ export function createSettingsRouter(db: Pool) {
       try {
         await connection.beginTransaction();
         
-        console.log('📝 [API] Updating database with values:', {
+        logger.info('📝 [API] Updating database with values:', {
           high: high.toString(),
           medium: medium.toString(),
           low: low.toString()
@@ -85,7 +86,7 @@ export function createSettingsRouter(db: Pool) {
           'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?)',
           ['gpa_tier_high_min', 'gpa_tier_medium_min', 'gpa_tier_low_min']
         );
-        console.log('✅ [API] Verified updated values in database:', verifyRows);
+        logger.info('✅ [API] Verified updated values in database:', verifyRows);
         
         res.json({ success: true, message: 'Updated successfully', data: { high, medium, low } });
       } catch (error) {
@@ -95,7 +96,7 @@ export function createSettingsRouter(db: Pool) {
         connection.release();
       }
     } catch (error) {
-      console.error('❌ [API] Error updating thresholds:', error);
+      logger.error('❌ [API] Error updating thresholds:', error);
       res.status(500).json({ success: false, message: 'Failed to update' });
     }
   });
@@ -149,7 +150,7 @@ export function createSettingsRouter(db: Pool) {
 
       res.json({ success: true, data: { global: defaultThresholds, departments: departmentData } });
     } catch (error) {
-      console.error('Error fetching all thresholds:', error);
+      logger.error('Error fetching all thresholds:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch thresholds' });
     }
   });
@@ -159,7 +160,7 @@ export function createSettingsRouter(db: Pool) {
     try {
       // Decode department name from URL (handles spaces like "Software Engineering")
       const department = decodeURIComponent(req.params.department);
-      console.log(`🔍 [SETTINGS] Fetching department thresholds for: "${department}"`);
+      logger.info(`🔍 [SETTINGS] Fetching department thresholds for: "${department}"`);
       
       const [rows] = await db.execute(
         `SELECT use_custom_thresholds, gpa_tier_high_min, gpa_tier_medium_min, gpa_tier_low_min 
@@ -170,7 +171,7 @@ export function createSettingsRouter(db: Pool) {
 
       if ((rows as any[]).length === 0) {
         // Department not found, fetch global thresholds and return them
-        console.log(`ℹ️  [SETTINGS] No department settings found for "${department}", returning global thresholds`);
+        logger.info(`ℹ️  [SETTINGS] No department settings found for "${department}", returning global thresholds`);
         const [globalRows] = await db.execute(
           'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?)',
           ['gpa_tier_high_min', 'gpa_tier_medium_min', 'gpa_tier_low_min']
@@ -187,11 +188,11 @@ export function createSettingsRouter(db: Pool) {
         });
         
         if (globalThresholds.high === undefined || globalThresholds.medium === undefined || globalThresholds.low === undefined) {
-          console.error(`❌ [API] Missing threshold values for department "${department}"!`);
-          console.error('   Found:', globalThresholds);
+          logger.error(`❌ [API] Missing threshold values for department "${department}"!`);
+          logger.error('   Found:', globalThresholds);
         }
         
-        console.log(`📊 [API] Returning global thresholds (dept not found) for "${department}":`, globalThresholds);
+        logger.info(`📊 [API] Returning global thresholds (dept not found) for "${department}":`, globalThresholds);
         return res.json({
           success: true,
           data: {
@@ -212,8 +213,8 @@ export function createSettingsRouter(db: Pool) {
           low: parseFloat(settings.gpa_tier_low_min)
         };
         
-        console.log(`✅ [SETTINGS] Using department-specific thresholds for "${department}":`, thresholds);
-        console.log(`📊 [API] Returning department thresholds:`, thresholds);
+        logger.info(`✅ [SETTINGS] Using department-specific thresholds for "${department}":`, thresholds);
+        logger.info(`📊 [API] Returning department thresholds:`, thresholds);
         
         return res.json({
           success: true,
@@ -224,7 +225,7 @@ export function createSettingsRouter(db: Pool) {
         });
       } else {
         // Department exists but doesn't use custom thresholds, return global
-        console.log(`ℹ️  [SETTINGS] Department "${department}" doesn't use custom thresholds, returning global`);
+        logger.info(`ℹ️  [SETTINGS] Department "${department}" doesn't use custom thresholds, returning global`);
         const [globalRows] = await db.execute(
           'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?)',
           ['gpa_tier_high_min', 'gpa_tier_medium_min', 'gpa_tier_low_min']
@@ -241,11 +242,11 @@ export function createSettingsRouter(db: Pool) {
         });
         
         if (globalThresholds.high === undefined || globalThresholds.medium === undefined || globalThresholds.low === undefined) {
-          console.error(`❌ [API] Missing threshold values for department "${department}"!`);
-          console.error('   Found:', globalThresholds);
+          logger.error(`❌ [API] Missing threshold values for department "${department}"!`);
+          logger.error('   Found:', globalThresholds);
         }
         
-        console.log(`📊 [API] Returning global thresholds (dept doesn't use custom) for "${department}":`, globalThresholds);
+        logger.info(`📊 [API] Returning global thresholds (dept doesn't use custom) for "${department}":`, globalThresholds);
         return res.json({
           success: true,
           data: {
@@ -255,7 +256,7 @@ export function createSettingsRouter(db: Pool) {
         });
       }
     } catch (error) {
-      console.error('❌ [SETTINGS] Error fetching department GPA thresholds:', error);
+      logger.error('❌ [SETTINGS] Error fetching department GPA thresholds:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch department GPA thresholds' });
     }
   });
@@ -339,7 +340,7 @@ export function createSettingsRouter(db: Pool) {
         connection.release();
       }
     } catch (error) {
-      console.error('Error updating department thresholds:', error);
+      logger.error('Error updating department thresholds:', error);
       res.status(500).json({ success: false, message: 'Failed to update department settings' });
     }
   });
@@ -347,10 +348,10 @@ export function createSettingsRouter(db: Pool) {
   router.post('/gpa-thresholds/preview', async (req, res) => {
     try {
       const { high, medium, low, department } = req.body;
-      console.log('🔍 [API] Preview request:', { high, medium, low, department });
+      logger.info('🔍 [API] Preview request:', { high, medium, low, department });
       
       if (high === undefined || medium === undefined || low === undefined) {
-        console.error('❌ [API] Missing threshold values in preview request');
+        logger.error('❌ [API] Missing threshold values in preview request');
         return res.status(400).json({ success: false, message: 'All threshold values (high, medium, low) are required' });
       }
       
@@ -363,20 +364,20 @@ export function createSettingsRouter(db: Pool) {
       if (department) {
         query += ' AND u.department = ?';
         params.push(department);
-        console.log(`📊 [API] Filtering students by department: "${department}"`);
+        logger.info(`📊 [API] Filtering students by department: "${department}"`);
       } else {
-        console.log('📊 [API] Previewing for all departments (no filter)');
+        logger.info('📊 [API] Previewing for all departments (no filter)');
       }
       
-      console.log(`📊 [API] Executing query: ${query}`);
-      console.log(`📊 [API] Query params:`, params);
+      logger.info(`📊 [API] Executing query: ${query}`);
+      logger.info(`📊 [API] Query params:`, params);
       
       const [students] = await db.execute(query, params);
       const studentArray = students as any[];
-      console.log(`📊 [API] Found ${studentArray.length} students for preview`);
+      logger.info(`📊 [API] Found ${studentArray.length} students for preview`);
       
       if (studentArray.length === 0) {
-        console.log('⚠️  [API] No students found with GPAs for this department');
+        logger.info('⚠️  [API] No students found with GPAs for this department');
         return res.json({ 
           success: true, 
           data: { 
@@ -394,7 +395,7 @@ export function createSettingsRouter(db: Pool) {
         const gpa = typeof gpaValue === 'number' ? gpaValue : parseFloat(gpaValue);
         
         if (isNaN(gpa) || gpa === null || gpa === undefined) {
-          console.warn(`⚠️  [API] Invalid GPA value: ${gpaValue} (type: ${typeof gpaValue})`);
+          logger.warn(`⚠️  [API] Invalid GPA value: ${gpaValue} (type: ${typeof gpaValue})`);
           return;
         }
         
@@ -407,11 +408,11 @@ export function createSettingsRouter(db: Pool) {
         }
       });
       
-      console.log('📊 [API] Preview distribution:', distribution);
+      logger.info('📊 [API] Preview distribution:', distribution);
       res.json({ success: true, data: { distribution, thresholds: { high, medium, low } } });
     } catch (error) {
-      console.error('❌ [API] Error previewing:', error);
-      console.error('❌ [API] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      logger.error('❌ [API] Error previewing:', error);
+      logger.error('❌ [API] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Failed to preview',

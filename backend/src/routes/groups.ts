@@ -3,6 +3,7 @@ import { Pool } from 'mysql2/promise';
 import { GroupFormationService } from '../services/groupFormationService';
 import { authenticateToken, requireStudent, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 import {
   notifyGroupingAndSupervisor,
   notifyNewStudentAssignment,
@@ -73,7 +74,7 @@ export function createGroupsRouter(db: Pool) {
         return res.status(401).json({ success: false, message: 'Authentication required' });
       }
 
-      console.log('🔍 /groups/my-group called for user:', userId);
+      logger.info('🔍 /groups/my-group called for user:', userId);
       const [studentRows] = await db.execute(
         `SELECT s.matric_number, COALESCE(NULLIF(TRIM(u.department), ''), '') as department
          FROM students s
@@ -82,7 +83,7 @@ export function createGroupsRouter(db: Pool) {
         [userId]
       );
       const students = studentRows as any[];
-      console.log('🔍 /groups/my-group student lookup:', students);
+      logger.info('🔍 /groups/my-group student lookup:', students);
       if (students.length === 0 || !students[0].matric_number) {
         return res.json({
           success: true,
@@ -94,14 +95,14 @@ export function createGroupsRouter(db: Pool) {
       const group = await groupService.getGroupForStudentUser(userId);
 
       if (!group) {
-        console.log('⚠️ /groups/my-group: no group found for user', userId);
+        logger.info('⚠️ /groups/my-group: no group found for user', userId);
         return res.json({
           success: true,
           data: null,
           message: 'No group assigned yet. Groups are typically formed by your department admin.'
         });
       }
-      console.log('✅ /groups/my-group: group found', { id: group.id, name: group.name });
+      logger.info('✅ /groups/my-group: group found', { id: group.id, name: group.name });
 
       let supervisorEmail: string | null = null;
       let supervisorPhone: string | null = null;
@@ -143,7 +144,7 @@ export function createGroupsRouter(db: Pool) {
         }
       });
     } catch (error) {
-      console.error('Error fetching student group:', error);
+      logger.error('Error fetching student group:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch your group'
@@ -154,13 +155,13 @@ export function createGroupsRouter(db: Pool) {
   // Get all groups
   router.get('/', authenticateToken, async (req, res) => {
     try {
-      console.log('🔍 Groups endpoint called');
+      logger.info('🔍 Groups endpoint called');
       let groups = await groupService.getAllGroups();
       const sessionId = req.query.sessionId ? Number(req.query.sessionId) : NaN;
       if (!Number.isNaN(sessionId)) {
         groups = groups.filter((g) => Number((g as any).session_id) === sessionId);
       }
-      console.log('✅ Groups fetched successfully:', groups.length);
+      logger.info('✅ Groups fetched successfully:', groups.length);
       
       // Return in the expected API format
       res.json({
@@ -169,7 +170,7 @@ export function createGroupsRouter(db: Pool) {
         message: `Found ${groups.length} groups`
       });
     } catch (error) {
-      console.error('❌ Error fetching groups:', error);
+      logger.error('❌ Error fetching groups:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to fetch groups',
@@ -183,9 +184,9 @@ export function createGroupsRouter(db: Pool) {
     try {
       const { students, department, sessionId: sessionIdRaw } = req.body;
       
-      console.log('📥 [GROUPS/FORM] Received request to form groups');
-      console.log('   - Students count:', students?.length || 0);
-      console.log('   - Department:', department || 'not specified');
+      logger.info('📥 [GROUPS/FORM] Received request to form groups');
+      logger.info('   - Students count:', students?.length || 0);
+      logger.info('   - Department:', department || 'not specified');
       
       if (!students || !Array.isArray(students)) {
         return res.status(400).json({ 
@@ -228,17 +229,17 @@ export function createGroupsRouter(db: Pool) {
           connection.release();
         }
         await groupService.clearGroupsForDepartment(deptToClear, sessionId);
-        console.log('🧹 [GROUPS/FORM] Cleared existing groups for department:', deptToClear, 'session:', sessionId);
+        logger.info('🧹 [GROUPS/FORM] Cleared existing groups for department:', deptToClear, 'session:', sessionId);
       }
 
       // Process student data with department for threshold lookup
       // This will fetch fresh thresholds from database
-      console.log('🔄 [GROUPS/FORM] Processing students with department:', department);
+      logger.info('🔄 [GROUPS/FORM] Processing students with department:', department);
       const processedStudents = await groupService.processStudentData(students, department);
       
       // Form groups: tries Potassco Clingo (ASP) first, falls back to the heuristic if the
       // solver is unavailable, UNSAT, or can't find any valid answer in time.
-      console.log('🔄 [GROUPS/FORM] Forming groups using ASP algorithm');
+      logger.info('🔄 [GROUPS/FORM] Forming groups using ASP algorithm');
       const { groups, solverStatus } = await groupService.formGroupsUsingASP(processedStudents, department);
 
       // Validate formation
@@ -273,7 +274,7 @@ export function createGroupsRouter(db: Pool) {
       });
     } catch (error) {
       const err = error as Error;
-      console.error('Error forming groups:', err);
+      logger.error('Error forming groups:', err);
       res.status(500).json({ 
         success: false,
         error: err.message || 'Failed to form groups',
@@ -449,7 +450,7 @@ export function createGroupsRouter(db: Pool) {
         connection.release();
       }
     } catch (error) {
-      console.error('Error assigning supervisor:', error);
+      logger.error('Error assigning supervisor:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to assign supervisor',
@@ -514,7 +515,7 @@ export function createGroupsRouter(db: Pool) {
         connection.release();
       }
     } catch (error) {
-      console.error('Error clearing groups:', error);
+      logger.error('Error clearing groups:', error);
       res.status(500).json({ 
         success: false,
         error: 'Failed to clear groups',

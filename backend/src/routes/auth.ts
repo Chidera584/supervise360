@@ -3,6 +3,7 @@ import { AuthService } from '../services/authService';
 import { validateRequest, loginSchema, registerSchema } from '../middleware/validation';
 import { authenticateToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.post('/login', validateRequest(loginSchema), async (req, res) => {
       res.status(401).json(result);
     }
   } catch (error) {
-    console.error('Login route error:', error);
+    logger.error('Login route error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -36,7 +37,7 @@ router.post('/register', validateRequest(registerSchema), async (req, res) => {
       res.status(400).json(result);
     }
   } catch (error) {
-    console.error('Register route error:', error);
+    logger.error('Register route error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -62,7 +63,7 @@ router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res) => {
       res.status(404).json(result);
     }
   } catch (error) {
-    console.error('Get current user route error:', error);
+    logger.error('Get current user route error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -104,7 +105,7 @@ router.post('/change-password', authenticateToken, async (req: AuthenticatedRequ
       res.status(400).json(result);
     }
   } catch (error) {
-    console.error('Change password route error:', error);
+    logger.error('Change password route error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -125,7 +126,7 @@ router.post('/forgot-password', async (req, res) => {
     const result = await AuthService.requestPasswordReset(email.trim());
     res.status(200).json(result);
   } catch (error) {
-    console.error('Forgot password route error:', error);
+    logger.error('Forgot password route error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -156,7 +157,7 @@ router.post('/reset-password', async (req, res) => {
       res.status(400).json(result);
     }
   } catch (error) {
-    console.error('Reset password route error:', error);
+    logger.error('Reset password route error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

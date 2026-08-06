@@ -1,5 +1,6 @@
 import { Pool } from 'mysql2/promise';
 import { columnExists, tableExists } from '../../services/schemaFixService';
+import { logger } from '../../logger';
 
 /**
  * Drops the legacy `student_groups` table (superseded by `project_groups`, see migration
@@ -25,9 +26,9 @@ export async function dropStudentGroupsTable(db: Pool): Promise<void> {
           `ALTER TABLE messages ADD CONSTRAINT fk_messages_group
            FOREIGN KEY (group_id) REFERENCES project_groups(id) ON DELETE SET NULL`
         );
-        console.log('✅ Fixed messages.group_id FK -> project_groups');
+        logger.info('✅ Fixed messages.group_id FK -> project_groups');
       } catch (e) {
-        console.warn('messages.group_id FK -> project_groups skipped (non-fatal):', (e as Error).message);
+        logger.warn('messages.group_id FK -> project_groups skipped (non-fatal):', (e as Error).message);
       }
     }
   }
@@ -43,7 +44,7 @@ export async function dropStudentGroupsTable(db: Pool): Promise<void> {
       await db.execute(`ALTER TABLE students DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
     }
     await db.execute(`ALTER TABLE students DROP COLUMN group_id`);
-    console.log('✅ Dropped students.group_id (dead column; membership is tracked via group_members)');
+    logger.info('✅ Dropped students.group_id (dead column; membership is tracked via group_members)');
   }
 
   if (await tableExists(db, 'student_groups')) {
@@ -53,13 +54,13 @@ export async function dropStudentGroupsTable(db: Pool): Promise<void> {
       [dbName]
     );
     if ((remaining as any[]).length > 0) {
-      console.warn(
+      logger.warn(
         '⚠️ Skipping DROP TABLE student_groups - still referenced by:',
         JSON.stringify(remaining)
       );
       return;
     }
     await db.execute(`DROP TABLE student_groups`);
-    console.log('✅ Dropped unused student_groups table');
+    logger.info('✅ Dropped unused student_groups table');
   }
 }

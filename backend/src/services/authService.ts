@@ -5,6 +5,7 @@ import { getOne, insertRecord, updateRecord } from '../config/database';
 import { pool } from '../config/database';
 import { User, Student, Supervisor, LoginRequest, RegisterRequest, AuthResponse } from '../types';
 import { sendPasswordResetEmailOnly, sendWelcomeEmailOnly } from './notificationEmailService';
+import { logger } from '../logger';
 
 export class AuthService {
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
@@ -69,7 +70,7 @@ export class AuthService {
         }
       };
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       return {
         success: false,
         message: 'Login failed. Please try again.'
@@ -169,7 +170,7 @@ export class AuthService {
       // Auto-login after successful registration
       return await this.login({ email: userData.email, password: userData.password });
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       return {
         success: false,
         message: 'Registration failed. Please try again.'
@@ -221,7 +222,7 @@ export class AuthService {
         }
       };
     } catch (error) {
-      console.error('Get current user error:', error);
+      logger.error('Get current user error:', error);
       return {
         success: false,
         message: 'Failed to retrieve user data'
@@ -247,7 +248,7 @@ export class AuthService {
       }
       return { success: true, message: 'If an account exists with that email, a reset link has been sent.' };
     } catch (error) {
-      console.error('Password reset request error:', error);
+      logger.error('Password reset request error:', error);
       return { success: false, message: 'Failed to process password reset request' };
     }
   }
@@ -266,7 +267,7 @@ export class AuthService {
       await pool.execute('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = ?', [row.id]);
       return { success: true, message: 'Password has been reset successfully' };
     } catch (error) {
-      console.error('Reset password error:', error);
+      logger.error('Reset password error:', error);
       return { success: false, message: 'Failed to reset password' };
     }
   }
@@ -292,7 +293,7 @@ export class AuthService {
         return { success: false, message: 'Failed to change password' };
       }
     } catch (error) {
-      console.error('Change password error:', error);
+      logger.error('Change password error:', error);
       return { success: false, message: 'Failed to change password' };
     }
   }

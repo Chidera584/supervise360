@@ -5,6 +5,7 @@
  */
 
 import { Pool } from 'mysql2/promise';
+import { logger } from '../logger';
 
 const CREATE_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS defense_allocations (
@@ -403,7 +404,7 @@ export class DefenseAllocationService {
         }
       }
     } catch (err) {
-      console.error('getStudentsToNotifyForPublishedDefense error:', err);
+      logger.error('getStudentsToNotifyForPublishedDefense error:', err);
     }
     return results;
   }

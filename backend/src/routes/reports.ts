@@ -6,6 +6,7 @@ import multer from 'multer';
 import { authenticateToken, requireStudent, requireSupervisor } from '../middleware/auth';
 import { ReportService } from '../services/reportService';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 import {
   notifySubmissionConfirmation,
   notifySupervisorFeedback,
@@ -249,7 +250,7 @@ export function createReportsRouter(db: Pool) {
 
       res.json({ success: true, message: 'Report uploaded', data: { id: (result as any).insertId } });
     } catch (error: any) {
-      console.error('Upload report error:', error);
+      logger.error('Upload report error:', error);
       const msg = error?.message || String(error);
       const isFkError = msg.toLowerCase().includes('foreign key') || msg.includes("doesn't exist");
       res.status(500).json({
@@ -266,7 +267,7 @@ export function createReportsRouter(db: Pool) {
       const data = await reportService.listMyReports(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('My reports error:', error);
+      logger.error('My reports error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch reports' });
     }
   });
@@ -278,7 +279,7 @@ export function createReportsRouter(db: Pool) {
       const data = await reportService.listPendingReviews(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Pending review reports error:', error);
+      logger.error('Pending review reports error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch pending reports' });
     }
   });
@@ -331,7 +332,7 @@ export function createReportsRouter(db: Pool) {
 
       res.json({ success: true, message: 'Report reviewed' });
     } catch (error) {
-      console.error('Review report error:', error);
+      logger.error('Review report error:', error);
       res.status(500).json({ success: false, message: 'Failed to review report' });
     }
   });
@@ -422,7 +423,7 @@ export function createReportsRouter(db: Pool) {
 
       return res.download(scannedPath, report.file_name);
     } catch (error) {
-      console.error('Download report error:', error);
+      logger.error('Download report error:', error);
       res.status(500).json({ success: false, message: 'Failed to download report' });
     }
   });
@@ -437,7 +438,7 @@ export function createReportsRouter(db: Pool) {
       }
       res.json({ success: true, message: 'Report deleted' });
     } catch (error) {
-      console.error('Delete report error:', error);
+      logger.error('Delete report error:', error);
       res.status(500).json({ success: false, message: 'Failed to delete report' });
     }
   });

@@ -1,4 +1,5 @@
 import { Pool } from 'mysql2/promise';
+import { logger } from '../logger';
 
 export type NotificationType =
   | 'group_formed'
@@ -52,7 +53,7 @@ export class NotificationService {
       );
       return (result as any).insertId ?? null;
     } catch (err) {
-      console.error('Create notification error:', err);
+      logger.error('Create notification error:', err);
       return null;
     }
   }

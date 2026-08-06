@@ -6,6 +6,7 @@ import { DefenseAllocationService } from '../services/defenseAllocationService';
 import { computeAllocation } from '../services/defenseSchedulingService';
 import { notifyDefenseScheduled } from '../services/notificationEmailService';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ export function createDefensePanelsRouter(db: Pool) {
       res.json({ success: true, data: result });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Allocation failed';
-      console.error('Defense scheduling allocate error:', error);
+      logger.error('Defense scheduling allocate error:', error);
       res.status(400).json({ success: false, message: msg });
     }
   });
@@ -50,7 +51,7 @@ export function createDefensePanelsRouter(db: Pool) {
       }
       res.json({ success: true, data });
     } catch (error) {
-      console.error('My defense error:', error);
+      logger.error('My defense error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch defense schedule' });
     }
   });
@@ -84,7 +85,7 @@ export function createDefensePanelsRouter(db: Pool) {
       }
       res.json({ success: true, data });
     } catch (error) {
-      console.error('My defense schedule error:', error);
+      logger.error('My defense schedule error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch defense schedule' });
     }
   });
@@ -119,7 +120,7 @@ export function createDefensePanelsRouter(db: Pool) {
 
       res.json({ success: true, message: 'Allocations published. Students and supervisors can now see their defense schedule.' });
     } catch (error) {
-      console.error('Publish allocations error:', error);
+      logger.error('Publish allocations error:', error);
       res.status(500).json({ success: false, message: 'Failed to publish allocations' });
     }
   });
@@ -132,7 +133,7 @@ export function createDefensePanelsRouter(db: Pool) {
       const data = await defenseAllocService.getDefenseScheduleByGroupId(groupId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Schedule for group error:', error);
+      logger.error('Schedule for group error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch defense schedule' });
     }
   });
@@ -144,7 +145,7 @@ export function createDefensePanelsRouter(db: Pool) {
       const data = await defenseAllocService.getSupervisorGroupsDefenseSchedules(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Supervisor groups defense schedules error:', error);
+      logger.error('Supervisor groups defense schedules error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch defense schedules' });
     }
   });
@@ -155,7 +156,7 @@ export function createDefensePanelsRouter(db: Pool) {
       const data = await defenseAllocService.listAllocations();
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Get allocations error:', error);
+      logger.error('Get allocations error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch allocations' });
     }
   });
@@ -165,7 +166,7 @@ export function createDefensePanelsRouter(db: Pool) {
       await defenseAllocService.saveAllocations([]);
       res.json({ success: true, message: 'Defense allocations cleared' });
     } catch (error) {
-      console.error('Clear allocations error:', error);
+      logger.error('Clear allocations error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear allocations' });
     }
   });
@@ -188,7 +189,7 @@ export function createDefensePanelsRouter(db: Pool) {
       );
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('Supervisor panels error:', error);
+      logger.error('Supervisor panels error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch defense panels' });
     }
   });

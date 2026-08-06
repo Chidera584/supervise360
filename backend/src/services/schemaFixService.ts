@@ -1,4 +1,5 @@
 import { Pool } from 'mysql2/promise';
+import { logger } from '../logger';
 
 /**
  * Ensures projects and reports tables work with project_groups (not student_groups).
@@ -23,7 +24,7 @@ export async function ensureProjectGroupsSchema(db: Pool): Promise<void> {
           `ALTER TABLE projects ADD CONSTRAINT fk_projects_group 
            FOREIGN KEY (group_id) REFERENCES project_groups(id) ON DELETE CASCADE`
         );
-        console.log('✅ Fixed projects.group_id FK -> project_groups');
+        logger.info('✅ Fixed projects.group_id FK -> project_groups');
       }
     } else {
       try {
@@ -31,7 +32,7 @@ export async function ensureProjectGroupsSchema(db: Pool): Promise<void> {
           `ALTER TABLE projects ADD CONSTRAINT fk_projects_group 
            FOREIGN KEY (group_id) REFERENCES project_groups(id) ON DELETE CASCADE`
         );
-        console.log('✅ Added projects.group_id FK -> project_groups');
+        logger.info('✅ Added projects.group_id FK -> project_groups');
       } catch (e) {
         // May already exist or table structure differs
       }
@@ -52,13 +53,13 @@ export async function ensureProjectGroupsSchema(db: Pool): Promise<void> {
           `ALTER TABLE reports ADD CONSTRAINT fk_reports_group 
            FOREIGN KEY (group_id) REFERENCES project_groups(id) ON DELETE CASCADE`
         );
-        console.log('✅ Fixed reports.group_id FK -> project_groups');
+        logger.info('✅ Fixed reports.group_id FK -> project_groups');
       } catch (e) {
         // If project_groups doesn't exist or other issue, leave without FK
       }
     }
   } catch (err) {
-    console.error('Schema fix (projects/reports FKs) failed:', (err as Error).message);
+    logger.error('Schema fix (projects/reports FKs) failed:', (err as Error).message);
     throw err;
   }
 }
@@ -78,9 +79,9 @@ export async function ensureReportsApprovedColumn(db: Pool): Promise<void> {
     await db.execute(
       `ALTER TABLE reports ADD COLUMN approved TINYINT(1) NULL DEFAULT NULL AFTER review_comments`
     );
-    console.log('✅ Added reports.approved column (report review)');
+    logger.info('✅ Added reports.approved column (report review)');
   } catch (err) {
-    console.error('Schema fix reports.approved failed:', (err as Error).message);
+    logger.error('Schema fix reports.approved failed:', (err as Error).message);
     throw err;
   }
 }
@@ -105,13 +106,13 @@ export async function backfillProjectsForGroups(db: Pool): Promise<number> {
           [g.id, `Project for ${g.name}`, 'Auto-created for report submission.']
         );
         created++;
-        console.log(`Created project for group ${g.name}`);
+        logger.info(`Created project for group ${g.name}`);
       } catch (e) {
-        console.warn('Backfill project failed for group', g.id, (e as Error).message);
+        logger.warn('Backfill project failed for group', g.id, (e as Error).message);
       }
     }
   } catch (err) {
-    console.warn('Backfill projects failed:', (err as Error).message);
+    logger.warn('Backfill projects failed:', (err as Error).message);
   }
   return created;
 }
@@ -160,9 +161,9 @@ export async function ensureDepartmentsTables(db: Pool): Promise<void> {
         INDEX idx_department (department_id)
       ) ENGINE=InnoDB
     `);
-    console.log('✅ Created departments and admin_departments tables');
+    logger.info('✅ Created departments and admin_departments tables');
   } catch (err) {
-    console.error('Departments tables migration failed:', (err as Error).message);
+    logger.error('Departments tables migration failed:', (err as Error).message);
     throw err;
   }
 }
@@ -181,9 +182,9 @@ export async function pruneDeprecatedDepartments(db: Pool): Promise<void> {
       const id = (check as any[])[0].id;
       await db.execute('DELETE FROM admin_departments WHERE department_id = ?', [id]);
       await db.execute('DELETE FROM departments WHERE id = ?', [id]);
-      console.log(`✅ Removed deprecated department: ${name}`);
+      logger.info(`✅ Removed deprecated department: ${name}`);
     } catch (err) {
-      console.warn(`Prune deprecated department "${name}" failed (non-fatal):`, (err as Error).message);
+      logger.warn(`Prune deprecated department "${name}" failed (non-fatal):`, (err as Error).message);
     }
   }
 }
@@ -228,7 +229,7 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
       await db.execute(
         `INSERT INTO academic_sessions (label, starts_on, ends_on, is_active) VALUES ('2024/2025', NULL, NULL, TRUE)`
       );
-      console.log('✅ Created academic_sessions');
+      logger.info('✅ Created academic_sessions');
     }
 
     const [sessRows] = await db.execute('SELECT id FROM academic_sessions ORDER BY id ASC LIMIT 1');
@@ -264,7 +265,7 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
       } catch {
         /* */
       }
-      console.log('✅ Added project_groups.session_id');
+      logger.info('✅ Added project_groups.session_id');
     }
 
     // --- students.session_id ---
@@ -289,7 +290,7 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
         } catch {
           /* */
         }
-        console.log('✅ Added students.session_id');
+        logger.info('✅ Added students.session_id');
       }
     }
 
@@ -298,11 +299,11 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
       await db.execute(
         `ALTER TABLE group_members ADD COLUMN email VARCHAR(255) NULL AFTER matric_number`
       );
-      console.log('✅ Added group_members.email');
+      logger.info('✅ Added group_members.email');
     }
     if (!(await columnExists(db, 'group_members', 'phone'))) {
       await db.execute(`ALTER TABLE group_members ADD COLUMN phone VARCHAR(50) NULL AFTER email`);
-      console.log('✅ Added group_members.phone');
+      logger.info('✅ Added group_members.phone');
     }
 
     // --- supervisor_workload caps & contact (table may not exist on minimal DBs — skip without failing whole migration) ---
@@ -311,19 +312,19 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
         await db.execute(
           `ALTER TABLE supervisor_workload ADD COLUMN max_groups INT NULL DEFAULT NULL AFTER current_groups`
         );
-        console.log('✅ Added supervisor_workload.max_groups');
+        logger.info('✅ Added supervisor_workload.max_groups');
       }
       if (!(await columnExists(db, 'supervisor_workload', 'email'))) {
         await db.execute(
           `ALTER TABLE supervisor_workload ADD COLUMN email VARCHAR(255) NULL AFTER supervisor_name`
         );
-        console.log('✅ Added supervisor_workload.email');
+        logger.info('✅ Added supervisor_workload.email');
       }
       if (!(await columnExists(db, 'supervisor_workload', 'phone'))) {
         await db.execute(
           `ALTER TABLE supervisor_workload ADD COLUMN phone VARCHAR(50) NULL AFTER email`
         );
-        console.log('✅ Added supervisor_workload.phone');
+        logger.info('✅ Added supervisor_workload.phone');
       }
     }
 
@@ -350,7 +351,7 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
           CONSTRAINT fk_sm_supervisor_user FOREIGN KEY (supervisor_user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB
       `);
-      console.log('✅ Created supervision_meetings');
+      logger.info('✅ Created supervision_meetings');
     }
 
     // --- meeting_attendance ---
@@ -368,7 +369,7 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
           CONSTRAINT fk_ma_member FOREIGN KEY (group_member_id) REFERENCES group_members(id) ON DELETE CASCADE
         ) ENGINE=InnoDB
       `);
-      console.log('✅ Created meeting_attendance');
+      logger.info('✅ Created meeting_attendance');
     }
 
     if (await tableExists(db, 'supervision_meetings')) {
@@ -380,13 +381,13 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
         } catch {
           /* index may exist */
         }
-        console.log('✅ Added supervision_meetings.bulk_series_id');
+        logger.info('✅ Added supervision_meetings.bulk_series_id');
       }
       if (!(await columnExists(db, 'supervision_meetings', 'attendance_locked'))) {
         await db.execute(
           `ALTER TABLE supervision_meetings ADD COLUMN attendance_locked BOOLEAN NOT NULL DEFAULT FALSE`
         );
-        console.log('✅ Added supervision_meetings.attendance_locked');
+        logger.info('✅ Added supervision_meetings.attendance_locked');
       }
     }
 
@@ -417,7 +418,7 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
           CONSTRAINT fk_sae_meeting FOREIGN KEY (meeting_id) REFERENCES supervision_meetings(id) ON DELETE SET NULL
         ) ENGINE=InnoDB
       `);
-      console.log('✅ Created student_assessment_entries');
+      logger.info('✅ Created student_assessment_entries');
     }
 
     const [sessFinal] = await db.execute('SELECT id FROM academic_sessions ORDER BY id ASC LIMIT 1');
@@ -433,7 +434,7 @@ export async function ensureFeatureExpansionSchema(db: Pool): Promise<void> {
       await db.execute('UPDATE students SET session_id = ? WHERE session_id IS NULL', [sid]);
     }
   } catch (err) {
-    console.error('Feature expansion schema migration failed:', (err as Error).message);
+    logger.error('Feature expansion schema migration failed:', (err as Error).message);
     throw err;
   }
 }
@@ -455,16 +456,16 @@ export async function ensureSupervisionMeetingsColumns(db: Pool): Promise<void> 
       } catch {
         /* exists */
       }
-      console.log('✅ Added supervision_meetings.bulk_series_id (redundant ensure)');
+      logger.info('✅ Added supervision_meetings.bulk_series_id (redundant ensure)');
     }
     if (!(await columnExists(db, 'supervision_meetings', 'attendance_locked'))) {
       await db.execute(
         `ALTER TABLE supervision_meetings ADD COLUMN attendance_locked BOOLEAN NOT NULL DEFAULT FALSE`
       );
-      console.log('✅ Added supervision_meetings.attendance_locked (redundant ensure)');
+      logger.info('✅ Added supervision_meetings.attendance_locked (redundant ensure)');
     }
   } catch (err) {
-    console.error('ensureSupervisionMeetingsColumns migration failed:', (err as Error).message);
+    logger.error('ensureSupervisionMeetingsColumns migration failed:', (err as Error).message);
     throw err;
   }
 }

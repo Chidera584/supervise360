@@ -5,6 +5,7 @@ import { MessageService } from '../services/messageService';
 import { GroupFormationService } from '../services/groupFormationService';
 import { ReportService } from '../services/reportService';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 import {
   notifySupervisorMessage,
   notifyStudentMessage,
@@ -44,7 +45,7 @@ export function createMessagesRouter(db: Pool) {
       }
       res.json(json);
     } catch (error) {
-      console.error('Contacts error:', error);
+      logger.error('Contacts error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch contacts' });
     }
   });
@@ -56,7 +57,7 @@ export function createMessagesRouter(db: Pool) {
       const data = await messageService.getInbox(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Inbox error:', error);
+      logger.error('Inbox error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch inbox' });
     }
   });
@@ -68,7 +69,7 @@ export function createMessagesRouter(db: Pool) {
       const data = await messageService.getSent(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Sent error:', error);
+      logger.error('Sent error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch sent messages' });
     }
   });
@@ -189,7 +190,7 @@ export function createMessagesRouter(db: Pool) {
 
       res.json({ success: true, data: { ids } });
     } catch (error) {
-      console.error('Send message error:', error);
+      logger.error('Send message error:', error);
       res.status(500).json({ success: false, message: 'Failed to send message' });
     }
   });
@@ -201,7 +202,7 @@ export function createMessagesRouter(db: Pool) {
       const deleted = await messageService.clearInbox(userId);
       res.json({ success: true, data: { deleted }, message: `${deleted} message(s) cleared from inbox` });
     } catch (error) {
-      console.error('Clear inbox error:', error);
+      logger.error('Clear inbox error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear inbox' });
     }
   });
@@ -213,7 +214,7 @@ export function createMessagesRouter(db: Pool) {
       const deleted = await messageService.clearSent(userId);
       res.json({ success: true, data: { deleted }, message: `${deleted} message(s) cleared from sent` });
     } catch (error) {
-      console.error('Clear sent error:', error);
+      logger.error('Clear sent error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear sent messages' });
     }
   });
@@ -225,7 +226,7 @@ export function createMessagesRouter(db: Pool) {
       await messageService.markRead(Number(req.params.id), userId);
       res.json({ success: true, message: 'Message marked as read' });
     } catch (error) {
-      console.error('Read message error:', error);
+      logger.error('Read message error:', error);
       res.status(500).json({ success: false, message: 'Failed to update message' });
     }
   });

@@ -1,4 +1,5 @@
 import { Pool } from 'mysql2/promise';
+import { logger } from '../logger';
 
 export interface Migration {
   id: string;
@@ -44,7 +45,7 @@ export async function runMigrations(
       alreadyApplied.push(migration.id);
       continue;
     }
-    console.log(`⏳ Running migration: ${migration.id} - ${migration.description}`);
+    logger.info(`⏳ Running migration: ${migration.id} - ${migration.description}`);
     try {
       await migration.up(db);
       await db.execute('INSERT INTO schema_migrations (id, description) VALUES (?, ?)', [
@@ -52,9 +53,9 @@ export async function runMigrations(
         migration.description,
       ]);
       newlyApplied.push(migration.id);
-      console.log(`✅ Migration applied: ${migration.id}`);
+      logger.info(`✅ Migration applied: ${migration.id}`);
     } catch (err) {
-      console.error(`❌ Migration FAILED: ${migration.id} - ${migration.description}`);
+      logger.error(`❌ Migration FAILED: ${migration.id} - ${migration.description}`);
       throw new Error(
         `Migration "${migration.id}" failed: ${(err as Error).message}. ` +
           'Startup aborted - fix the migration (or the data blocking it) and redeploy. ' +
@@ -64,9 +65,9 @@ export async function runMigrations(
   }
 
   if (newlyApplied.length === 0) {
-    console.log(`✅ Schema up to date (${alreadyApplied.length} migration(s) already applied, none pending)`);
+    logger.info(`✅ Schema up to date (${alreadyApplied.length} migration(s) already applied, none pending)`);
   } else {
-    console.log(`✅ Applied ${newlyApplied.length} migration(s): ${newlyApplied.join(', ')}`);
+    logger.info(`✅ Applied ${newlyApplied.length} migration(s): ${newlyApplied.join(', ')}`);
   }
 
   return { applied: newlyApplied, alreadyApplied };

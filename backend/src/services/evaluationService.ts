@@ -1,4 +1,5 @@
 import { Pool } from 'mysql2/promise';
+import { logger } from '../logger';
 
 const CREATE_STUDENT_EVALUATIONS_SQL = `
 CREATE TABLE IF NOT EXISTS student_evaluations (
@@ -31,7 +32,7 @@ export class EvaluationService {
       await this.db.execute(CREATE_STUDENT_EVALUATIONS_SQL);
     } catch (e) {
       // Ignore if already exists or limited permissions in certain environments
-      console.warn('student_evaluations ensureTable warning:', (e as Error).message);
+      logger.warn('student_evaluations ensureTable warning:', (e as Error).message);
     }
   }
 

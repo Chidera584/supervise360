@@ -1,4 +1,5 @@
 import { Pool } from 'mysql2/promise';
+import { logger } from '../logger';
 
 const CREATE_MESSAGES_SQL = `
 CREATE TABLE IF NOT EXISTS messages (
@@ -41,7 +42,7 @@ export class MessageService {
       await this.db.execute(CREATE_MESSAGES_SQL);
     } catch (e) {
       // Ignore if table already exists or cannot be created in this environment
-      console.warn('Messages ensureTable warning:', (e as Error).message);
+      logger.warn('Messages ensureTable warning:', (e as Error).message);
     }
   }
 
@@ -350,7 +351,7 @@ export class MessageService {
         );
         sent.push((result as any).insertId);
       } catch (e) {
-        console.error('Messages insert error, falling back to minimal schema:', (e as Error).message);
+        logger.error('Messages insert error, falling back to minimal schema:', (e as Error).message);
         const [result] = await this.db.execute(
           `INSERT INTO messages (sender_id, recipient_id, subject, content, sent_at)
            VALUES (?, ?, ?, ?, NOW())`,

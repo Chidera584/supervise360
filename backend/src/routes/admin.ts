@@ -12,6 +12,7 @@ import { notifyUnassignedStudentsAlert } from '../services/notificationEmailServ
 import { sendTestEmail, isEmailConfigured } from '../services/emailService';
 import { GroupFormationService } from '../services/groupFormationService';
 import { IdLinkingService } from '../services/idLinkingService';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -33,7 +34,7 @@ export function createAdminRouter(db: Pool) {
       const data = await idLinkingService.getUnmatchedLinks();
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Unmatched links error:', error);
+      logger.error('Unmatched links error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch unmatched links' });
     }
   });
@@ -43,7 +44,7 @@ export function createAdminRouter(db: Pool) {
       const data = await adminService.getDashboardStats();
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Admin dashboard error:', error);
+      logger.error('Admin dashboard error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch admin dashboard' });
     }
   });
@@ -54,7 +55,7 @@ export function createAdminRouter(db: Pool) {
       const departments = await departmentService.listDepartments();
       res.json({ success: true, data: departments });
     } catch (error) {
-      console.error('Departments list error:', error);
+      logger.error('Departments list error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch departments' });
     }
   });
@@ -73,7 +74,7 @@ export function createAdminRouter(db: Pool) {
       if (msg.includes('Duplicate')) {
         return res.status(400).json({ success: false, message: 'A department with this name or code already exists' });
       }
-      console.error('Create department error:', error);
+      logger.error('Create department error:', error);
       res.status(500).json({ success: false, message: msg });
     }
   });
@@ -89,7 +90,7 @@ export function createAdminRouter(db: Pool) {
       }
       res.json({ success: true, message: 'Department deleted' });
     } catch (error) {
-      console.error('Delete department error:', error);
+      logger.error('Delete department error:', error);
       res.status(500).json({ success: false, message: 'Failed to delete department' });
     }
   });
@@ -104,7 +105,7 @@ export function createAdminRouter(db: Pool) {
       const totals = await departmentService.getSystemWideTotals();
       res.json({ success: true, data: stats, totals });
     } catch (error) {
-      console.error('Department stats error:', error);
+      logger.error('Department stats error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch department stats' });
     }
   });
@@ -117,7 +118,7 @@ export function createAdminRouter(db: Pool) {
       const ids = await departmentService.getAdminDepartmentIds(authUser!.id);
       res.json({ success: true, data: { names, ids, managesAll: ids === null } });
     } catch (error) {
-      console.error('Admin departments error:', error);
+      logger.error('Admin departments error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch admin departments' });
     }
   });
@@ -131,7 +132,7 @@ export function createAdminRouter(db: Pool) {
       await departmentService.setAdminDepartments(authUser!.id, ids);
       res.json({ success: true, message: 'Departments updated' });
     } catch (error) {
-      console.error('Set admin departments error:', error);
+      logger.error('Set admin departments error:', error);
       res.status(500).json({ success: false, message: 'Failed to update departments' });
     }
   });
@@ -139,9 +140,9 @@ export function createAdminRouter(db: Pool) {
   // Test email - send a sample notification to verify SMTP works
   router.post('/test-email', authenticateToken, requireAdmin, async (req, res) => {
     try {
-      console.log('📧 Test email endpoint hit');
+      logger.info('📧 Test email endpoint hit');
       if (!isEmailConfigured()) {
-        console.warn('📧 Test email failed: SMTP not configured');
+        logger.warn('📧 Test email failed: SMTP not configured');
         return res.status(400).json({
           success: false,
           message: 'Email not configured. Add SMTP_HOST, SMTP_USER, SMTP_PASS to .env (see .env.example)',
@@ -152,13 +153,13 @@ export function createAdminRouter(db: Pool) {
       if (!email) {
         return res.status(400).json({ success: false, message: 'No email to send to. Provide email in body or use your account email.' });
       }
-      console.log(`📧 Sending test email to ${email}...`);
+      logger.info(`📧 Sending test email to ${email}...`);
       const result = await sendTestEmail(email);
       if (result.ok) {
-        console.log(`📧 Test email sent successfully to ${email}`);
+        logger.info(`📧 Test email sent successfully to ${email}`);
         res.json({ success: true, message: `Test email sent to ${email}. Check your inbox (and spam folder).` });
       } else {
-        console.error('📧 Test email failed:', result.error);
+        logger.error('📧 Test email failed:', result.error);
         res.status(500).json({
           success: false,
           message: 'Failed to send email.',
@@ -166,7 +167,7 @@ export function createAdminRouter(db: Pool) {
         });
       }
     } catch (error) {
-      console.error('📧 Test email error:', error);
+      logger.error('📧 Test email error:', error);
       res.status(500).json({ success: false, message: 'Failed to send test email' });
     }
   });
@@ -176,7 +177,7 @@ export function createAdminRouter(db: Pool) {
       const data = await adminService.getAnalyticsStats();
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Admin stats error:', error);
+      logger.error('Admin stats error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch admin statistics' });
     }
   });
@@ -214,7 +215,7 @@ export function createAdminRouter(db: Pool) {
       }
       res.json({ success: true, message: 'Unassigned students alert sent to admins' });
     } catch (error) {
-      console.error('Send unassigned alert error:', error);
+      logger.error('Send unassigned alert error:', error);
       res.status(500).json({ success: false, message: 'Failed to send alert' });
     }
   });
@@ -224,7 +225,7 @@ export function createAdminRouter(db: Pool) {
       await projectService.approveProject(Number(req.params.id));
       res.json({ success: true, message: 'Project approved' });
     } catch (error) {
-      console.error('Approve project error:', error);
+      logger.error('Approve project error:', error);
       res.status(500).json({ success: false, message: 'Failed to approve project' });
     }
   });
@@ -238,7 +239,7 @@ export function createAdminRouter(db: Pool) {
       await projectService.rejectProject(Number(req.params.id), reason);
       res.json({ success: true, message: 'Project rejected' });
     } catch (error) {
-      console.error('Reject project error:', error);
+      logger.error('Reject project error:', error);
       res.status(500).json({ success: false, message: 'Failed to reject project' });
     }
   });
@@ -300,7 +301,7 @@ export function createAdminRouter(db: Pool) {
         }
       });
     } catch (e) {
-      console.error('Debug defense schedule error:', e);
+      logger.error('Debug defense schedule error:', e);
       res.status(500).json({ success: false, message: 'Debug failed' });
     }
   });
@@ -310,7 +311,7 @@ export function createAdminRouter(db: Pool) {
       const panels = await defenseService.listPanels();
       res.json({ success: true, data: panels });
     } catch (error) {
-      console.error('Defense panels error:', error);
+      logger.error('Defense panels error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch defense panels' });
     }
   });
@@ -324,7 +325,7 @@ export function createAdminRouter(db: Pool) {
       const result = await defenseService.scheduleBulk({ date, startTime, durationMinutes, assignments });
       res.json({ success: true, data: result });
     } catch (error) {
-      console.error('Bulk defense schedule error:', error);
+      logger.error('Bulk defense schedule error:', error);
       res.status(500).json({ success: false, message: 'Failed to schedule defenses' });
     }
   });
@@ -340,7 +341,7 @@ export function createAdminRouter(db: Pool) {
       res.json({ success: true, data: result });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Allocation failed';
-      console.error('Defense scheduling allocate error:', error);
+      logger.error('Defense scheduling allocate error:', error);
       res.status(400).json({ success: false, message: msg });
     }
   });
@@ -354,7 +355,7 @@ export function createAdminRouter(db: Pool) {
       }
       res.json({ success: true, message: 'Defense panel updated' });
     } catch (error) {
-      console.error('Update defense panel error:', error);
+      logger.error('Update defense panel error:', error);
       res.status(500).json({ success: false, message: 'Failed to update defense panel' });
     }
   });
@@ -444,7 +445,7 @@ export function createAdminRouter(db: Pool) {
         conn.release();
       }
     } catch (error) {
-      console.error('Swap members error:', error);
+      logger.error('Swap members error:', error);
       res.status(500).json({ success: false, message: 'Failed to swap students' });
     }
   });
@@ -616,7 +617,7 @@ export function createAdminRouter(db: Pool) {
         conn.release();
       }
     } catch (error) {
-      console.error('Move member error:', error);
+      logger.error('Move member error:', error);
       res.status(500).json({ success: false, message: 'Failed to move student' });
     }
   });

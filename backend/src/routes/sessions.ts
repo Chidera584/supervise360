@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Pool } from 'mysql2/promise';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { logger } from '../logger';
 
 export function createSessionsRouter(db: Pool) {
   const router = Router();
@@ -14,7 +15,7 @@ export function createSessionsRouter(db: Pool) {
       );
       res.json({ success: true, data: rows });
     } catch (error) {
-      console.error('Sessions list error:', error);
+      logger.error('Sessions list error:', error);
       res.status(500).json({ success: false, message: 'Failed to list academic sessions' });
     }
   });
@@ -35,7 +36,7 @@ export function createSessionsRouter(db: Pool) {
       if (error?.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ success: false, message: 'A session with this label already exists' });
       }
-      console.error('Session create error:', error);
+      logger.error('Session create error:', error);
       res.status(500).json({ success: false, message: 'Failed to create session' });
     }
   });
@@ -82,7 +83,7 @@ export function createSessionsRouter(db: Pool) {
       if (error?.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ success: false, message: 'A session with this label already exists' });
       }
-      console.error('Session update error:', error);
+      logger.error('Session update error:', error);
       res.status(500).json({ success: false, message: 'Failed to update session' });
     }
   });
@@ -109,7 +110,7 @@ export function createSessionsRouter(db: Pool) {
       await db.execute('DELETE FROM academic_sessions WHERE id = ?', [id]);
       res.json({ success: true, message: 'Session removed' });
     } catch (error) {
-      console.error('Session delete error:', error);
+      logger.error('Session delete error:', error);
       res.status(500).json({ success: false, message: 'Failed to delete session' });
     }
   });

@@ -3,6 +3,7 @@ import { getMany, getOne, updateRecord } from '../config/database';
 import { authenticateToken, requireAdmin, requireAny } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import { sendProfileUpdateEmailOnly } from '../services/notificationEmailService';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
       data: users
     });
   } catch (error) {
-    console.error('Get users error:', error);
+    logger.error('Get users error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve users'
@@ -47,7 +48,7 @@ router.get('/students', authenticateToken, requireAny, async (req, res) => {
       data: students
     });
   } catch (error) {
-    console.error('Get students error:', error);
+    logger.error('Get students error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve students'
@@ -73,7 +74,7 @@ router.get('/supervisors', authenticateToken, requireAny, async (req, res) => {
       data: supervisors
     });
   } catch (error) {
-    console.error('Get supervisors error:', error);
+    logger.error('Get supervisors error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve supervisors'
@@ -125,7 +126,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
       }
     });
   } catch (error) {
-    console.error('Get user error:', error);
+    logger.error('Get user error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve user'
@@ -196,7 +197,7 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
     message: 'User updated successfully'
   });
   } catch (error) {
-    console.error('Update user error:', error);
+    logger.error('Update user error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update user'
@@ -231,7 +232,7 @@ router.put('/:id/status', authenticateToken, requireAdmin, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Update user status error:', error);
+    logger.error('Update user status error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update user status'

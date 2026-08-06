@@ -3,6 +3,7 @@ import { Pool } from 'mysql2/promise';
 import { authenticateToken } from '../middleware/auth';
 import { NotificationService } from '../services/notificationService';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ export function createNotificationsRouter(db: Pool) {
       const count = await notificationService.getUnreadCount(userId);
       res.json({ success: true, data: count });
     } catch (error) {
-      console.error('Unread count error:', error);
+      logger.error('Unread count error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch unread count' });
     }
   });
@@ -29,7 +30,7 @@ export function createNotificationsRouter(db: Pool) {
       const data = await notificationService.listNotifications(userId, limit);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Recent notifications error:', error);
+      logger.error('Recent notifications error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
     }
   });
@@ -41,7 +42,7 @@ export function createNotificationsRouter(db: Pool) {
       const data = await notificationService.listNotifications(userId);
       res.json({ success: true, data });
     } catch (error) {
-      console.error('Notifications error:', error);
+      logger.error('Notifications error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
     }
   });
@@ -53,7 +54,7 @@ export function createNotificationsRouter(db: Pool) {
       await notificationService.markRead(userId, Number(req.params.id));
       res.json({ success: true, message: 'Notification marked as read' });
     } catch (error) {
-      console.error('Mark notification read error:', error);
+      logger.error('Mark notification read error:', error);
       res.status(500).json({ success: false, message: 'Failed to update notification' });
     }
   });
@@ -65,7 +66,7 @@ export function createNotificationsRouter(db: Pool) {
       await notificationService.markAllRead(userId);
       res.json({ success: true, message: 'All notifications marked as read' });
     } catch (error) {
-      console.error('Mark all notifications read error:', error);
+      logger.error('Mark all notifications read error:', error);
       res.status(500).json({ success: false, message: 'Failed to update notifications' });
     }
   });
@@ -77,7 +78,7 @@ export function createNotificationsRouter(db: Pool) {
       await notificationService.deleteAll(userId);
       res.json({ success: true, message: 'All notifications cleared' });
     } catch (error) {
-      console.error('Clear all notifications error:', error);
+      logger.error('Clear all notifications error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear notifications' });
     }
   });
@@ -89,7 +90,7 @@ export function createNotificationsRouter(db: Pool) {
       await notificationService.delete(userId, Number(req.params.id));
       res.json({ success: true, message: 'Notification cleared' });
     } catch (error) {
-      console.error('Clear notification error:', error);
+      logger.error('Clear notification error:', error);
       res.status(500).json({ success: false, message: 'Failed to clear notification' });
     }
   });
