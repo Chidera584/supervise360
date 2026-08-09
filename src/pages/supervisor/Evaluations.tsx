@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
@@ -21,6 +21,10 @@ interface CompletedItem {
   student_name: string;
   group_name: string;
   total_score: number;
+  documentation_score?: number | null;
+  implementation_score?: number | null;
+  presentation_score?: number | null;
+  innovation_score?: number | null;
   evaluated_at?: string;
 }
 
@@ -98,6 +102,10 @@ export function Evaluations() {
         project_id?: number;
         evaluation_id?: number;
         total_score?: number;
+        documentation_score?: number | null;
+        implementation_score?: number | null;
+        presentation_score?: number | null;
+        innovation_score?: number | null;
         evaluated_at?: string;
       }[];
 
@@ -119,6 +127,10 @@ export function Evaluations() {
           student_name: i.student_name,
           group_name: i.group_name,
           total_score: i.total_score ?? 0,
+          documentation_score: i.documentation_score,
+          implementation_score: i.implementation_score,
+          presentation_score: i.presentation_score,
+          innovation_score: i.innovation_score,
           evaluated_at: i.evaluated_at,
         }));
 
@@ -161,6 +173,23 @@ export function Evaluations() {
     setScores(draft || defaultScores);
     setMessage(null);
   }, [loading, pending, navState?.groupId, (navState as any)?.groupName]);
+
+  const evaluationSummary = useMemo(() => {
+    if (completed.length === 0) return null;
+    const avg = (pick: (c: CompletedItem) => number | null | undefined) => {
+      const values = completed.map(pick).filter((v): v is number => v != null);
+      if (values.length === 0) return null;
+      return values.reduce((sum, v) => sum + v, 0) / values.length;
+    };
+    return {
+      count: completed.length,
+      avgTotal: avg((c) => c.total_score),
+      avgDocumentation: avg((c) => c.documentation_score),
+      avgImplementation: avg((c) => c.implementation_score),
+      avgPresentation: avg((c) => c.presentation_score),
+      avgInnovation: avg((c) => c.innovation_score),
+    };
+  }, [completed]);
 
   const openEvaluation = (item: PendingItem) => {
     setSelectedStudent(item);
@@ -411,6 +440,51 @@ export function Evaluations() {
             )}
           </Card>
         </div>
+
+        {/* Summary: cohort-level averages across completed evaluations */}
+        {evaluationSummary && (
+          <Card className="border border-slate-200/90 rounded-2xl p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <Award className="text-[#006D6D]" size={20} />
+              Evaluation summary
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Averages across {evaluationSummary.count} completed evaluation{evaluationSummary.count === 1 ? '' : 's'}.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg total</p>
+                <p className="text-xl font-bold text-slate-900 mt-1">
+                  {evaluationSummary.avgTotal != null ? evaluationSummary.avgTotal.toFixed(1) : '—'} / {totalMax}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Documentation</p>
+                <p className="text-xl font-bold text-slate-900 mt-1">
+                  {evaluationSummary.avgDocumentation != null ? evaluationSummary.avgDocumentation.toFixed(1) : '—'} / 20
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Implementation</p>
+                <p className="text-xl font-bold text-slate-900 mt-1">
+                  {evaluationSummary.avgImplementation != null ? evaluationSummary.avgImplementation.toFixed(1) : '—'} / 20
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Presentation</p>
+                <p className="text-xl font-bold text-slate-900 mt-1">
+                  {evaluationSummary.avgPresentation != null ? evaluationSummary.avgPresentation.toFixed(1) : '—'} / 10
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Innovation</p>
+                <p className="text-xl font-bold text-slate-900 mt-1">
+                  {evaluationSummary.avgInnovation != null ? evaluationSummary.avgInnovation.toFixed(1) : '—'} / 10
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Completed */}
         <Card className="border border-slate-200/90 rounded-2xl p-6">

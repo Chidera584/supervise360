@@ -235,6 +235,10 @@ export class EvaluationService {
          p.id as project_id,
          se.id as evaluation_id,
          se.total_score,
+         se.documentation_score,
+         se.implementation_score,
+         se.presentation_score,
+         se.innovation_score,
          se.evaluated_at
        FROM project_groups pg
        INNER JOIN group_members gm ON gm.group_id = pg.id
