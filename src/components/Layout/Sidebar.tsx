@@ -58,6 +58,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
     { icon: FileText, label: 'Reports', path: '/reports' },
     { icon: MessageSquare, label: 'Messages', path: '/messages' },
     { icon: FileText, label: 'Defense & Evaluation', path: '/defense-evaluation' },
+    { icon: BarChart3, label: 'Progressive Assessment', path: '/progressive-assessment' },
     { icon: User, label: 'Profile', path: '/profile' },
   ];
 

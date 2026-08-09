@@ -358,6 +358,22 @@ class ApiClient {
     return this.request(`/supervision/assessments${q}`);
   }
 
+  async createAssessmentEntry(entry: {
+    student_user_id: number;
+    session_id: number;
+    category: 'participation' | 'quiz' | 'general';
+    points?: number | null;
+    max_points?: number | null;
+    title?: string;
+    notes?: string;
+    group_id?: number;
+  }): Promise<ApiResponse> {
+    return this.request('/supervision/assessments', {
+      method: 'POST',
+      body: JSON.stringify(entry),
+    });
+  }
+
   async assignSupervisor(groupId: number, supervisorName: string): Promise<ApiResponse> {
     return this.request(`/groups/${groupId}/supervisor`, {
       method: 'PUT',

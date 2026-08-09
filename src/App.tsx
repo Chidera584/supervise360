@@ -20,6 +20,7 @@ import { Messages } from './pages/student/Messages';
 import { Profile } from './pages/student/Profile';
 import { DefenseEvaluation } from './pages/student/DefenseEvaluation';
 import { StudentMeetings } from './pages/student/StudentMeetings';
+import { ProgressiveAssessment as StudentProgressiveAssessment } from './pages/student/ProgressiveAssessment';
 
 // Supervisor Pages
 import { MyGroups } from './pages/supervisor/MyGroups';
@@ -140,6 +141,7 @@ function App() {
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/defense-evaluation" element={<DefenseEvaluation />} />
                 <Route path="/supervision-meetings" element={<StudentMeetings />} />
+                <Route path="/progressive-assessment" element={<StudentProgressiveAssessment />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </>

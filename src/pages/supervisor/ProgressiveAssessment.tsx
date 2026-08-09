@@ -2,8 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { MainLayout } from '../../components/Layout/MainLayout';
 import { Card } from '../../components/UI/Card';
 import { apiClient } from '../../lib/api';
-import { BarChart3, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { BarChart3, ChevronDown, ChevronRight, RefreshCw, Plus } from 'lucide-react';
 import { Button } from '../../components/UI/Button';
+
+type StudentOption = { student_user_id: number; student_name: string; group_id: number };
+
+const ENTRY_CATEGORIES = [
+  { value: 'participation', label: 'Participation' },
+  { value: 'quiz', label: 'Quiz / test' },
+  { value: 'general', label: 'General performance' },
+] as const;
 
 type Entry = {
   id: number;
@@ -39,11 +47,23 @@ export function ProgressiveAssessment() {
   const [loading, setLoading] = useState(true);
   const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
 
+  const [students, setStudents] = useState<StudentOption[]>([]);
+  const [showAddEntry, setShowAddEntry] = useState(false);
+  const [entryStudent, setEntryStudent] = useState('');
+  const [entryCategory, setEntryCategory] = useState<'participation' | 'quiz' | 'general'>('participation');
+  const [entryPoints, setEntryPoints] = useState('');
+  const [entryMaxPoints, setEntryMaxPoints] = useState('');
+  const [entryTitle, setEntryTitle] = useState('');
+  const [entryNotes, setEntryNotes] = useState('');
+  const [entrySaving, setEntrySaving] = useState(false);
+  const [entryError, setEntryError] = useState<string | null>(null);
+
   const load = async () => {
     setLoading(true);
-    const [sRes, eRes] = await Promise.all([
+    const [sRes, eRes, stuRes] = await Promise.all([
       apiClient.getSessions(),
       apiClient.getSupervisorAssessmentEntries(sessionId === '' ? undefined : Number(sessionId)),
+      apiClient.getEvaluationStudents(sessionId === '' ? undefined : Number(sessionId)),
     ]);
     if (sRes.success && Array.isArray(sRes.data)) {
       setSessions(sRes.data as { id: number; label: string }[]);
@@ -53,12 +73,77 @@ export function ProgressiveAssessment() {
     } else {
       setRows([]);
     }
+    if (stuRes.success && Array.isArray(stuRes.data)) {
+      setStudents(stuRes.data as StudentOption[]);
+    } else {
+      setStudents([]);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     load();
   }, [sessionId]);
+
+  const resetEntryForm = () => {
+    setEntryStudent('');
+    setEntryCategory('participation');
+    setEntryPoints('');
+    setEntryMaxPoints('');
+    setEntryTitle('');
+    setEntryNotes('');
+    setEntryError(null);
+  };
+
+  const handleAddEntry = async () => {
+    if (!entryStudent) {
+      setEntryError('Select a student');
+      return;
+    }
+    const targetSessionId = sessionId !== '' ? Number(sessionId) : sessions[0]?.id;
+    if (!targetSessionId) {
+      setEntryError('Select an academic session first (use the session filter above)');
+      return;
+    }
+    const student = students.find((s) => String(s.student_user_id) === entryStudent);
+    if (!student) {
+      setEntryError('Selected student not found');
+      return;
+    }
+    const points = entryPoints.trim() === '' ? null : Number(entryPoints);
+    const maxPoints = entryMaxPoints.trim() === '' ? null : Number(entryMaxPoints);
+    if (points != null && Number.isNaN(points)) {
+      setEntryError('Points must be a number');
+      return;
+    }
+    if (maxPoints != null && Number.isNaN(maxPoints)) {
+      setEntryError('Max points must be a number');
+      return;
+    }
+    setEntrySaving(true);
+    setEntryError(null);
+    try {
+      const res = await apiClient.createAssessmentEntry({
+        student_user_id: student.student_user_id,
+        session_id: targetSessionId,
+        category: entryCategory,
+        points,
+        max_points: maxPoints,
+        title: entryTitle.trim() || undefined,
+        notes: entryNotes.trim() || undefined,
+        group_id: student.group_id,
+      });
+      if (!res.success) {
+        setEntryError((res as any).message || 'Failed to save entry');
+        return;
+      }
+      resetEntryForm();
+      setShowAddEntry(false);
+      await load();
+    } finally {
+      setEntrySaving(false);
+    }
+  };
 
   const byStudent = useMemo(() => {
     const m = new Map<number, Entry[]>();
@@ -131,8 +216,107 @@ export function ProgressiveAssessment() {
               <RefreshCw className="w-4 h-4 mr-1" />
               Refresh
             </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                resetEntryForm();
+                setShowAddEntry((v) => !v);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add entry
+            </Button>
           </div>
         </div>
+
+        {showAddEntry && (
+          <Card>
+            <h2 className="text-sm font-semibold text-[#022B3A] mb-3">New assessment entry</h2>
+            <p className="text-xs text-slate-500 mb-4">
+              For participation, quizzes, or general performance notes. Meeting attendance is
+              recorded automatically when you save attendance for a meeting.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Student</label>
+                <select
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={entryStudent}
+                  onChange={(e) => setEntryStudent(e.target.value)}
+                >
+                  <option value="">Select student...</option>
+                  {students.map((s) => (
+                    <option key={s.student_user_id} value={s.student_user_id}>
+                      {s.student_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Category</label>
+                <select
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={entryCategory}
+                  onChange={(e) => setEntryCategory(e.target.value as typeof entryCategory)}
+                >
+                  {ENTRY_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Points (optional)</label>
+                <input
+                  type="number"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={entryPoints}
+                  onChange={(e) => setEntryPoints(e.target.value)}
+                  placeholder="e.g. 8"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Max points (optional)</label>
+                <input
+                  type="number"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={entryMaxPoints}
+                  onChange={(e) => setEntryMaxPoints(e.target.value)}
+                  placeholder="e.g. 10"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1">Title (optional)</label>
+                <input
+                  type="text"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={entryTitle}
+                  onChange={(e) => setEntryTitle(e.target.value)}
+                  placeholder="e.g. Week 4 quiz"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1">Notes (optional)</label>
+                <textarea
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  rows={2}
+                  value={entryNotes}
+                  onChange={(e) => setEntryNotes(e.target.value)}
+                />
+              </div>
+            </div>
+            {entryError && <p className="text-sm text-red-600 mt-3">{entryError}</p>}
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" type="button" onClick={() => setShowAddEntry(false)} disabled={entrySaving}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleAddEntry} disabled={entrySaving}>
+                {entrySaving ? 'Saving...' : 'Save entry'}
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {loading ? (
           <p className="text-slate-600 text-sm">Loading…</p>
