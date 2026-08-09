@@ -570,8 +570,9 @@ class ApiClient {
     return this.request('/reports/my-reports');
   }
 
-  async getPendingReportReviews(): Promise<ApiResponse> {
-    return this.request('/reports/pending-review');
+  async getPendingReportReviews(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/reports/pending-review${q}`);
   }
 
   async reviewReport(reportId: number, payload: any): Promise<ApiResponse> {
@@ -609,8 +610,9 @@ class ApiClient {
     return this.request('/evaluations/groups-with-projects');
   }
 
-  async getEvaluationStudents(): Promise<ApiResponse> {
-    return this.request('/evaluations/students');
+  async getEvaluationStudents(sessionId?: number): Promise<ApiResponse> {
+    const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
+    return this.request(`/evaluations/students${q}`);
   }
 
   async getPendingEvaluations(): Promise<ApiResponse> {

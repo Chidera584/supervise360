@@ -276,7 +276,8 @@ export function createReportsRouter(db: Pool) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      const data = await reportService.listPendingReviews(userId);
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : undefined;
+      const data = await reportService.listPendingReviews(userId, sessionId);
       res.json({ success: true, data });
     } catch (error) {
       logger.error('Pending review reports error:', error);

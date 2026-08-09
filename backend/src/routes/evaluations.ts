@@ -15,7 +15,8 @@ export function createEvaluationsRouter(db: Pool) {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
-      const data = await evaluationService.getStudentsForSupervisor(userId);
+      const sessionId = req.query.sessionId ? Number(req.query.sessionId) : undefined;
+      const data = await evaluationService.getStudentsForSupervisor(userId, sessionId);
       res.json({ success: true, data });
     } catch (error) {
       logger.error('Students evaluations overview error:', error);

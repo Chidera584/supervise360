@@ -106,20 +106,22 @@ export class ReportService {
     return (rows as any[]).map((r: any) => r.id);
   }
 
-  async listPendingReviews(supervisorUserId: number) {
+  async listPendingReviews(supervisorUserId: number, sessionId?: number) {
     const groupIds = await this.getSupervisorGroupIds(supervisorUserId);
     if (groupIds.length === 0) return [];
 
     const placeholders = groupIds.map(() => '?').join(',');
+    const sessionFilter = sessionId ? ' AND pg.session_id = ?' : '';
+    const params = sessionId ? [...groupIds, sessionId] : groupIds;
     const [rows] = await this.db.execute(
-      `SELECT r.*, pg.name as group_name, p.title as project_title
+      `SELECT r.*, pg.name as group_name, pg.session_id, p.title as project_title
        FROM reports r
        LEFT JOIN projects p ON r.project_id = p.id
        LEFT JOIN project_groups pg ON r.group_id = pg.id
        WHERE (r.reviewed = FALSE OR r.reviewed = 0 OR r.reviewed IS NULL)
-       AND r.group_id IN (${placeholders})
+       AND r.group_id IN (${placeholders})${sessionFilter}
        ORDER BY r.submitted_at ASC`,
-      groupIds
+      params
     );
     return rows as any[];
   }

@@ -201,7 +201,7 @@ export class EvaluationService {
    * Get all students under a supervisor, with evaluation status for each.
    * Used to build the supervisor's Evaluation page.
    */
-  async getStudentsForSupervisor(userId: number) {
+  async getStudentsForSupervisor(userId: number, sessionId?: number) {
     await this.ensureStudentEvaluationsTable();
     const fullName = await this.getSupervisorFullName(userId);
     const supervisorId = await this.getSupervisorId(userId);
@@ -221,6 +221,8 @@ export class EvaluationService {
     const supervisorIdParam = supervisorId ?? -1;
     const params: any[] = [supervisorIdParam, userId, supervisorIdParam, fullName, fullName];
     if (firstName && lastName) params.push(firstName, lastName);
+    const sessionFilter = sessionId ? ' AND pg.session_id = ?' : '';
+    if (sessionId) params.push(sessionId);
 
     const [rows] = await this.db.execute(
       `SELECT
@@ -229,6 +231,7 @@ export class EvaluationService {
          s.matric_number,
          pg.id as group_id,
          pg.name as group_name,
+         pg.session_id,
          p.id as project_id,
          se.id as evaluation_id,
          se.total_score,
@@ -257,7 +260,7 @@ export class EvaluationService {
          OR TRIM(COALESCE(pg.supervisor_name, '')) = ?
          OR pg.supervisor_name LIKE CONCAT('%', ?, '%')
          ${bothClause}
-       )
+       )${sessionFilter}
        ORDER BY pg.name ASC, u.last_name ASC, u.first_name ASC`,
       params
     );
