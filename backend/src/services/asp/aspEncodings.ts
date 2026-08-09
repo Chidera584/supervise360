@@ -228,6 +228,11 @@ export async function trySupervisorAssignmentWithClingo(
     const b = supervisors[si].currentGroups ?? 0;
     lines.push(`base(${si + 1},${b}).`);
   }
+  lines.push('');
+  for (let si = 0; si < sCount; si++) {
+    const cap = supervisors[si].maxGroups;
+    if (cap != null) lines.push(`cap(${si + 1},${cap}).`);
+  }
 
   lines.push(
     '',
@@ -237,6 +242,10 @@ export async function trySupervisorAssignmentWithClingo(
     '1 { assign(G,S) : eligible(G,S) } 1 :- group(G).',
     '',
     'tot(S,T) :- supervisor(S), base(S,B), C = #count { G : assign(G,S) }, T = B + C.',
+    // Per-department workload cap (supervisor_workload.max_groups): total load (existing +
+    // newly assigned) may never exceed it. Uncapped supervisors have no cap/2 fact, so this
+    // is vacuously satisfied for them.
+    ':- supervisor(S), tot(S,T), cap(S,Cap), T > Cap.',
     '',
     `gen(M) :- M = 0..${maxBound}.`,
     // Same "exactly one, not at most one" fix as assign/2 above: without the lower bound, the

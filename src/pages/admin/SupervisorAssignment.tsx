@@ -4,8 +4,8 @@ import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { ConfirmationModal } from '../../components/UI/ConfirmationModal';
 import { 
-  Users, Upload, UserCheck, 
-  Eye, Edit, CheckCircle, Clock, Building, X, Trash2, ChevronDown, FileSpreadsheet, FileText, File, SlidersHorizontal
+  Users, Upload, UserCheck,
+  Eye, Edit, CheckCircle, Clock, Building, X, Trash2, ChevronDown, FileSpreadsheet, FileText, File, SlidersHorizontal, Plus
 } from 'lucide-react';
 import { parseCSV, readFileAsText } from '../../lib/csv-parser';
 import { downloadAssignmentsAsCSV, downloadAssignmentsAsPDF, downloadAssignmentsAsWord } from '../../lib/export-utils';
@@ -64,6 +64,11 @@ export function SupervisorAssignment() {
   /** Local draft for max-groups cap inputs (keyed by workload row id) */
   const [workloadCapInput, setWorkloadCapInput] = useState<Record<number, string>>({});
   const [workloadEditSupervisor, setWorkloadEditSupervisor] = useState<{ id: number; name: string } | null>(null);
+  const [addDeptSupervisor, setAddDeptSupervisor] = useState<{ name: string } | null>(null);
+  const [addDeptTarget, setAddDeptTarget] = useState('');
+  const [addDeptCap, setAddDeptCap] = useState('');
+  const [addDeptSaving, setAddDeptSaving] = useState(false);
+  const [addDeptError, setAddDeptError] = useState<string | null>(null);
 
   useEffect(() => {
     const m: Record<number, string> = {};
@@ -873,6 +878,19 @@ export function SupervisorAssignment() {
                                 >
                                   <SlidersHorizontal size={14} />
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddDeptSupervisor({ name: supervisor.name });
+                                    setAddDeptTarget('');
+                                    setAddDeptCap('');
+                                    setAddDeptError(null);
+                                  }}
+                                  className="p-1.5 rounded hover:bg-slate-200 text-slate-600"
+                                  title="Add to another department"
+                                >
+                                  <Plus size={14} />
+                                </button>
                                 {supGroups.length > 0 && (
                                   <button onClick={() => { setSwapWizardTab('swap'); setEditSwapModal(true); }} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Edit / Swap">
                                     <Edit size={14} />
@@ -955,6 +973,106 @@ export function SupervisorAssignment() {
                   }}
                 >
                   Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {addDeptSupervisor && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setAddDeptSupervisor(null)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-lg font-semibold text-slate-900">Add to another department</h3>
+                <button
+                  type="button"
+                  className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+                  onClick={() => setAddDeptSupervisor(null)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="text-sm text-slate-800 font-medium">{addDeptSupervisor.name}</p>
+              <p className="text-xs text-slate-500">
+                For supervisors borrowed across departments. Creates a separate workload row for
+                this department so their cap and group count there are tracked independently of
+                their home department.
+              </p>
+              <div>
+                <label className="text-xs font-medium text-slate-700" htmlFor="add-dept-target">
+                  Department
+                </label>
+                <select
+                  id="add-dept-target"
+                  className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  value={addDeptTarget}
+                  onChange={(e) => setAddDeptTarget(e.target.value)}
+                >
+                  <option value="">Select department...</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700" htmlFor="add-dept-cap">
+                  Max groups (optional)
+                </label>
+                <input
+                  id="add-dept-cap"
+                  type="number"
+                  min={0}
+                  className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  placeholder="No cap"
+                  value={addDeptCap}
+                  onChange={(e) => setAddDeptCap(e.target.value)}
+                />
+              </div>
+              {addDeptError && <p className="text-sm text-red-600">{addDeptError}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" type="button" onClick={() => setAddDeptSupervisor(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={addDeptSaving}
+                  className="bg-[#1F7A8C]"
+                  onClick={async () => {
+                    if (!addDeptTarget) {
+                      setAddDeptError('Select a department');
+                      return;
+                    }
+                    const raw = addDeptCap.trim();
+                    const cap = raw === '' ? null : Number(raw);
+                    if (cap !== null && (Number.isNaN(cap) || cap < 0)) {
+                      setAddDeptError('Enter a non-negative number or leave empty for no cap');
+                      return;
+                    }
+                    setAddDeptSaving(true);
+                    setAddDeptError(null);
+                    try {
+                      const res = await apiClient.addSupervisorToDepartment({
+                        supervisorName: addDeptSupervisor.name,
+                        department: addDeptTarget,
+                        maxGroups: cap,
+                      });
+                      if (!res.success) {
+                        setAddDeptError(res.message || 'Failed to add supervisor to department');
+                        return;
+                      }
+                      await loadSupervisorWorkload();
+                      setAddDeptSupervisor(null);
+                    } finally {
+                      setAddDeptSaving(false);
+                    }
+                  }}
+                >
+                  {addDeptSaving ? 'Saving...' : 'Add'}
                 </Button>
               </div>
             </div>

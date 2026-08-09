@@ -238,6 +238,21 @@ class ApiClient {
     });
   }
 
+  /** Adds an existing supervisor to another department (e.g. a "borrowed" assignment) without
+   * re-uploading that department's whole CSV. Upserts a single supervisor_workload row. */
+  async addSupervisorToDepartment(payload: {
+    supervisorName: string;
+    department: string;
+    maxGroups?: number | null;
+    email?: string | null;
+    phone?: string | null;
+  }): Promise<ApiResponse> {
+    return this.request('/supervisors/workload', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async getSupervisionMeetings(sessionId?: number): Promise<ApiResponse> {
     const q = sessionId != null ? `?sessionId=${encodeURIComponent(String(sessionId))}` : '';
     return this.request(`/supervision/meetings${q}`);

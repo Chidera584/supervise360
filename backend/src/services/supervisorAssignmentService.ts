@@ -163,16 +163,16 @@ export class SupervisorAssignmentService {
 
   /**
    * Prefer Potassco Clingo (answer set programming): minimize maximum total load per supervisor
-   * subject to same-department eligibility. Falls back to greedy load balancing if Clingo is unavailable.
+   * subject to same-department eligibility and each supervisor's per-department cap (max_groups).
+   * Falls back to greedy load balancing if Clingo is unavailable or finds no valid assignment
+   * (e.g. caps make the instance UNSAT - the greedy path respects caps too, see the eligibility
+   * filter below, it just doesn't optimize for minimum max load).
    */
   private async computeOptimalAssignment(
     groups: GroupData[],
     supervisors: SupervisorData[]
   ): Promise<{ assignments: AssignmentResult[]; solverStatus: SolverMeta }> {
-    const anyCap = supervisors.some((s) => s.maxGroups != null);
-    const asp = anyCap
-      ? null
-      : await trySupervisorAssignmentWithClingo(groups, supervisors);
+    const asp = await trySupervisorAssignmentWithClingo(groups, supervisors);
     if (asp) return { assignments: asp.assignments, solverStatus: asp.meta };
 
     const assignments: AssignmentResult[] = [];
@@ -224,12 +224,13 @@ export class SupervisorAssignmentService {
       logger.info(`📋 Assignment: ${group.name} → ${selectedSupervisor.name} (${newLoad} groups)`);
     }
 
+    const anyCap = supervisors.some((s) => s.maxGroups != null);
     return {
       assignments,
       solverStatus: {
         path: 'heuristic',
         message: anyCap
-          ? 'Per-supervisor caps are set - Clingo assignment is skipped when any cap applies (heuristic respects caps directly)'
+          ? 'Clingo found no valid optimal assignment respecting all per-supervisor caps (or is unavailable) - used greedy load balancing instead, which also respects caps'
           : undefined,
       },
     };

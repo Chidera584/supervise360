@@ -458,6 +458,60 @@ export function createSupervisorsRouter(db: Pool) {
     }
   });
 
+  // Admin: add an existing supervisor to another department (e.g. a "borrowed" assignment)
+  // without re-uploading that department's whole CSV, which would risk dropping other
+  // supervisors from an incomplete file. Upserts a single (supervisor_name, department) row -
+  // never touches current_groups, which is only ever derived from actual group assignments
+  // (see syncSupervisorWorkloadWithConnection / adjustSupervisorWorkload).
+  router.post('/workload', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const { supervisorName, department, maxGroups, email, phone } = req.body as {
+        supervisorName?: string;
+        department?: string;
+        maxGroups?: number | null;
+        email?: string | null;
+        phone?: string | null;
+      };
+      const name = String(supervisorName || '').trim();
+      const dept = String(department || '').trim();
+      if (!name || !dept) {
+        return res.status(400).json({ success: false, message: 'supervisorName and department are required' });
+      }
+      if (maxGroups !== undefined && maxGroups !== null && (typeof maxGroups !== 'number' || maxGroups < 0)) {
+        return res.status(400).json({ success: false, message: 'maxGroups must be null, omitted, or a non-negative number' });
+      }
+
+      const [existingRows] = await db.execute(
+        'SELECT id FROM supervisor_workload WHERE supervisor_name = ? AND TRIM(COALESCE(department, \'\')) = TRIM(?)',
+        [name, dept]
+      );
+      const existing = (existingRows as any[])[0];
+
+      if (existing) {
+        await db.execute(
+          `UPDATE supervisor_workload
+           SET max_groups = COALESCE(?, max_groups),
+               email = COALESCE(?, email),
+               phone = COALESCE(?, phone),
+               updated_at = NOW()
+           WHERE id = ?`,
+          [maxGroups ?? null, email || null, phone || null, existing.id]
+        );
+        return res.json({ success: true, message: 'Supervisor already in this department; updated cap/contact info', id: existing.id });
+      }
+
+      const [result] = await db.execute(
+        `INSERT INTO supervisor_workload (supervisor_name, department, email, phone, current_groups, max_groups, is_available)
+         VALUES (?, ?, ?, ?, 0, ?, TRUE)`,
+        [name, dept, email || null, phone || null, maxGroups ?? null]
+      );
+      res.json({ success: true, message: 'Supervisor added to department', id: (result as any).insertId });
+    } catch (error) {
+      logger.error('Add supervisor to department error:', error);
+      res.status(500).json({ success: false, message: 'Failed to add supervisor to department' });
+    }
+  });
+
   // Validate assignments
   router.get('/validate', authenticateToken, requireAdmin, async (req, res) => {
     try {
