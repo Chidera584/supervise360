@@ -13,7 +13,7 @@ interface SupervisorGroup {
   status: string;
   avg_gpa?: number;
   supervisor?: string;
-  members: { id: number; name: string; gpa?: number | string; matricNumber?: string }[];
+  members: { id: number; name: string; gpa?: number | string; matricNumber?: string; email?: string | null; phone?: string | null }[];
   project: {
     id: number;
     title: string;
@@ -335,6 +335,20 @@ export function MyGroups() {
                                 {m.matricNumber ? (
                                   <div className="text-xs text-slate-500 truncate" title={m.matricNumber}>
                                     {m.matricNumber}
+                                  </div>
+                                ) : null}
+                                {m.email ? (
+                                  <a
+                                    href={`mailto:${m.email}`}
+                                    className="text-xs text-[#006D6D] hover:underline truncate block"
+                                    title={m.email}
+                                  >
+                                    {m.email}
+                                  </a>
+                                ) : null}
+                                {m.phone ? (
+                                  <div className="text-xs text-slate-500 truncate" title={m.phone}>
+                                    {m.phone}
                                   </div>
                                 ) : null}
                               </div>
