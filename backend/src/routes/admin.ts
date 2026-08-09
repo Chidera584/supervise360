@@ -451,8 +451,94 @@ export function createAdminRouter(db: Pool) {
   });
 
   /**
-   * Move one student to another group (Student↔Group / Student↔Supervisor when target group matches supervisor).
-   * swapType: STUDENT_GROUP | STUDENT_SUPERVISOR — for STUDENT_SUPERVISOR pass expectedSupervisorName matching target group's supervisor.
+   * Shared by move-member and move-student-to-supervisor: moves one student into a different
+   * EXISTING group and re-validates both groups' tier composition. Does NOT touch
+   * supervisor_workload - moving a student between existing groups never changes how many
+   * GROUPS either supervisor has, only PUT /groups/:groupId/supervisor (whole-group reassignment)
+   * and group formation do that, and both already enforce the workload cap.
+   */
+  async function moveGroupMember(
+    conn: any,
+    memberId: number,
+    fromGroupId: number,
+    toGroupId: number
+  ): Promise<{ ok: true } | { ok: false; status: number; message: string; violations?: string[] }> {
+    const [mRowsRaw] = await conn.execute(
+      'SELECT id, group_id, gpa_tier, student_name, student_gpa FROM group_members WHERE id = ?',
+      [memberId]
+    );
+    const member = (mRowsRaw as any[])[0];
+    if (!member || Number(member.group_id) !== fromGroupId) {
+      return { ok: false, status: 404, message: 'Member not found in source group' };
+    }
+
+    const [fromMemberRows] = await conn.execute(
+      'SELECT id, student_name, student_gpa, gpa_tier FROM group_members WHERE group_id = ?',
+      [fromGroupId]
+    );
+    const [toMemberRows] = await conn.execute(
+      'SELECT id, student_name, student_gpa, gpa_tier FROM group_members WHERE group_id = ?',
+      [toGroupId]
+    );
+
+    const fromList = (fromMemberRows as any[]).filter((r) => r.id !== memberId);
+    if ((fromMemberRows as any[]).length === 1) {
+      return {
+        ok: false,
+        status: 400,
+        message: 'Moving this student would empty the source group. Use a pairwise swap or dissolve the group instead.',
+      };
+    }
+
+    const toList = [...(toMemberRows as any[])];
+    if (toList.length >= 3) {
+      return { ok: false, status: 400, message: 'Target group already has the maximum of 3 members' };
+    }
+
+    const mapStudent = (r: any) => ({
+      name: r.student_name,
+      gpa: Number(r.student_gpa),
+      tier: r.gpa_tier as 'HIGH' | 'MEDIUM' | 'LOW',
+    });
+
+    const gFrom = { name: 'source', members: fromList.map(mapStudent), avg_gpa: 0, status: 'formed' as const };
+    gFrom.avg_gpa =
+      gFrom.members.length > 0
+        ? parseFloat((gFrom.members.reduce((s, m) => s + m.gpa, 0) / gFrom.members.length).toFixed(2))
+        : 0;
+
+    const gTo = {
+      name: 'target',
+      members: [...toList.map(mapStudent), mapStudent(member)],
+      avg_gpa: 0,
+      status: 'formed' as const,
+    };
+    gTo.avg_gpa = parseFloat((gTo.members.reduce((s, m) => s + m.gpa, 0) / gTo.members.length).toFixed(2));
+
+    const vFrom = groupFormationService.validateGroupFormation([gFrom]);
+    const vTo = groupFormationService.validateGroupFormation([gTo]);
+    if (!vFrom.isValid || !vTo.isValid) {
+      return {
+        ok: false,
+        status: 400,
+        message: 'Move violates group formation rules',
+        violations: [...vFrom.violations, ...vTo.violations],
+      };
+    }
+
+    await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [toGroupId, memberId]);
+    await groupFormationService.renormalizeGroupOrdersAndAvg(conn, fromGroupId);
+    await groupFormationService.renormalizeGroupOrdersAndAvg(conn, toGroupId);
+    return { ok: true };
+  }
+
+  /**
+   * Student ↔ Group swap: move one student into a specific target group the admin picks
+   * explicitly. (For "move this student to a different supervisor" without picking a specific
+   * group, see POST /groups/move-student-to-supervisor below - that's the real Student↔Supervisor
+   * operation.) swapType/expectedSupervisorName are kept for backward compatibility with older
+   * callers that pin the move to a group with a specific expected supervisor; new frontend code
+   * doesn't need them.
    */
   router.post('/groups/move-member', authenticateToken, requireAdmin, async (req, res) => {
     try {
@@ -474,16 +560,6 @@ export function createAdminRouter(db: Pool) {
       const conn = await db.getConnection();
       try {
         await conn.beginTransaction();
-
-        const [mRowsRaw] = await conn.execute(
-          'SELECT id, group_id, gpa_tier, student_name, student_gpa FROM group_members WHERE id = ?',
-          [memberId]
-        );
-        const member = (mRowsRaw as any[])[0];
-        if (!member || Number(member.group_id) !== fromGroupId) {
-          await conn.rollback();
-          return res.status(404).json({ success: false, message: 'Member not found in source group' });
-        }
 
         const [fromPgRes, toPgRes] = await Promise.all([
           conn.execute(
@@ -533,80 +609,15 @@ export function createAdminRouter(db: Pool) {
           }
         }
 
-        const [fromMemberRows] = await conn.execute(
-          'SELECT id, student_name, student_gpa, gpa_tier FROM group_members WHERE group_id = ?',
-          [fromGroupId]
-        );
-        const [toMemberRows] = await conn.execute(
-          'SELECT id, student_name, student_gpa, gpa_tier FROM group_members WHERE group_id = ?',
-          [toGroupId]
-        );
-
-        const fromList = (fromMemberRows as any[]).filter((r) => r.id !== memberId);
-        if ((fromMemberRows as any[]).length === 1) {
+        const result = (await moveGroupMember(conn, memberId, fromGroupId, toGroupId)) as any;
+        if (!result.ok) {
           await conn.rollback();
-          return res.status(400).json({
+          return res.status(result.status).json({
             success: false,
-            message:
-              'Moving this student would empty the source group. Use a pairwise swap or dissolve the group instead.',
+            message: result.message,
+            ...(result.violations ? { violations: result.violations } : {}),
           });
         }
-
-        const toList = [...(toMemberRows as any[])];
-        if (toList.length >= 3) {
-          await conn.rollback();
-          return res.status(400).json({
-            success: false,
-            message: 'Target group already has the maximum of 3 members',
-          });
-        }
-
-        const mapStudent = (r: any) => ({
-          name: r.student_name,
-          gpa: Number(r.student_gpa),
-          tier: r.gpa_tier as 'HIGH' | 'MEDIUM' | 'LOW',
-        });
-
-        const gFrom = {
-          name: 'source',
-          members: fromList.map(mapStudent),
-          avg_gpa: 0,
-          status: 'formed' as const,
-        };
-        gFrom.avg_gpa =
-          gFrom.members.length > 0
-            ? parseFloat(
-                (
-                  gFrom.members.reduce((s, m) => s + m.gpa, 0) / gFrom.members.length
-                ).toFixed(2)
-              )
-            : 0;
-
-        const gTo = {
-          name: 'target',
-          members: [...toList.map(mapStudent), mapStudent(member)],
-          avg_gpa: 0,
-          status: 'formed' as const,
-        };
-        gTo.avg_gpa = parseFloat(
-          (gTo.members.reduce((s, m) => s + m.gpa, 0) / gTo.members.length).toFixed(2)
-        );
-
-        const vFrom = groupFormationService.validateGroupFormation([gFrom]);
-        const vTo = groupFormationService.validateGroupFormation([gTo]);
-        if (!vFrom.isValid || !vTo.isValid) {
-          await conn.rollback();
-          return res.status(400).json({
-            success: false,
-            message: 'Move violates group formation rules',
-            violations: [...vFrom.violations, ...vTo.violations],
-          });
-        }
-
-        await conn.execute('UPDATE group_members SET group_id = ? WHERE id = ?', [toGroupId, memberId]);
-
-        await groupFormationService.renormalizeGroupOrdersAndAvg(conn, fromGroupId);
-        await groupFormationService.renormalizeGroupOrdersAndAvg(conn, toGroupId);
 
         await conn.commit();
         res.json({ success: true, message: 'Student moved successfully' });
@@ -619,6 +630,99 @@ export function createAdminRouter(db: Pool) {
     } catch (error) {
       logger.error('Move member error:', error);
       res.status(500).json({ success: false, message: 'Failed to move student' });
+    }
+  });
+
+  /**
+   * Student ↔ Supervisor swap: move a student under a different supervisor without the admin
+   * having to pick a specific target group. Finds an existing group led by targetSupervisorName
+   * in the student's department/session with room (<3 members) and a compatible GPA-tier
+   * composition, and moves the student into it (same underlying move as move-member). Does not
+   * create a new group - that's group formation's job. Group count per supervisor doesn't change
+   * (the student joins an existing group), so no workload-cap check applies here either.
+   */
+  router.post('/groups/move-student-to-supervisor', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const memberId = Number(req.body?.memberId);
+      const fromGroupId = Number(req.body?.fromGroupId);
+      const targetSupervisorName = String(req.body?.targetSupervisorName || '').trim();
+
+      if (!memberId || !fromGroupId || !targetSupervisorName) {
+        return res.status(400).json({
+          success: false,
+          message: 'memberId, fromGroupId, and targetSupervisorName are required',
+        });
+      }
+
+      const conn = await db.getConnection();
+      try {
+        await conn.beginTransaction();
+
+        const [fromPgRes] = await conn.execute(
+          'SELECT id, session_id, supervisor_name, department FROM project_groups WHERE id = ?',
+          [fromGroupId]
+        );
+        const fromG = (fromPgRes as any[])[0];
+        if (!fromG) {
+          await conn.rollback();
+          return res.status(404).json({ success: false, message: 'Source group not found' });
+        }
+        if (String(fromG.supervisor_name || '').trim() === targetSupervisorName) {
+          await conn.rollback();
+          return res.status(400).json({ success: false, message: 'Student is already under this supervisor' });
+        }
+
+        const [candidateRows] = await conn.execute(
+          `SELECT pg.id, (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = pg.id) as member_count
+           FROM project_groups pg
+           WHERE pg.supervisor_name = ?
+             AND TRIM(COALESCE(pg.department, '')) = TRIM(?)
+             AND (? IS NULL OR pg.session_id = ?)
+             AND pg.id != ?
+           ORDER BY member_count ASC`,
+          [targetSupervisorName, fromG.department || '', fromG.session_id, fromG.session_id, fromGroupId]
+        );
+        const candidates = (candidateRows as any[]).filter((c) => c.member_count < 3);
+
+        if (candidates.length === 0) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: `No group under ${targetSupervisorName} in ${fromG.department || 'this department'} has room for another student. Form a new group instead.`,
+          });
+        }
+
+        let moved = false;
+        let lastViolation: string[] | undefined;
+        for (const candidate of candidates) {
+          const result = (await moveGroupMember(conn, memberId, fromGroupId, candidate.id)) as any;
+          if (result.ok) {
+            moved = true;
+            break;
+          }
+          if (result.violations) lastViolation = result.violations;
+        }
+
+        if (!moved) {
+          await conn.rollback();
+          return res.status(400).json({
+            success: false,
+            message: `Found a group under ${targetSupervisorName} with room, but moving this student would break GPA-tier composition rules in every candidate group.`,
+            violations: lastViolation,
+          });
+        }
+
+        await conn.commit();
+        res.json({ success: true, message: `Student moved to ${targetSupervisorName}'s group` });
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
+      }
+    } catch (error) {
+      logger.error('Move student to supervisor error:', error);
+      res.status(500).json({ success: false, message: 'Failed to move student to supervisor' });
     }
   });
 

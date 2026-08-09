@@ -231,6 +231,20 @@ class ApiClient {
     });
   }
 
+  /** Student ↔ Supervisor swap: moves a student under a different supervisor. The backend picks
+   * an existing eligible group under that supervisor (same department, room, compatible GPA
+   * tier) - no group is created and no target group needs to be picked by the caller. */
+  async moveStudentToSupervisor(payload: {
+    memberId: number;
+    fromGroupId: number;
+    targetSupervisorName: string;
+  }): Promise<ApiResponse> {
+    return this.request('/admin/groups/move-student-to-supervisor', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async updateSupervisorWorkloadCap(id: number, max_groups: number | null): Promise<ApiResponse> {
     return this.request(`/supervisors/workload/${id}`, {
       method: 'PUT',

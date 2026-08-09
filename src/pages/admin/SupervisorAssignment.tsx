@@ -53,11 +53,15 @@ export function SupervisorAssignment() {
   const actionsDropdownRef = useRef<HTMLDivElement>(null);
   const [sessions, setSessions] = useState<{ id: number; label: string }[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<number | ''>('');
-  const [swapWizardTab, setSwapWizardTab] = useState<'swap' | 'move' | 'reassign'>('swap');
+  const [swapWizardTab, setSwapWizardTab] = useState<'swap' | 'move' | 'moveToSupervisor' | 'reassign'>('swap');
   const [moveSearch, setMoveSearch] = useState('');
   const [moveStudent, setMoveStudent] = useState<{ groupId: number; memberId: number; name: string } | null>(null);
   const [moveTargetGroupId, setMoveTargetGroupId] = useState<number | ''>('');
   const [moveDoing, setMoveDoing] = useState(false);
+  /** Student ↔ Supervisor tab: reuses moveStudent/moveSearch (student picker) above, but the
+   * target is a supervisor, not a specific group - the backend picks an eligible group. */
+  const [moveToSupervisorName, setMoveToSupervisorName] = useState('');
+  const [moveToSupervisorDoing, setMoveToSupervisorDoing] = useState(false);
   const [reassignGroupId, setReassignGroupId] = useState<number | ''>('');
   const [reassignSupervisorName, setReassignSupervisorName] = useState('');
   const [reassignDoing, setReassignDoing] = useState(false);
@@ -515,6 +519,32 @@ export function SupervisorAssignment() {
       alert('Failed to move student');
     } finally {
       setMoveDoing(false);
+    }
+  };
+
+  const handleMoveStudentToSupervisor = async () => {
+    if (!moveStudent || !moveToSupervisorName.trim()) return;
+    setMoveToSupervisorDoing(true);
+    try {
+      const res = await apiClient.moveStudentToSupervisor({
+        memberId: moveStudent.memberId,
+        fromGroupId: moveStudent.groupId,
+        targetSupervisorName: moveToSupervisorName.trim(),
+      });
+      if (res.success) {
+        await syncWithDatabase();
+        await loadSupervisorWorkload();
+        setMoveStudent(null);
+        setMoveToSupervisorName('');
+        setMoveSearch('');
+        setEditSwapModal(false);
+      } else {
+        alert((res as any).message || 'Move failed');
+      }
+    } catch {
+      alert('Failed to move student to supervisor');
+    } finally {
+      setMoveToSupervisorDoing(false);
     }
   };
 
@@ -1280,7 +1310,8 @@ export function SupervisorAssignment() {
                 {(
                   [
                     { id: 'swap' as const, label: 'Student ↔ Student' },
-                    { id: 'move' as const, label: 'Move to group' },
+                    { id: 'move' as const, label: 'Student ↔ Group' },
+                    { id: 'moveToSupervisor' as const, label: 'Student ↔ Supervisor' },
                     { id: 'reassign' as const, label: 'Group ↔ Supervisor' },
                   ]
                 ).map((t) => (
@@ -1462,6 +1493,86 @@ export function SupervisorAssignment() {
                       disabled={moveDoing || !moveStudent || moveTargetGroupId === ''}
                     >
                       {moveDoing ? 'Moving...' : 'Move student'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {swapWizardTab === 'moveToSupervisor' && (
+                <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-8rem)]">
+                  <p className="text-sm text-gray-600">
+                    Move one student under a different supervisor. Pick the supervisor, not a
+                    specific group - an existing group of theirs with room and a compatible GPA
+                    tier composition is chosen automatically.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Search student</label>
+                    <input
+                      type="text"
+                      value={moveSearch}
+                      onChange={(e) => setMoveSearch(e.target.value)}
+                      placeholder="Name, matric, or group..."
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"
+                    />
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={moveStudent ? `${moveStudent.groupId}-${moveStudent.memberId}` : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setMoveStudent(null);
+                          setMoveToSupervisorName('');
+                          return;
+                        }
+                        const [gid, mid] = v.split('-').map(Number);
+                        const g = departmentGroups.find((gg) => gg.id === gid);
+                        const m = g?.members?.find((mm: any) => mm.id === mid);
+                        if (m) {
+                          setMoveStudent({ groupId: gid, memberId: mid, name: m.name });
+                          setMoveToSupervisorName('');
+                        } else {
+                          setMoveStudent(null);
+                        }
+                      }}
+                    >
+                      <option value="">Select student...</option>
+                      {moveStudentOptions.map((opt) => (
+                        <option key={`${opt.groupId}-${opt.memberId}`} value={`${opt.groupId}-${opt.memberId}`}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Target supervisor</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={moveToSupervisorName}
+                      onChange={(e) => setMoveToSupervisorName(e.target.value)}
+                      disabled={!moveStudent}
+                    >
+                      <option value="">{moveStudent ? 'Choose supervisor...' : 'Select a student first'}</option>
+                      {(departmentSupervisors as any[])
+                        .filter((s: any) => {
+                          const currentGroup = departmentGroups.find((g) => g.id === moveStudent?.groupId);
+                          return !currentGroup || s.name !== (currentGroup as any).supervisor;
+                        })
+                        .map((s: any) => (
+                          <option key={s.id} value={s.name}>
+                            {s.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setEditSwapModal(false)} disabled={moveToSupervisorDoing}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleMoveStudentToSupervisor}
+                      disabled={moveToSupervisorDoing || !moveStudent || !moveToSupervisorName.trim()}
+                    >
+                      {moveToSupervisorDoing ? 'Moving...' : 'Move to supervisor'}
                     </Button>
                   </div>
                 </div>
